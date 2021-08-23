@@ -1,12 +1,11 @@
 BUILDDIR = build
 SOURCEDIR = src
 HEADERDIR = headers
-
-SOURCES := $(wildcard $(SOURCEDIR)/*.c)
-OBJECTS := $(patsubst $(SOURCEDIR)/%.c,$(BUILDDIR)/%.o,$(SOURCES))
+SOURCES := $(wildcard $(SOURCEDIR)/*.cpp)
+OBJECTS := $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
 
 CFLAGS = #-std=c99 #-Ofast -std=c11
-LINKFLAGS = -lm #-lncurses 
+LINKFLAGS = # -lm #-lncurses 
 EXECUTABLE := $(BUILDDIR)/sdrgaph
 
 .PHONY: all clean run
@@ -14,10 +13,10 @@ EXECUTABLE := $(BUILDDIR)/sdrgaph
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CC) $^ -o $@ $(LINKFLAGS)
+	g++ $^ -o $@ $(LINKFLAGS)
 
-$(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
-	$(CC) -I$(HEADERDIR) -c $< -o $@ $(CFLAGS)
+$(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
+	g++ -I$(HEADERDIR) -c $< -o $@ $(CFLAGS)
 
 clean:
 	rm -vf $(EXECUTABLE) $(OBJECTS)
