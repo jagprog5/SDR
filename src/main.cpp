@@ -1,19 +1,18 @@
 #include "SparseDistributedRepresentation.h"
 // #include <vector>
 // #include <iostream>
- 
+// #include <type_traits>
+
 int main()
 {
-    SDR<int> a;
-    for (int i = 0; i < 10; ++i) {
-        a.set(i, true);
-    }
-    SDR<int> b;
-    for (int i = 5; i < 15; ++i) {
-        b.set(i, true);
-    }
-    b.focus(a);
-    cout << b;
+    SDR<int> a{0, 4, 5, 7, 17};
+    SDR<int> b{0, 2, 3, 7, 17, 18};
+    a.set(b, true);
+    // a.focus(b);
+    cout << a << '\n';
+    // a.focus(b);
+    // cout << a << '\n';
+    // cout << a.get(b);
     // // r.set(6, true);
     // auto section = r.get(3, 6);
     // auto q(section);

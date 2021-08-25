@@ -4,7 +4,7 @@ HEADERDIR = headers
 SOURCES := $(wildcard $(SOURCEDIR)/*.cpp)
 OBJECTS := $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
 
-CFLAGS = #-std=c99 #-Ofast -std=c11
+CFLAGS = -std=c++17 #-std=c99 #-Ofast -std=c11
 LINKFLAGS = # -lm #-lncurses 
 EXECUTABLE := $(BUILDDIR)/sdrgaph
 
