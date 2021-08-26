@@ -5,9 +5,13 @@
 
 int main()
 {
-    SDR<int> a{0, 4, 5, 7, 17};
-    SDR<int> b{0, 2, 3, 7, 17, 18};
-    a.andi(b);
+    // vector<int> v;
+    // v.resize(10);
+    // cout << v[1] << '\n';
+    // SDR<int> a{0, 4, 5, 7, 17};
+    // SDR<int> b{0, 2, 3, 7, 17, 18};
+    // a.andi(b);
+    SDR<int> a(0.98, 1.0, 3, 100);
     // a.focus(b);
     cout << a << '\n';
     // a.focus(b);

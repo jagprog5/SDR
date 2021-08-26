@@ -17,6 +17,11 @@ class SDR {
         SDR() {}
         SDR(initializer_list<SDR_t> l): v(l) {}
         SDR(const SDR<SDR_t>& sdr) : v{sdr.v} {}
+        SDR(float input, unsigned int size, unsigned int underlying_array_length);
+        SDR(float input, float period, unsigned int size, unsigned int underlying_array_length);
+
+        void sample(unsigned int amount);
+        void sample(float amount);
 
         // and bit. returns the state of a bit.
         bool andb(SDR_t val) const;
@@ -68,7 +73,7 @@ class SDR {
         }
     
     private:
-        list<SDR_t> v;
+        vector<SDR_t> v;
 
         void turn_off(SDR_t);
         void turn_on(SDR_t);
@@ -113,8 +118,50 @@ class SDR {
         struct is_list<list<T,A>> : true_type {};
     
     static_assert(is_integral<SDR_t>::value, "SDR_t must be integral");
-    static_assert(is_vector<decltype(v)>::value || is_list<decltype(v)>::value, "SDR's container must be a vector or list.");
+    static_assert(is_vector<decltype(v)>::value || is_list<decltype(v)>::value, "SDR's underlying container must be a vector or list.");
 };
+
+template<typename SDR_t>
+SDR<SDR_t>::SDR(float input, unsigned int size, unsigned int underlying_array_length) {
+    assert(size <= underlying_array_length);
+    v.reserve(size);
+    SDR_t start_index = roundf((underlying_array_length - size) * input);
+    for (SDR_t i = 0; i < size; ++i) {
+        v.push_back(start_index + i);
+    }
+}
+
+template<typename SDR_t>
+SDR<SDR_t>::SDR(float input, float period, unsigned int size, unsigned int underlying_array_length) {
+    assert(size <= underlying_array_length && period != 0);
+    v.reserve(size);
+    float progress = input / period;
+    progress -= (int)progress;
+    assert(progress >= 0);
+    SDR_t start_index = roundf(progress * underlying_array_length);
+    if (start_index + size > underlying_array_length) {
+        SDR_t leading_indices = start_index + size - underlying_array_length;
+        SDR_t non_leading_indice = underlying_array_length - leading_indices - 1;
+        while (leading_indices > 0) {
+            v.push_back(--leading_indices);
+        }
+        while (non_leading_indice < underlying_array_length) {
+            v.push_back(non_leading_indice++);
+        }
+    } else {
+        for (SDR_t i = 0; i < size; ++i) {
+            v.push_back(start_index + i);
+        }
+    }
+}
+
+template<typename SDR_t>
+void SDR<SDR_t>::sample(unsigned int amount) {
+    if (amount > v.size()) return;
+    shuffle(v.begin(), v.end());
+    v.resize(amount);
+    sort(v.begin(), v.end());
+}
 
 template<typename SDR_t>
 bool SDR<SDR_t>::andb(SDR_t val) const {
