@@ -7,7 +7,7 @@ int main()
 {
     SDR<int> a{0, 4, 5, 7, 17};
     SDR<int> b{0, 2, 3, 7, 17, 18};
-    a.set(b, true);
+    a.andi(b);
     // a.focus(b);
     cout << a << '\n';
     // a.focus(b);

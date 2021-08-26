@@ -2,10 +2,10 @@
 
 #include <assert.h>
 #include <initializer_list>
-#include <type_traits>
 #include <algorithm>
 #include <vector>
-// #include <list>
+#include <list>
+#include <set>
 #include <iostream>
 #include <math.h>
 #include <stdbool.h>
@@ -13,8 +13,6 @@ using namespace std;
 
 template<typename SDR_t = unsigned int>
 class SDR {
-    static_assert(std::is_integral<SDR_t>::value, "SDR_t must be integral");
-
     public:
         SDR() {}
         SDR(initializer_list<SDR_t> l): v(l) {}
@@ -28,15 +26,13 @@ class SDR {
         SDR<SDR_t> andb(SDR_t start_inclusive, SDR_t stop_exclusive) const;
         // and inplace. turn off all bits not in query (compute query AND self, and place the result in self).
         void andi(const SDR<SDR_t>& query);
-        // and size. returns 0 iff the bit is not contained in this. same as andb(SDR_t)
+        // and size. returns 0 if the bit is not contained in this, else 1.
         unsigned int ands(SDR_t val) const;
         // and size. returns the number of bits in both this and query.
         unsigned int ands(const SDR<SDR_t>& query) const;
         // and size. returns the number of bits from start to stop.
         unsigned int ands(SDR_t start_inclusive, SDR_t stop_exclusive) const;
 
-        // or bit. 
-        void orb(SDR_t val) const;
         // or bits. 
         SDR<SDR_t> orb(const SDR<SDR_t>& query) const;
         // or inplace. turn on all bits in query
@@ -49,7 +45,6 @@ class SDR {
         void xori(const SDR<SDR_t>& query);
         // xor size, aka hamming distance. returns the number of bits in this xor query.
         unsigned int xors(const SDR<SDR_t>& query) const;
-
         
         void set(SDR_t index, bool value);
         void set(SDR<SDR_t> query, bool value);
@@ -58,6 +53,7 @@ class SDR {
         auto cend() const { return v.cend(); }
         auto crbegin() const { return v.crbegin(); }
         auto crend() const { return v.crend(); }
+        auto size() const { return v.size(); }
 
         friend ostream& operator<<(ostream& os, const SDR<SDR_t>& sdr) {
             static constexpr FormatText beginning;
@@ -72,8 +68,7 @@ class SDR {
         }
     
     private:
-        // v can be a vector OR a list. TODO add set support
-        vector<SDR_t> v;
+        list<SDR_t> v;
 
         void turn_off(SDR_t);
         void turn_on(SDR_t);
@@ -109,10 +104,16 @@ class SDR {
         };
 
         template<typename>
-        struct is_std_vector : std::false_type {};
-
+        struct is_vector : false_type {};
         template<typename T, typename A>
-        struct is_std_vector<std::vector<T,A>> : std::true_type {};
+        struct is_vector<vector<T,A>> : true_type {};
+        template<typename>
+        struct is_list : false_type {};
+        template<typename T, typename A>
+        struct is_list<list<T,A>> : true_type {};
+    
+    static_assert(is_integral<SDR_t>::value, "SDR_t must be integral");
+    static_assert(is_vector<decltype(v)>::value || is_list<decltype(v)>::value, "SDR's container must be a vector or list.");
 };
 
 template<typename SDR_t>
@@ -149,7 +150,7 @@ void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, bool size_only, IT a_pos, IT
         ++r.length;
     } else {
         auto &v = r.sdr->v;
-        if constexpr(is_std_vector<decltype(r.sdr->v)>::value) {
+        if constexpr(is_vector<decltype(r.sdr->v)>::value) {
             // allocate for half the max possible remaining elements
             if (v.capacity() == v.size()) {
                 unsigned int a_left = distance(a_pos, a_end);
@@ -184,7 +185,7 @@ void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* a, const SDR<SDR_t>* b, 
         }
         a_focused = !a_focused;
     }
-    if constexpr(is_std_vector<decltype(a->v)>::value) {
+    if constexpr(is_vector<decltype(a->v)>::value) {
         if (!size_only) {
             r.sdr->v.shrink_to_fit();
         }
@@ -205,18 +206,37 @@ SDR<SDR_t> SDR<SDR_t>::andb(SDR_t start_inclusive, SDR_t stop_exclusive) const {
     SDR<SDR_t> sdr;
     auto start_it = lower_bound(cbegin(), cend(), start_inclusive);
     auto end_it = lower_bound(start_it, cend(), stop_exclusive);
-    if constexpr(is_std_vector<decltype(v)>::value) sdr.v.reserve(distance(start_it, end_it));
+    if constexpr(is_vector<decltype(v)>::value) sdr.v.reserve(distance(start_it, end_it));
     copy(start_it, end_it, back_inserter(sdr.v));
     return sdr; // nrvo
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::andi(const SDR<SDR_t>& query) {
-    SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    andop(rop, this, &query, false);
-    swap(r.v, v);
+void SDR<SDR_t>::andi(const SDR<SDR_t>& a) {
+    // Ideally this function should be encompassed by andop (as was the case 2 commits ago in the c implementation)
+    // but for simplicity I decided to make it it's own function, even with a bit of copy-paste over.
+    auto a_pos = a.cbegin();
+    auto a_end = a.cend();
+    auto this_pos = cbegin();
+    unsigned int num_elements = 0;
+    auto this_insert_pos = v.begin();
+    auto this_end = cend();
+    bool a_focused = true;
+    while (a_pos != a_end && this_pos != this_end) {
+        auto& focus_pos = a_focused ? a_pos : this_pos;
+        SDR_t focus_elem = *focus_pos++;
+        auto& other_pos = a_focused ? this_pos : a_pos;
+        auto other_end = a_focused ? this_end : a_end;
+        other_pos = lower_bound(other_pos, other_end, focus_elem);
+        SDR_t other_elem = *other_pos;
+        if (focus_elem == other_elem) {
+            ++other_pos;
+            ++num_elements;
+            *this_insert_pos++ = focus_elem;
+        }
+        a_focused = !a_focused;
+    }
+    v.resize(num_elements);
 }
 
 template <typename SDR_t>
@@ -238,7 +258,7 @@ unsigned int SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const
     SDR<SDR_t> sdr;
     auto cend = cend();
     auto pos_it = lower_bound(cbegin(), cend, start_inclusive);
-    if constexpr(is_std_vector<decltype(v)>::value) {
+    if constexpr(is_vector<decltype(v)>::value) {
         auto end_it = lower_bound(pos_it, cend, stop_exclusive);
         return (unsigned int)(distance(pos_it, end_it));
     } else {
@@ -279,12 +299,17 @@ void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* a, const SDR<SDR_t>* b, b
             if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
         }
     }
-    if constexpr(is_std_vector<decltype(a->v)>::value) {
+    if constexpr(is_vector<decltype(a->v)>::value) {
         if (!size_only) {
             r.sdr->v.shrink_to_fit();
         }
     }
 }
+
+// template <typename SDR_t>
+// void SDR<SDR_t>::orb(SDR_t val) const {
+
+// }
 
 template <typename SDR_t>
 SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& query) const {
@@ -360,7 +385,7 @@ void SDR<SDR_t>::rm(const SDR<SDR_t>& query) {
             this_end = new_this_end;
         }
     }
-    if constexpr(is_std_vector<decltype(v)>::value) v.shrink_to_fit();
+    if constexpr(is_vector<decltype(v)>::value) v.shrink_to_fit();
 }
 
 template<typename SDR_t>
