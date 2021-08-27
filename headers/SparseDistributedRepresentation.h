@@ -20,8 +20,8 @@ class SDR {
         SDR(float input, unsigned int size, unsigned int underlying_array_length);
         SDR(float input, float period, unsigned int size, unsigned int underlying_array_length);
 
-        void sample(unsigned int amount);
-        void sample(float amount);
+        // randomly turns off bits until it reaches the specified size amount. Returns this.
+        SDR<SDR_t>& sample(unsigned int amount);
 
         // and bit. returns the state of a bit.
         bool andb(SDR_t val) const;
@@ -29,8 +29,8 @@ class SDR {
         SDR<SDR_t> andb(const SDR<SDR_t>& query) const;
         // and bits. returns the state of many bits from start to stop.
         SDR<SDR_t> andb(SDR_t start_inclusive, SDR_t stop_exclusive) const;
-        // and inplace. turn off all bits not in query (compute query AND self, and place the result in self).
-        void andi(const SDR<SDR_t>& query);
+        // and inplace. turn off all bits not in query (compute query AND this, and place the result in this). Returns this.
+        SDR<SDR_t>& andi(const SDR<SDR_t>& query);
         // and size. returns 0 if the bit is not contained in this, else 1.
         unsigned int ands(SDR_t val) const;
         // and size. returns the number of bits in both this and query.
@@ -40,19 +40,27 @@ class SDR {
 
         // or bits. 
         SDR<SDR_t> orb(const SDR<SDR_t>& query) const;
-        // or inplace. turn on all bits in query
-        void ori(const SDR<SDR_t>& query);
+        // or inplace. turn on all bits in query. Returns this.
+        SDR<SDR_t>& ori(const SDR<SDR_t>& query);
         // or size. returns the number of bits in this or query.
         unsigned int ors(const SDR<SDR_t>& query) const;
         // xor bits. 
         SDR<SDR_t> xorb(const SDR<SDR_t>& query) const;
-        // xor inplace. computes self xor query, and places the result in self.
-        void xori(const SDR<SDR_t>& query);
+        // xor inplace. computes this xor query, and places the result in this. Returns this.
+        SDR<SDR_t>& xori(const SDR<SDR_t>& query);
         // xor size, aka hamming distance. returns the number of bits in this xor query.
         unsigned int xors(const SDR<SDR_t>& query) const;
+
+        // turn off all bits in query. Returns this.
+        SDR<SDR_t>& rm(const SDR<SDR_t>& query);
         
-        void set(SDR_t index, bool value);
-        void set(SDR<SDR_t> query, bool value);
+        // Returns this.
+        SDR<SDR_t>& set(SDR_t index, bool value);
+        // Returns this.
+        SDR<SDR_t>& set(SDR<SDR_t> query, bool value);
+
+        // Returns this, shifted by amount.
+        SDR<SDR_t>& shift(int amount);
 
         auto cbegin() const { return v.cbegin(); }
         auto cend() const { return v.cend(); }
@@ -71,15 +79,49 @@ class SDR {
             cout << ']';
             return os;
         }
+
+        template<typename other>
+        auto operator[](other o) const { return v[o]; }
+        template<typename other>
+        auto operator&(const other o) const { return andb(o); }
+        template<typename other>
+        auto operator&&(const other o) const { return ands(o); }
+        template<typename other>
+        auto operator&=(const other o) { return andi(o); }
+        template<typename other>
+        auto operator|(const other o) const { return orb(o); }
+        template<typename other>
+        auto operator||(const other o) const { return ors(o); }
+        template<typename other>
+        auto operator|=(const other o) { return ori(o); }
+        template<typename other>
+        auto operator^(const other o) const { return xorb(o); }
+        template<typename other>
+        auto operator<=(const other o) const { return xors(o); } // should be ^^. <= kinda works (hamming distance from a <= b).
+        template<typename other>
+        auto operator^=(const other o) { return xori(o); }
+        template<typename other>
+        auto operator+(const other o) const { return SDR(*this).set(o, true); }
+        template<typename other>
+        auto operator-(const other o) const { return SDR(*this).set(o, false); }
+        template<typename other>
+        auto operator%(const other o) const { return SDR(*this).sample(o); }
+        template<typename other>
+        auto operator%=(const other o) { return sample(o); }
+        template<typename other>
+        auto operator<<(const other o) const { return SDR(*this).shift(o); }
+        template<typename other>
+        auto operator>>(const other o) const { return SDR(*this).shift(-o); }
+        template<typename other>
+        auto operator<<=(const other o) { return shift(o); }
+        template<typename other>
+        auto operator>>=(const other o) { return shift(-o); }
     
     private:
         vector<SDR_t> v;
 
         void turn_off(SDR_t);
         void turn_on(SDR_t);
-
-        // turn off all bits in query
-        void rm(const SDR<SDR_t>& query);
 
         union SDROPResult {
             SDR<SDR_t>* sdr;
@@ -114,8 +156,6 @@ class SDR {
         struct is_vector<vector<T,A>> : true_type {};
         template<typename>
         struct is_list : false_type {};
-        template<typename T, typename A>
-        struct is_list<list<T,A>> : true_type {};
     
     static_assert(is_integral<SDR_t>::value, "SDR_t must be integral");
     static_assert(is_vector<decltype(v)>::value || is_list<decltype(v)>::value, "SDR's underlying container must be a vector or list.");
@@ -156,11 +196,12 @@ SDR<SDR_t>::SDR(float input, float period, unsigned int size, unsigned int under
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::sample(unsigned int amount) {
-    if (amount > v.size()) return;
+SDR<SDR_t>& SDR<SDR_t>::sample(unsigned int amount) {
+    if (amount > v.size()) return *this;
     shuffle(v.begin(), v.end());
     v.resize(amount);
     sort(v.begin(), v.end());
+    return *this;
 }
 
 template<typename SDR_t>
@@ -185,9 +226,10 @@ void SDR<SDR_t>::turn_off(SDR_t index) {
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::set(SDR_t index, bool value) {
+SDR<SDR_t>& SDR<SDR_t>::set(SDR_t index, bool value) {
     if (value) turn_on(index);
     else turn_off(index);
+    return *this;
 }
 
 template<typename SDR_t>
@@ -259,7 +301,7 @@ SDR<SDR_t> SDR<SDR_t>::andb(SDR_t start_inclusive, SDR_t stop_exclusive) const {
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::andi(const SDR<SDR_t>& a) {
+SDR<SDR_t>& SDR<SDR_t>::andi(const SDR<SDR_t>& a) {
     // Ideally this function should be encompassed by andop (as was the case 2 commits ago in the c implementation)
     // but for simplicity I decided to make it it's own function, even with a bit of copy-paste over.
     auto a_pos = a.cbegin();
@@ -284,6 +326,7 @@ void SDR<SDR_t>::andi(const SDR<SDR_t>& a) {
         a_focused = !a_focused;
     }
     v.resize(num_elements);
+    return *this;
 }
 
 template <typename SDR_t>
@@ -353,11 +396,6 @@ void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* a, const SDR<SDR_t>* b, b
     }
 }
 
-// template <typename SDR_t>
-// void SDR<SDR_t>::orb(SDR_t val) const {
-
-// }
-
 template <typename SDR_t>
 SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& query) const {
     SDR r;
@@ -368,12 +406,13 @@ SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& query) const {
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::ori(const SDR<SDR_t>& query) {
+SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& query) {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
     orop(rop, this, &query, false, false);
     swap(r.v, v);
+    return *this;
 }
 
 template <typename SDR_t>
@@ -395,12 +434,13 @@ SDR<SDR_t> SDR<SDR_t>::xorb(const SDR<SDR_t>& query) const {
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::xori(const SDR<SDR_t>& query) {
+SDR<SDR_t>& SDR<SDR_t>::xori(const SDR<SDR_t>& query) {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
     orop(rop, this, &query, false, true);
     swap(r.v, v);
+    return *this;
 }
 
 template <typename SDR_t>
@@ -413,7 +453,7 @@ unsigned int SDR<SDR_t>::xors(const SDR<SDR_t>& query) const {
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::rm(const SDR<SDR_t>& query) {
+SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& query) {
     auto query_pos = query.crbegin();
     auto query_end = query.crend();
     SDR_t query_val;
@@ -433,13 +473,27 @@ void SDR<SDR_t>::rm(const SDR<SDR_t>& query) {
         }
     }
     if constexpr(is_vector<decltype(v)>::value) v.shrink_to_fit();
+    return *this;
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::set(SDR<SDR_t> query, bool value) {
+SDR<SDR_t>& SDR<SDR_t>::set(SDR<SDR_t> query, bool value) {
     if (value) {
         ori(query);
     } else {
         rm(query);
     }
+    return *this;
+}
+
+template<typename SDR_t>
+SDR<SDR_t>& SDR<SDR_t>::shift(int amount) {
+    for (auto& elem : v) {
+        #ifdef NDEBUG
+        elem += amount;
+        #else
+        assert(!__builtin_add_overflow(amount, elem, &elem));
+        #endif
+    }
+    return *this;
 }
