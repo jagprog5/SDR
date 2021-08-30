@@ -28,49 +28,49 @@ class SDR {
         // and bit. returns the state of a bit.
         bool andb(SDR_t val) const;
         // and bits. returns the state of many bits.
-        template<typename QueryContainer>
-        SDR<SDR_t, Container> andb(const SDR<SDR_t, QueryContainer>& query) const;
+        template<typename ArgContainer>
+        SDR<SDR_t, Container> andb(const SDR<SDR_t, ArgContainer>& arg) const;
         // and bits. returns the state of many bits from start to stop.
         SDR<SDR_t, Container> andb(SDR_t start_inclusive, SDR_t stop_exclusive) const;
-        // and inplace. turn off all bits not in query (compute query AND this, and place the result in this). Returns this.
-        template<typename QueryContainer>
-        SDR<SDR_t, Container>& andi(const SDR<SDR_t, QueryContainer>& query);
+        // and inplace. turn off all bits not in arg (compute arg AND this, and place the result in this). Returns this.
+        template<typename ArgContainer>
+        SDR<SDR_t, Container>& andi(const SDR<SDR_t, ArgContainer>& arg);
         // and size. returns 0 if the bit is not contained in this, else 1.
         unsigned int ands(SDR_t val) const;
-        // and size. returns the number of bits in both this and query.
-        template<typename QueryContainer>
-        unsigned int ands(const SDR<SDR_t, QueryContainer>& query) const;
+        // and size. returns the number of bits in both this and arg.
+        template<typename ArgContainer>
+        unsigned int ands(const SDR<SDR_t, ArgContainer>& arg) const;
         // and size. returns the number of bits from start to stop.
         unsigned int ands(SDR_t start_inclusive, SDR_t stop_exclusive) const;
 
         // or bits. 
-        template<typename QueryContainer>
-        SDR<SDR_t, Container> orb(const SDR<SDR_t, QueryContainer>& query) const;
-        // or inplace. turn on all bits in query. Returns this.
-        template<typename QueryContainer>
-        SDR<SDR_t, Container>& ori(const SDR<SDR_t, QueryContainer>& query);
-        // or size. returns the number of bits in this or query.
-        template<typename QueryContainer>
-        unsigned int ors(const SDR<SDR_t, QueryContainer>& query) const;
+        template<typename ArgContainer>
+        SDR<SDR_t, Container> orb(const SDR<SDR_t, ArgContainer>& arg) const;
+        // or inplace. turn on all bits in arg. Returns this.
+        template<typename ArgContainer>
+        SDR<SDR_t, Container>& ori(const SDR<SDR_t, ArgContainer>& arg);
+        // or size. returns the number of bits in this or arg.
+        template<typename ArgContainer>
+        unsigned int ors(const SDR<SDR_t, ArgContainer>& arg) const;
         // xor bits. 
-        template<typename QueryContainer>
-        SDR<SDR_t, Container> xorb(const SDR<SDR_t, QueryContainer>& query) const;
-        // xor inplace. computes this xor query, and places the result in this. Returns this.
-        template<typename QueryContainer>
-        SDR<SDR_t, Container>& xori(const SDR<SDR_t, QueryContainer>& query);
-        // xor size, aka hamming distance. returns the number of bits in this xor query.
-        template<typename QueryContainer>
-        unsigned int xors(const SDR<SDR_t, QueryContainer>& query) const;
+        template<typename ArgContainer>
+        SDR<SDR_t, Container> xorb(const SDR<SDR_t, ArgContainer>& arg) const;
+        // xor inplace. computes this xor arg, and places the result in this. Returns this.
+        template<typename ArgContainer>
+        SDR<SDR_t, Container>& xori(const SDR<SDR_t, ArgContainer>& arg);
+        // xor size, aka hamming distance. returns the number of bits in this xor arg.
+        template<typename ArgContainer>
+        unsigned int xors(const SDR<SDR_t, ArgContainer>& arg) const;
 
-        // turn off all bits in query. Returns this.
-        template<typename QueryContainer>
-        SDR<SDR_t, Container>& rm(const SDR<SDR_t, QueryContainer>& query);
+        // turn off all bits in arg. Returns this.
+        template<typename ArgContainer>
+        SDR<SDR_t, Container>& rm(const SDR<SDR_t, ArgContainer>& arg);
         
         // Returns this.
         SDR<SDR_t, Container>& set(SDR_t index, bool value);
         // Returns this.
-        template<typename QueryContainer>
-        SDR<SDR_t, Container>& set(SDR<SDR_t, QueryContainer> query, bool value);
+        template<typename ArgContainer>
+        SDR<SDR_t, Container>& set(SDR<SDR_t, ArgContainer> arg, bool value);
 
         // Returns this, shifted by amount.
         SDR<SDR_t, Container>& shift(int amount);
@@ -254,9 +254,10 @@ bool SDR<SDR_t, Container>::andb(SDR_t val) const {
 template<typename SDR_t, typename Container>
 SDR<SDR_t, Container>& SDR<SDR_t, Container>::set(SDR_t index, bool value) {
     auto it = lower_bound(cbegin(), cend(), index);
-    if (it != cend()) {
-        if (value) c.insert(it, index);
-        else c.erase(it);
+    if (value) {
+        if (it == cend() || *it != index) c.insert(it, index);
+    } else {
+        if (it != cend() && *it == index) c.erase(it);
     }
     return *this;
 }
@@ -344,11 +345,11 @@ void SDR<SDR_t, Container>::andop(SDROPResult r, const SDR<SDR_t, ContainerA>* c
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container> SDR<SDR_t, Container>::andb(const SDR<SDR_t, QueryContainer>& query) const {
+template<typename ArgContainer>
+SDR<SDR_t, Container> SDR<SDR_t, Container>::andb(const SDR<SDR_t, ArgContainer>& arg) const {
     SDR r;
     SDROPResult rop{.sdr=&r};
-    andop(rop, this, &query, false);
+    andop(rop, this, &arg, false);
     return r; // nrvo 
 }
 
@@ -363,16 +364,27 @@ SDR<SDR_t, Container> SDR<SDR_t, Container>::andb(SDR_t start_inclusive, SDR_t s
 }
 
 template<typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container>& SDR<SDR_t, Container>::andi(const SDR<SDR_t, QueryContainer>& a) {
+template<typename ArgContainer>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::andi(const SDR<SDR_t, ArgContainer>& arg) {
     if constexpr(!is_set<Container>::value) {
         SDROPResult rop{.sdr = this};
-        andop(rop, this, &a, false);
+        andop(rop, this, &arg, false);
     } else {
-        SDR r;
-        SDROPResult rop{.sdr = &r};
-        andop(rop, this, &a, false);
-        swap(r.c, c);
+        auto this_pos = c.begin();
+        auto this_end = c.end();
+        auto arg_pos = arg.cbegin();
+        auto arg_end = arg.cend();
+        while (this_pos != this_end) {
+            SDR_t this_elem = *this_pos;
+            cout << this_elem;
+            auto search_pos = lower_bound(arg_pos, arg_end, this_elem);
+            if (search_pos != arg_end && *search_pos == this_elem) {
+                ++this_pos;
+            } else {
+                c.erase(this_pos++);
+                arg_pos = search_pos;
+            }
+        }
     }
     return *this;
 }
@@ -383,12 +395,12 @@ unsigned int SDR<SDR_t, Container>::ands(SDR_t val) const {
 };
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-unsigned int SDR<SDR_t, Container>::ands(const SDR<SDR_t, QueryContainer>& query) const {
+template<typename ArgContainer>
+unsigned int SDR<SDR_t, Container>::ands(const SDR<SDR_t, ArgContainer>& arg) const {
     unsigned int r = 0;
     SDROPResult rop;
     rop.length = &r;
-    andop(rop, this, &query, true);
+    andop(rop, this, &arg, true);
     return r;
 }
 
@@ -465,76 +477,76 @@ void SDR<SDR_t, Container>::orop(SDROPResult r, const SDR<SDR_t, ContainerA>* co
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container> SDR<SDR_t, Container>::orb(const SDR<SDR_t, QueryContainer>& query) const {
+template<typename ArgContainer>
+SDR<SDR_t, Container> SDR<SDR_t, Container>::orb(const SDR<SDR_t, ArgContainer>& arg) const {
     SDR r;
     SDROPResult rop{.sdr=&r};
-    orop(rop, this, &query, false, false);
+    orop(rop, this, &arg, false, false);
     return r; // nrvo 
 }
 
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container>& SDR<SDR_t, Container>::ori(const SDR<SDR_t, QueryContainer>& query) {
+template<typename ArgContainer>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::ori(const SDR<SDR_t, ArgContainer>& arg) {
     SDR r;
     SDROPResult rop{.sdr=&r};
-    orop(rop, this, &query, false, false);
+    orop(rop, this, &arg, false, false);
     swap(r.c, c);
     return *this;
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-unsigned int SDR<SDR_t, Container>::ors(const SDR<SDR_t, QueryContainer>& query) const {
+template<typename ArgContainer>
+unsigned int SDR<SDR_t, Container>::ors(const SDR<SDR_t, ArgContainer>& arg) const {
     unsigned int r = 0;
     SDROPResult rop{.length = &r};
-    orop(rop, this, &query, true, false);
+    orop(rop, this, &arg, true, false);
     return r;
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container> SDR<SDR_t, Container>::xorb(const SDR<SDR_t, QueryContainer>& query) const {
+template<typename ArgContainer>
+SDR<SDR_t, Container> SDR<SDR_t, Container>::xorb(const SDR<SDR_t, ArgContainer>& arg) const {
     SDR r;
     SDROPResult rop{.sdr = &r};
-    orop(rop, this, &query, true);
+    orop(rop, this, &arg, true);
     return r; // nrvo
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container>& SDR<SDR_t, Container>::xori(const SDR<SDR_t, QueryContainer>& query) {
+template<typename ArgContainer>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::xori(const SDR<SDR_t, ArgContainer>& arg) {
     SDR r;
     SDROPResult rop{.sdr = &r};
-    orop(rop, this, &query, false, true);
+    orop(rop, this, &arg, false, true);
     swap(r.c, c);
     return *this;
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-unsigned int SDR<SDR_t, Container>::xors(const SDR<SDR_t, QueryContainer>& query) const {
+template<typename ArgContainer>
+unsigned int SDR<SDR_t, Container>::xors(const SDR<SDR_t, ArgContainer>& arg) const {
     unsigned int r = 0;
     SDROPResult rop{.length = &r};
-    orop(rop, this, &query, true, true);
+    orop(rop, this, &arg, true, true);
     return r;
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container>& SDR<SDR_t, Container>::rm(const SDR<SDR_t, QueryContainer>& query) {
-    auto query_pos = query.crbegin();
-    auto query_end = query.crend();
-    SDR_t query_val;
+template<typename ArgContainer>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::rm(const SDR<SDR_t, ArgContainer>& arg) {
+    auto arg_pos = arg.crbegin();
+    auto arg_end = arg.crend();
+    SDR_t arg_val;
     auto this_start = c.begin();
     auto this_end = c.end();
     SDR_t this_val;
-    while (query_pos != query_end) {
-        query_val = *query_pos++;
-        auto new_this_end = lower_bound(this_start, this_end, query_val);
+    while (arg_pos != arg_end) {
+        arg_val = *arg_pos++;
+        auto new_this_end = lower_bound(this_start, this_end, arg_val);
         if (new_this_end == this_end) continue;
-        if (query_val == *new_this_end){
+        if (arg_val == *new_this_end){
             this_end = prev(new_this_end);
             c.erase(new_this_end);
             this_end = next(this_end);
@@ -547,12 +559,12 @@ SDR<SDR_t, Container>& SDR<SDR_t, Container>::rm(const SDR<SDR_t, QueryContainer
 }
 
 template <typename SDR_t, typename Container>
-template<typename QueryContainer>
-SDR<SDR_t, Container>& SDR<SDR_t, Container>::set(SDR<SDR_t, QueryContainer> query, bool value) {
+template<typename ArgContainer>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::set(SDR<SDR_t, ArgContainer> arg, bool value) {
     if (value) {
-        ori(query);
+        ori(arg);
     } else {
-        rm(query);
+        rm(arg);
     }
     return *this;
 }

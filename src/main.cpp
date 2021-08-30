@@ -21,12 +21,12 @@ int main()
     // SDR<int> a{0, 4, 5, 7, 17};
     // SDR<int> b{0, 2, 3, 7, 17, 18};
     // a.andi(b);
-    SDR<unsigned int,list<unsigned int>> a{1, 2, 4, 5, 6, 8 ,9};
+    SDR<unsigned int,set<unsigned int>> a{1, 2, 4, 5, 6, 8 ,9};
     SDR<unsigned int,set<unsigned int>> b{1, 2, 3, 7, 9};
     // a.andi(b);
     // a >>= 3;
     // a.focus(b);
-    cout << a.rm(b) << '\n';
+    cout << (a + 10) << '\n';
     // a.focus(b);
     // cout << a << '\n';
     // cout << a.get(b);
