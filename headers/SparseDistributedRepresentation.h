@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <initializer_list>
 #include <algorithm>
+#include <time.h>
 #include <random>
 #include <vector>
 #include <list>
@@ -22,8 +23,11 @@ class SDR {
         SDR(float input, unsigned int size, unsigned int underlying_array_length);
         SDR(float input, float period, unsigned int size, unsigned int underlying_array_length);
 
-        // randomly turns off bits until it reaches the specified size amount. Returns this.
-        SDR<SDR_t, Container>& sample(unsigned int amount);
+        // Turns off bits such that the length matches the specified amount.
+        SDR<SDR_t, Container>& sample_length(unsigned int amount);
+
+        // Each bit has a chance of being turned off, specified by amount, where 0 nearly always clears the sdr, and 1 leaves it unchanged.
+        SDR<SDR_t, Container>& sample_portion(float amount);
 
         // and bit. returns the state of a bit.
         bool andb(SDR_t val) const;
@@ -114,11 +118,19 @@ class SDR {
         template<typename other>
         auto operator+(const other o) const { return SDR(*this).set(o, true); }
         template<typename other>
+        auto operator+=(const other o) const { return set(o, true); }
+        template<typename other>
         auto operator-(const other o) const { return SDR(*this).set(o, false); }
         template<typename other>
-        auto operator%(const other o) const { return SDR(*this).sample(o); }
+        auto operator-=(const other o) const { return set(o, false); }
         template<typename other>
-        auto operator%=(const other o) { return sample(o); }
+        auto operator%(const other o) const { return SDR(*this).sample_length(o); }
+        template<typename other>
+        auto operator%=(const other o) { return sample_length(o); }
+        template<typename other>
+        auto operator*(const other o) const { return SDR(*this).sample_portion(o); }
+        template<typename other>
+        auto operator*=(const other o) { return sample_potion(o); }
         template<typename other>
         auto operator<<(const other o) const { return SDR(*this).shift(o); }
         template<typename other>
@@ -130,6 +142,11 @@ class SDR {
     
     private:
         Container c;
+
+        static auto& get_twister() {
+            static mt19937 twister(time(NULL));
+            return twister;
+        }
 
         union SDROPResult {
             SDR<SDR_t, Container>* const sdr;
@@ -232,16 +249,46 @@ SDR<SDR_t, Container>::SDR(float input, unsigned int size, unsigned int underlyi
 }
 
 template<typename SDR_t, typename Container>
-SDR<SDR_t, Container>& SDR<SDR_t, Container>::sample(unsigned int amount) {
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::sample_length(unsigned int amount) {
     if (amount > c.size()) return *this;
     if constexpr(is_set<Container>::value) {
         std::set<SDR_t> tmp;
-        sample(c.cbegin(), c.cend(), back_inserter(tmp), amount, std::mt19937{std::random_device{}()});
+        sample(c.cbegin(), c.cend(), back_inserter(tmp), amount, get_twister());
         swap(c, tmp);
     } else {
         shuffle(c.begin(), c.end());
         c.resize(amount);
         sort(c.begin(), c.end());
+    }
+    return *this;
+}
+
+template<typename SDR_t, typename Container>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::sample_portion(float amount) {
+    assert(amount >= 0 && amount <= 1);
+    unsigned int check_val = amount * (get_twister().max() / 2);
+    if constexpr(is_set<Container>::value) {
+        auto pos = c.begin();
+        auto end = cend();
+        while (pos != end) {
+            if ((get_twister()() / 2) < check_val) pos++;
+            else c.erase(pos++);
+        }
+    } else {
+        auto to_offset = c.begin();
+        auto from_offset = cbegin();
+        auto end = c.end();
+        unsigned int dist;
+        if constexpr(is_list<Container>::value) dist = 0;
+        while (from_offset != end) {
+            if ((get_twister()() / 2) < check_val) {
+                if constexpr(is_list<Container>::value) ++dist;
+                *to_offset++ = *from_offset;
+            }
+            from_offset++;
+        }
+        if constexpr(is_list<Container>::value) c.resize(dist);
+        else c.resize(distance(cbegin() - from_offset));
     }
     return *this;
 }
@@ -325,7 +372,7 @@ void SDR<SDR_t, Container>::andop(SDROPResult r, const SDR<SDR_t, ContainerA>* c
         if constexpr(is_same<Container, ContainerB>::value) if (r.sdr == b) true;
         false;
     });
-    assert(!is_inplace || !is_set<Container>::value);
+    assert(!(is_inplace && is_set<Container>::value));
     auto a_pos = a->cbegin();
     auto a_end = a->cend();
     auto b_pos = b->cbegin();
