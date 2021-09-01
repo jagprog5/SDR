@@ -12,6 +12,7 @@
 #include <iostream>
 #include <math.h>
 #include <stdbool.h>
+#include <chrono>
 using namespace std;
 
 template<typename SDR_t = unsigned int, typename Container = std::set<SDR_t, less<SDR_t>>>
@@ -118,11 +119,11 @@ class SDR {
         template<typename other>
         auto operator+(const other o) const { return SDR(*this).set(o, true); }
         template<typename other>
-        auto operator+=(const other o) const { return set(o, true); }
+        auto operator+=(const other o) { return set(o, true); }
         template<typename other>
         auto operator-(const other o) const { return SDR(*this).set(o, false); }
         template<typename other>
-        auto operator-=(const other o) const { return set(o, false); }
+        auto operator-=(const other o) { return set(o, false); }
         template<typename other>
         auto operator%(const other o) const { return SDR(*this).sample_length(o); }
         template<typename other>
@@ -139,6 +140,9 @@ class SDR {
         auto operator<<=(const other o) { return shift(o); }
         template<typename other>
         auto operator>>=(const other o) { return shift(-o); }
+
+        // rough benchmark for performance
+        static void do_benchark();
     
     private:
         Container c;
@@ -626,4 +630,35 @@ SDR<SDR_t, Container>& SDR<SDR_t, Container>::shift(int amount) {
         #endif
     }
     return *this;
+}
+
+template <typename SDR_t, typename Container>
+void SDR<SDR_t, Container>::do_benchark() {
+    constexpr int num_elems = 1000;
+    constexpr SDR_t index_max = 1000;
+    unsigned int check_val = 0.5 * (get_twister().max() / 2);
+    SDR a[num_elems];
+    SDR b[num_elems];
+    for (auto& elem : a) {
+        for (SDR_t i = 0; i < index_max; ++i) {
+            if ((get_twister()() / 2) < check_val) elem += i;
+        }
+    }
+    for (auto& elem : b) {
+        for (SDR_t i = 0; i < index_max; ++i) {
+            if ((get_twister()() / 2) < check_val) elem += i;
+        }
+    }
+    auto start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < num_elems; ++i) {
+        a[i] & b[i];
+    }
+    auto stop = chrono::high_resolution_clock::now();
+    cout << "andb: " << chrono::duration_cast<chrono::microseconds>(stop - start).count() << endl;
+    // auto start = std::chrono::high_resolution_clock::now();
+    // for (int i = 0; i < num_elems; ++i) {
+    //     a[i] && b[i];
+    // }
+    // auto stop = std::chrono::high_resolution_clock::now();
+    // cout << "andl: " << (stop - start) << endl;
 }
