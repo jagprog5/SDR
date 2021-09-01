@@ -15,7 +15,7 @@
 #include <chrono>
 using namespace std;
 
-template<typename SDR_t = unsigned int, typename Container = std::set<SDR_t, less<SDR_t>>>
+template<typename SDR_t = unsigned int, typename Container = std::vector<SDR_t>>
 class SDR {
     public:
         SDR() {}
@@ -80,6 +80,10 @@ class SDR {
         // Returns this, shifted by amount.
         SDR<SDR_t, Container>& shift(int amount);
 
+        // concatenate an SDR to an SDR. Every indice in arg must be greater than every indice in this. Returns this.
+        template<typename ArgContainer>
+        SDR<SDR_t, Container>& join(const SDR<SDR_t, ArgContainer>& arg);
+
         auto cbegin() const { return c.cbegin(); }
         auto cend() const { return c.cend(); }
         auto crbegin() const { return c.crbegin(); }
@@ -140,8 +144,10 @@ class SDR {
         auto operator<<=(const other o) { return shift(o); }
         template<typename other>
         auto operator>>=(const other o) { return shift(-o); }
+        template<typename other>
+        auto operator<(const other o) { return join(o); }
 
-        // rough benchmark for performance
+        // rough benchmark for performance, also serves as some unit tests
         static void do_benchark();
     
     private:
@@ -427,7 +433,6 @@ SDR<SDR_t, Container>& SDR<SDR_t, Container>::andi(const SDR<SDR_t, ArgContainer
         auto arg_end = arg.cend();
         while (this_pos != this_end) {
             SDR_t this_elem = *this_pos;
-            cout << this_elem;
             auto search_pos = lower_bound(arg_pos, arg_end, this_elem);
             if (search_pos != arg_end && *search_pos == this_elem) {
                 ++this_pos;
@@ -449,8 +454,7 @@ template <typename SDR_t, typename Container>
 template<typename ArgContainer>
 unsigned int SDR<SDR_t, Container>::ands(const SDR<SDR_t, ArgContainer>& arg) const {
     unsigned int r = 0;
-    SDROPResult rop;
-    rop.length = &r;
+    SDROPResult rop{.length=&r};
     andop(rop, this, &arg, true);
     return r;
 }
@@ -522,7 +526,7 @@ void SDR<SDR_t, Container>::orop(SDROPResult r, const SDR<SDR_t, ContainerA>* co
     }
     if constexpr(is_vector<Container>::value) {
         if (!size_only) {
-            r.sdr->v.shrink_to_fit();
+            r.sdr->c.shrink_to_fit();
         }
     }
 }
@@ -561,7 +565,7 @@ template<typename ArgContainer>
 SDR<SDR_t, Container> SDR<SDR_t, Container>::xorb(const SDR<SDR_t, ArgContainer>& arg) const {
     SDR r;
     SDROPResult rop{.sdr = &r};
-    orop(rop, this, &arg, true);
+    orop(rop, this, &arg, false, true);
     return r; // nrvo
 }
 
@@ -587,25 +591,38 @@ unsigned int SDR<SDR_t, Container>::xors(const SDR<SDR_t, ArgContainer>& arg) co
 template <typename SDR_t, typename Container>
 template<typename ArgContainer>
 SDR<SDR_t, Container>& SDR<SDR_t, Container>::rm(const SDR<SDR_t, ArgContainer>& arg) {
-    auto arg_pos = arg.crbegin();
-    auto arg_end = arg.crend();
-    SDR_t arg_val;
-    auto this_start = c.begin();
-    auto this_end = c.end();
-    SDR_t this_val;
-    while (arg_pos != arg_end) {
-        arg_val = *arg_pos++;
-        auto new_this_end = lower_bound(this_start, this_end, arg_val);
-        if (new_this_end == this_end) continue;
-        if (arg_val == *new_this_end){
-            this_end = prev(new_this_end);
-            c.erase(new_this_end);
-            this_end = next(this_end);
-        } else {
-            this_end = new_this_end;
+    if constexpr(is_vector<Container>::value) {
+        auto arg_pos = arg.crbegin();
+        auto arg_end = arg.crend();
+        SDR_t arg_val;
+        auto this_start = c.begin();
+        auto this_end = c.end();
+        SDR_t this_val;
+        while (arg_pos != arg_end) {
+            arg_val = *arg_pos++;
+            auto new_this_end = lower_bound(this_start, this_end, arg_val);
+            if (new_this_end != this_end) {
+                this_end = new_this_end;
+                if (arg_val == *this_end) c.erase(this_end);
+            }
+        }
+        c.shrink_to_fit();
+    } else {
+        auto arg_pos = arg.cbegin();
+        auto arg_end = arg.cend();
+        SDR_t arg_val;
+        auto this_pos = c.begin();
+        auto this_end = c.end();
+        SDR_t this_val;
+        while (arg_pos != arg_end) {
+            arg_val = *arg_pos++;
+            auto new_this_pos = lower_bound(this_pos, this_end, arg_val);
+            if (new_this_pos != this_end) {
+                this_pos = new_this_pos;
+                if (arg_val == *this_pos) c.erase(this_pos++);
+            }
         }
     }
-    if constexpr(is_vector<Container>::value) c.shrink_to_fit();
     return *this;
 }
 
@@ -633,32 +650,66 @@ SDR<SDR_t, Container>& SDR<SDR_t, Container>::shift(int amount) {
 }
 
 template <typename SDR_t, typename Container>
+template<typename ArgContainer>
+SDR<SDR_t, Container>& SDR<SDR_t, Container>::join(const SDR<SDR_t, ArgContainer>& arg) {
+    assert(ands(arg) == 0 && (size() == 0 || arg.size() == 0 || *c.crbegin() < *arg.c.cbegin()));
+    if constexpr(!is_set<Container>::value) c.reserve(c.size() + arg.c.size());
+    for (auto e : arg.c) { c.insert(c.end(), e); }
+    return *this;
+}
+
+template <typename SDR_t, typename Container>
 void SDR<SDR_t, Container>::do_benchark() {
-    constexpr int num_elems = 1000;
-    constexpr SDR_t index_max = 1000;
-    unsigned int check_val = 0.5 * (get_twister().max() / 2);
-    SDR a[num_elems];
-    SDR b[num_elems];
+    enum test_op {andb, ands, orb, ors, xorb, xors, andi, rm};
+    static struct {
+        inline void operator() (SDR a[], SDR b[], int num_sdr, string name, test_op op) const {
+            auto start = chrono::high_resolution_clock::now();
+            for (int i = 0; i < num_sdr; ++i) {
+                switch (op) {
+                    case andb : a[i] & b[i]; break;
+                    case ands : a[i] && b[i]; break;
+                    case orb : a[i] | b[i]; break;
+                    case ors : a[i] || b[i]; break;
+                    case xorb : a[i] ^ b[i]; break;
+                    case xors : a[i] <= b[i]; break;
+                    case andi : a[i] &= b[i]; break;
+                    case rm : a[i] -= b[i]; break;
+                }
+                
+            }
+            auto stop = chrono::high_resolution_clock::now();
+            cout << name << ": " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << endl;
+        }
+    } time_funct;
+
+    constexpr static int num_sdr = 5;
+    constexpr static SDR_t index_max = 10000;
+    SDR a[num_sdr];
+    SDR b[num_sdr];
+    auto start = chrono::high_resolution_clock::now();
+    
     for (auto& elem : a) {
         for (SDR_t i = 0; i < index_max; ++i) {
-            if ((get_twister()() / 2) < check_val) elem += i;
+            elem += get_twister()() % index_max;
         }
     }
     for (auto& elem : b) {
         for (SDR_t i = 0; i < index_max; ++i) {
-            if ((get_twister()() / 2) < check_val) elem += i;
+            elem += get_twister()() % index_max;
         }
     }
-    auto start = chrono::high_resolution_clock::now();
-    for (int i = 0; i < num_elems; ++i) {
-        a[i] & b[i];
-    }
     auto stop = chrono::high_resolution_clock::now();
-    cout << "andb: " << chrono::duration_cast<chrono::microseconds>(stop - start).count() << endl;
-    // auto start = std::chrono::high_resolution_clock::now();
-    // for (int i = 0; i < num_elems; ++i) {
-    //     a[i] && b[i];
-    // }
-    // auto stop = std::chrono::high_resolution_clock::now();
-    // cout << "andl: " << (stop - start) << endl;
+    cout << "init: " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << endl;
+    cout << "sizes: ";
+    for (int i = 0; i < num_sdr; ++i) {
+        cout << a[i].size() << ' ' << b[i].size() << endl;
+    }
+    time_funct(a, b, num_sdr, "andb", test_op::andb);
+    time_funct(a, b, num_sdr, "ands", test_op::ands);
+    time_funct(a, b, num_sdr, "orb", test_op::orb);
+    time_funct(a, b, num_sdr, "ors", test_op::ors);
+    time_funct(a, b, num_sdr, "xorb", test_op::xorb);
+    time_funct(a, b, num_sdr, "xors", test_op::xors);
+    time_funct(a, b, num_sdr, "andi", test_op::andi);
+    time_funct(a, b, num_sdr, "rm", test_op::rm);
 }

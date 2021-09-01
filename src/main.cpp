@@ -1,68 +1,57 @@
 #include "SparseDistributedRepresentation.h"
-// #include <vector>
-// #include <iostream>
-// #include <type_traits>
-
-int main()
-{
-    SDR<>::do_benchark();
-    // list<int> v {0, 1, 2};
-    // *v.begin() = 3;
-    // for (auto e : v) {
-        // cout << e << endl;
-    // }
-    // vector<int> b;
-    // sample(v.cbegin(), v.cend(), back_inserter(v), 3, std::mt19937{std::random_device{}()});
-    // for (auto& elem : v) {
-        // cout << elem << '\n';
-    // }
-    // v.resize(10);
-    // cout << v[1] << '\n';
-    // SDR<int> a{0, 4, 5, 7, 17};
-    // SDR<int> b{0, 2, 3, 7, 17, 18};
-    // a.andi(b);
-    // a.andi(b);
-    // a >>= 3;
-    // a.focus(b);
-    // a.focus(b);
-    // cout << a << '\n';
-    // cout << a.get(b);
-    // // r.set(6, true);
-    // auto section = r.get(3, 6);
-    // auto q(section);
-    // // int r = ({
-    //     // 2;
-    // // });
-    // cout << q << '\n';
-    // // Test t;
-	return 0;
-}
-
-/*
-#include <iostream>
-#include "SparseDistributedRepresentation.h"
-using namespace std;
-
-auto funct() {
-    int i = 3;
-    return i;
-}
-
 int main() {
-    cout << funct() << '\n';
+    cout << "================ list ================" << endl;
+    SDR<int,list<int>>::do_benchark();
+    cout << "================ vector ================" << endl;
+    SDR<int,vector<int>>::do_benchark();
+    cout << "================ set ================" << endl;
+    SDR<int,set<int>>::do_benchark();
+
     /*
-    SDR<> a;
-    a.length = 2;
-    // cout << *a.crbegin() << " " << *a.crend() << endl;
-    // cou
-    for (auto it = a.cbegin(), end = a.cend(); it != end; ++it) {
-        auto i = *it;
-        i = 3;
-        std::cout << i << "\n";
-    }
-    for (auto it = a.cbegin(), end = a.cend(); it != end; ++it) {
-        auto i = *it;
-        std::cout << i << "\n";
-    }
+    ================ list ================
+    init: 49818
+    sizes: 6293 6321
+    6318 6334
+    6315 6300
+    6343 6386
+    6288 6343
+    andb: 1655
+    ands: 1638
+    orb: 12
+    ors: 6
+    xorb: 8
+    xors: 5
+    andi: 1631
+    rm: 2194
+    ================ vector ================
+    init: 85
+    sizes: 6335 6328
+    6355 6308
+    6341 6332
+    6299 6262
+    6315 6293
+    andb: 7
+    ands: 6
+    orb: 3
+    ors: 1
+    xorb: 2
+    xors: 1
+    andi: 7
+    rm: 14
+    ================ set ================
+    init: 53642
+    sizes: 6335 6328
+    6355 6308
+    6341 6332
+    6299 6262
+    6315 6293
+    andb: 2893
+    ands: 2907
+    orb: 18
+    ors: 8
+    xorb: 13
+    xors: 7
+    andi: 2461
+    rm: 1434
+    */
 }
-*/

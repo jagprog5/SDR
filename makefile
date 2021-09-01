@@ -1,6 +1,5 @@
 BUILDDIR = build
 SOURCEDIR = src
-HEADERDIR = headers
 SOURCES := $(wildcard $(SOURCEDIR)/*.cpp)
 OBJECTS := $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
 
@@ -16,7 +15,7 @@ $(EXECUTABLE): $(OBJECTS)
 	g++ $^ -o $@ $(LINKFLAGS)
 
 $(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
-	g++ -I$(HEADERDIR) -c $< -o $@ $(CFLAGS)
+	g++ -Iheaders -I"$$BOOST_ROOT" -c $< -o $@ $(CFLAGS)
 
 clean:
 	rm -vf $(EXECUTABLE) $(OBJECTS)
