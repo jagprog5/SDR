@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <initializer_list>
 #include <algorithm>
-#include <time.h>
+#include <functional>
 #include <random>
 #include <vector>
 #include <iostream>
@@ -139,7 +139,7 @@ class SDR {
         vector<SDR_t> v;
 
         static auto& get_twister() {
-            static mt19937 twister(time(NULL));
+            static mt19937 twister(100);
             return twister;
         }
 
@@ -152,9 +152,6 @@ class SDR {
         // if r_pos is not NULL, this indicates that the operation is placing the result in one of it's operands, and r_pos indicates the overwrite position
         template <typename CIT, typename IT>
         static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, IT a_pos, IT a_end, IT b_pos, IT b_end, SDR_t elem, const bool size_only);
-        // this is exclusively used in andop, merely because an internal operation is completed twice.
-        template <typename CIT, typename IT>
-        static bool sdrandop_funct(SDROPResult r, CIT& r_pos, IT& a_pos, const IT a_end, IT& b_pos, const IT b_end, const bool size_only);
         // and operation. computes A & B, and places the result in r.
         static void andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, const bool size_only);
         // or operation. places the result in r.
@@ -284,22 +281,6 @@ void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, IT a_pos, IT a_e
 }
 
 template<typename SDR_t>
-template<typename CIT, typename IT>
-bool SDR<SDR_t>::sdrandop_funct(SDROPResult r, CIT& r_pos, IT& a_pos, const IT a_end, IT& b_pos, const IT b_end, const bool size_only) {
-    SDR_t a_elem = *a_pos++;
-    b_pos = lower_bound(b_pos, b_end, a_elem);
-    if (b_pos == b_end) return true; 
-    SDR_t b_elem = *b_pos;
-    if (a_elem == b_elem) {
-        ++b_pos;
-        sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_elem, size_only);
-        if (b_pos == b_end) return true;
-    }
-    if (a_pos == a_end) return true;
-    return false;
-}
-
-template<typename SDR_t>
 void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, const bool size_only) {
     const bool is_inplace = !size_only && (r.sdr == a || r.sdr == b);
     auto a_pos = a->cbegin();
@@ -307,10 +288,26 @@ void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t
     auto b_pos = b->cbegin();
     auto b_end = b->cend();
     auto r_pos = is_inplace ? r.sdr->v.begin() : (decltype(r.sdr->v.begin()))NULL;
-    while (true) {       
-        if (sdrandop_funct(r, r_pos, a_pos, a_end, b_pos, b_end, size_only)) break;
-        if (sdrandop_funct(r, r_pos, b_pos, b_end, a_pos, a_end, size_only)) break;
-    }
+    SDR_t elem;
+    decltype(a_pos) tmp;
+    if (a_pos == a_end) goto end;
+    loop:
+        elem = *a_pos++;
+        b_pos = lower_bound(b_pos, b_end, elem);
+        if (b_pos == b_end) goto end;
+        if (*b_pos == elem) {
+            ++b_pos;
+            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, elem, size_only);
+            if (b_pos == b_end) goto end;
+        }
+        tmp = a_pos;
+        a_pos = b_pos;
+        b_pos = tmp;
+        tmp = a_end;
+        a_end = b_end;
+        b_end = tmp;
+    goto loop;
+    end:
     if (is_inplace) r.sdr->v.resize(distance(r.sdr->v.begin(), r_pos));
     if (!size_only) r.sdr->v.shrink_to_fit();
 }
@@ -450,16 +447,26 @@ template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
     auto arg_pos = arg.crbegin();
     auto arg_end = arg.crend();
-    SDR_t arg_val;
     auto this_start = v.begin();
     auto this_end = v.end();
-    SDR_t this_val;
     while (arg_pos != arg_end) {
-        arg_val = *arg_pos++;
+        SDR_t arg_val = *arg_pos++;
         auto new_this_end = lower_bound(this_start, this_end, arg_val);
-        if (new_this_end != this_end) {
-            this_end = new_this_end;
-            if (arg_val == *this_end) v.erase(this_end);
+        bool arg_found = new_this_end != this_end && arg_val == *new_this_end;
+        this_end = new_this_end;
+        if (arg_found) {
+            v.erase(this_end);
+        } else {
+            // this part isn't needed, but works better if this is sparse compared to arg.
+            if (this_end == this_start) break;
+            SDR_t this_val = *(this_end - 1);
+            auto new_arg_pos = lower_bound(arg_pos, arg_end, this_val, greater<int>());
+            bool this_found = new_arg_pos != arg_pos && this_val == *new_arg_pos;
+            arg_pos = new_arg_pos;
+            if (this_found) {
+                v.erase(this_end - 1);
+                ++arg_pos;
+            }
         }
     }
     v.shrink_to_fit();
@@ -521,7 +528,7 @@ void SDR<SDR_t>::do_benchark() {
     } time_funct;
 
     constexpr static int num_sdr = 5;
-    constexpr static SDR_t index_max = 10000;
+    constexpr static SDR_t index_max = 100000;
     SDR a[num_sdr];
     SDR b[num_sdr];
     auto start = chrono::high_resolution_clock::now();
@@ -538,10 +545,7 @@ void SDR<SDR_t>::do_benchark() {
     }
     auto stop = chrono::high_resolution_clock::now();
     cout << "init: " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << endl;
-    cout << "sizes: ";
-    for (int i = 0; i < num_sdr; ++i) {
-        cout << a[i].size() << ' ' << b[i].size() << endl;
-    }
+    cout << "sizes: " << a[0].size() << endl;
     time_funct(a, b, num_sdr, "andb", test_op::andb);
     time_funct(a, b, num_sdr, "ands", test_op::ands);
     time_funct(a, b, num_sdr, "orb", test_op::orb);
