@@ -3,16 +3,19 @@ SOURCEDIR = src
 SOURCES := $(wildcard $(SOURCEDIR)/*.cpp)
 OBJECTS := $(patsubst $(SOURCEDIR)/%.cpp,$(BUILDDIR)/%.o,$(SOURCES))
 
-CFLAGS = -std=c++17 #-std=c99 #-Ofast -std=c11
+CFLAGS = -std=c++17
 LINKFLAGS = # -lm #-lncurses 
 EXECUTABLE := $(BUILDDIR)/sdrgaph
 
-.PHONY: all clean run
+.PHONY: all clean run BOOST_CHECK
 
 all: $(EXECUTABLE)
 
-$(EXECUTABLE): $(OBJECTS)
-	g++ $^ -o $@ $(LINKFLAGS)
+BOOST_CHECK:
+	[ -z "$${BOOST_ROOT}" ] && echo "\n====> Set BOOST_ROOT env var\n" && exit 1 || exit 0
+
+$(EXECUTABLE): BOOST_CHECK $(OBJECTS)
+	g++ $(OBJECTS) -o $@ $(LINKFLAGS)
 
 $(BUILDDIR)/%.o: $(SOURCEDIR)/%.cpp
 	g++ -Iheaders -I"$$BOOST_ROOT" -c $< -o $@ $(CFLAGS)

@@ -8,6 +8,8 @@
 #include <vector>
 #include <iostream>
 #include <math.h>
+#include <time.h>
+#include <unistd.h>
 #include <stdbool.h>
 #include <chrono>
 using namespace std;
@@ -76,14 +78,18 @@ class SDR {
         auto size() const { return v.size(); }
 
         friend ostream& operator<<(ostream& os, const SDR<SDR_t>& sdr) {
-            static constexpr FormatText beginning;
-            os << beginning.arr; 
+            if (print_type) {
+                static constexpr FormatText beginning;
+                os << beginning.arr;
+            } else {
+                os << '[';
+            }
             for (auto it = sdr.cbegin(), end = sdr.cend(); it != end; ++it) { 
                 const auto i = *it;
-                cout << i;
-                if (next(it) != end) cout << ", ";
+                os << i;
+                if (next(it) != end) os << ",";
             }
-            cout << ']';
+            os << ']';
             return os;
         }
 
@@ -132,21 +138,25 @@ class SDR {
         template<typename other>
         auto operator<(const other o) { return join(o); }
 
+        static SDR_t get_random_indice() {
+            return get_twister()();
+        }
+
         // rough benchmark for performance, also serves as some unit tests
         static void do_benchark();
     
     private:
         vector<SDR_t> v;
 
-        static auto& get_twister() {
-            static mt19937 twister(100);
-            return twister;
-        }
-
         union SDROPResult {
             SDR<SDR_t>* const sdr;
             unsigned int* const length;
         };
+
+        static auto& get_twister() {
+            static mt19937 twister(time(NULL) * getpid());
+            return twister;
+        }
 
         // if r_pos is NULL, this indicates normal operation, and that the output is appended to r.
         // if r_pos is not NULL, this indicates that the operation is placing the result in one of it's operands, and r_pos indicates the overwrite position
@@ -173,6 +183,7 @@ class SDR {
         };
     
     static_assert(is_integral<SDR_t>::value, "SDR_t must be integral");
+    static constexpr bool print_type = false;
 };
 
 template<typename SDR_t>
@@ -216,10 +227,10 @@ SDR<SDR_t>::SDR(float input, unsigned int size, unsigned int underlying_array_le
 
 template<typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::sample_length(unsigned int amount) {
-    if (amount > v.size()) return *this;
-    shuffle(v.begin(), v.end());
-    v.resize(amount);
-    sort(v.begin(), v.end());
+    vector<SDR_t> temp;
+    temp.reserve(amount);
+    sample(cbegin(), cend(), back_inserter(temp), amount, get_twister());
+    swap(temp, v);
     return *this;
 }
 
@@ -255,7 +266,6 @@ SDR<SDR_t>& SDR<SDR_t>::set(SDR_t index, bool value) {
     }
     return *this;
 }
-
 
 template<typename SDR_t>
 template<typename CIT, typename IT>
@@ -350,7 +360,6 @@ unsigned int SDR<SDR_t>::ands(const SDR<SDR_t>& arg) const {
     return r;
 }
 
-
 template<typename SDR_t>
 unsigned int SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const {
     SDR sdr;
@@ -399,7 +408,6 @@ SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& arg) const {
     orop(rop, this, &arg, false, false);
     return r; // nrvo 
 }
-
 
 template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& arg) {
@@ -457,7 +465,6 @@ SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
         if (arg_found) {
             v.erase(this_end);
         } else {
-            // this part isn't needed, but works better if this is sparse compared to arg.
             if (this_end == this_start) break;
             SDR_t this_val = *(this_end - 1);
             auto new_arg_pos = lower_bound(arg_pos, arg_end, this_val, greater<int>());
@@ -535,12 +542,12 @@ void SDR<SDR_t>::do_benchark() {
     
     for (auto& elem : a) {
         for (SDR_t i = 0; i < index_max; ++i) {
-            elem += get_twister()() % index_max;
+            elem += get_random_indice() % index_max;
         }
     }
     for (auto& elem : b) {
         for (SDR_t i = 0; i < index_max; ++i) {
-            elem += get_twister()() % index_max;
+            elem += get_random_indice() % index_max;
         }
     }
     auto stop = chrono::high_resolution_clock::now();
