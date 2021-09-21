@@ -71,27 +71,19 @@ class SDR {
         // concatenate an SDR to an SDR. Every indice in arg must be greater than every indice in this. Returns this.
         SDR<SDR_t>& join(const SDR<SDR_t>& arg);
 
+        // removes the bits in common between a and b.
+        template<typename SDR_t_inner>
+        friend void separate(SDR<SDR_t_inner>& a, SDR<SDR_t_inner>& b);
+
         auto cbegin() const { return v.cbegin(); }
         auto cend() const { return v.cend(); }
         auto crbegin() const { return v.crbegin(); }
         auto crend() const { return v.crend(); }
         auto size() const { return v.size(); }
+        auto resize(typename vector<SDR_t>::size_type n) { assert(n <= v.size()); return v.resize(n); }
 
-        friend ostream& operator<<(ostream& os, const SDR<SDR_t>& sdr) {
-            if (print_type) {
-                static constexpr FormatText beginning;
-                os << beginning.arr;
-            } else {
-                os << '[';
-            }
-            for (auto it = sdr.cbegin(), end = sdr.cend(); it != end; ++it) { 
-                const auto i = *it;
-                os << i;
-                if (next(it) != end) os << ",";
-            }
-            os << ']';
-            return os;
-        }
+        template<typename SDR_t_inner>
+        friend ostream& operator<<(ostream& os, const SDR<SDR_t_inner>& sdr);
 
         template<typename other>
         auto operator&(const other o) const { return andb(o); }
@@ -141,6 +133,8 @@ class SDR {
         static SDR_t get_random_indice() {
             return get_twister()();
         }
+ 
+        using IndexType = SDR_t;
 
         // rough benchmark for performance, also serves as some unit tests
         static void do_benchark();
@@ -292,7 +286,8 @@ void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, IT a_pos, IT a_e
 
 template<typename SDR_t>
 void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, const bool size_only) {
-    const bool is_inplace = !size_only && (r.sdr == a || r.sdr == b);
+    assert(size_only || r.sdr != b);
+    const bool is_inplace = !size_only && r.sdr == a;
     auto a_pos = a->cbegin();
     auto a_end = a->cend();
     auto b_pos = b->cbegin();
@@ -508,6 +503,53 @@ SDR<SDR_t>& SDR<SDR_t>::join(const SDR<SDR_t>& arg) {
     v.reserve(v.size() + arg.v.size());
     for (auto e : arg.v) { v.push_back(e); }
     return *this;
+}
+
+template <typename SDR_t>
+void separate(SDR<SDR_t>& a,SDR<SDR_t>& b) {
+    auto a_pos = a.v.begin();
+    auto a_end = a.v.end();
+    auto b_pos = b.v.begin();
+    auto b_end = b.v.end();
+    SDR_t elem;
+    if (a_pos == a_end) goto end;
+    loop:
+        elem = *a_pos++;
+        b_pos = lower_bound(b_pos, b_end, elem);
+        if (b_pos == b_end) goto end;
+        if (*b_pos == elem) {
+            b_pos = b.v.erase(b_pos);
+            if (b_pos == b_end) goto end;
+        }
+        // ======
+        elem = *b_pos++;
+        a_pos = lower_bound(a_pos, a_end, elem);
+        if (a_pos == a_end) goto end;
+        if (*a_pos == elem) {
+            a_pos = a.v.erase(a_pos);
+            if (a_pos == a_end) goto end;
+        }
+    goto loop;
+    end:
+    a.v.shrink_to_fit();
+    b.v.shrink_to_fit();
+}
+
+template<typename SDR_t>
+ostream& operator<<(ostream& os, const SDR<SDR_t>& sdr) {
+    if (SDR<SDR_t>::print_type) {
+        static constexpr typename SDR<SDR_t>::FormatText beginning;
+        os << beginning.arr;
+    } else {
+        os << '[';
+    }
+    for (auto it = sdr.cbegin(), end = sdr.cend(); it != end; ++it) { 
+        const auto i = *it;
+        os << i;
+        if (next(it) != end) os << ",";
+    }
+    os << ']';
+    return os;
 }
 
 template <typename SDR_t>
