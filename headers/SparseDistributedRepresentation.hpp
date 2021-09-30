@@ -12,14 +12,16 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <chrono>
-using namespace std;
 
 template<typename SDR_t = unsigned int>
 class SDR {
     public:
+        using IndexType = SDR_t;
+        using size_type = typename std::vector<SDR_t>::size_type;
+
         SDR() {}
-        SDR(initializer_list<SDR_t> l);
-        SDR(const SDR<SDR_t>& sdr) : v{sdr.v} {}
+        SDR(std::vector<SDR_t>&& v);
+        SDR(std::initializer_list<SDR_t> l);
         SDR(float input, unsigned int size, unsigned int underlying_array_length);
         SDR(float input, float period, unsigned int size, unsigned int underlying_array_length);
 
@@ -32,7 +34,8 @@ class SDR {
         // and bit. returns the state of a bit.
         bool andb(SDR_t val) const;
         // and bits. returns the state of many bits.
-        SDR<SDR_t> andb(const SDR<SDR_t>& arg) const;
+        template<typename arg_t = unsigned int>
+        SDR<SDR_t> andb(const SDR<arg_t>& arg) const;
         // and bits. returns the state of many bits from start to stop.
         SDR<SDR_t> andb(SDR_t start_inclusive, SDR_t stop_exclusive) const;
         // and inplace. turn off all bits not in arg (compute arg AND this, and place the result in this). Returns this.
@@ -80,86 +83,92 @@ class SDR {
         auto crbegin() const { return v.crbegin(); }
         auto crend() const { return v.crend(); }
         auto size() const { return v.size(); }
-        auto resize(typename vector<SDR_t>::size_type n) { assert(n <= v.size()); return v.resize(n); }
+        auto operator[](unsigned int index) const { return v[index]; };
+        void resize(size_type n) { assert(n <= v.size()); v.resize(n); }
+        void reserve(size_type n) { v.reserve(n); }
+        void push_back(SDR_t i) { assert(size() == 0 || v[v.size() - 1] < i); v.push_back(i); }
 
         template<typename SDR_t_inner>
-        friend ostream& operator<<(ostream& os, const SDR<SDR_t_inner>& sdr);
+        friend std::ostream& operator<<(std::ostream& os, const SDR<SDR_t_inner>& sdr);
 
         template<typename other>
-        auto operator&(const other o) const { return andb(o); }
+        auto operator&(const other& o) const { return andb(o); }
         template<typename other>
-        auto operator&&(const other o) const { return ands(o); }
+        auto operator&&(const other& o) const { return ands(o); }
         template<typename other>
-        auto operator&=(const other o) { return andi(o); }
+        auto operator&=(const other& o) { return andi(o); }
         template<typename other>
-        auto operator|(const other o) const { return orb(o); }
+        auto operator|(const other& o) const { return orb(o); }
         template<typename other>
-        auto operator||(const other o) const { return ors(o); }
+        auto operator||(const other& o) const { return ors(o); }
         template<typename other>
-        auto operator|=(const other o) { return ori(o); }
+        auto operator|=(const other& o) { return ori(o); }
         template<typename other>
-        auto operator^(const other o) const { return xorb(o); }
+        auto operator^(const other& o) const { return xorb(o); }
         template<typename other>
-        auto operator<=(const other o) const { return xors(o); } // should be ^^. <= kinda works (hamming distance from a <= b).
+        auto operator<=(const other& o) const { return xors(o); } // should be ^^. <= kinda works (hamming distance from a <= b).
         template<typename other>
-        auto operator^=(const other o) { return xori(o); }
+        auto operator^=(const other& o) { return xori(o); }
         template<typename other>
-        auto operator+(const other o) const { return SDR(*this).set(o, true); }
+        auto operator+(const other& o) const { return SDR(*this).set(o, true); }
         template<typename other>
-        auto operator+=(const other o) { return set(o, true); }
+        auto operator+=(const other& o) { return set(o, true); }
         template<typename other>
-        auto operator-(const other o) const { return SDR(*this).set(o, false); }
+        auto operator-(const other& o) const { return SDR(*this).set(o, false); }
         template<typename other>
-        auto operator-=(const other o) { return set(o, false); }
+        auto operator-=(const other& o) { return set(o, false); }
         template<typename other>
-        auto operator%(const other o) const { return SDR(*this).sample_length(o); }
+        auto operator%(const other& o) const { return SDR(*this).sample_length(o); }
         template<typename other>
-        auto operator%=(const other o) { return sample_length(o); }
+        auto operator%=(const other& o) { return sample_length(o); }
         template<typename other>
-        auto operator*(const other o) const { return SDR(*this).sample_portion(o); }
+        auto operator*(const other& o) const { return SDR(*this).sample_portion(o); }
         template<typename other>
-        auto operator*=(const other o) { return sample_potion(o); }
+        auto operator*=(const other& o) { return sample_potion(o); }
         template<typename other>
-        auto operator<<(const other o) const { return SDR(*this).shift(o); }
+        auto operator<<(const other& o) const { return SDR(*this).shift(o); }
         template<typename other>
-        auto operator>>(const other o) const { return SDR(*this).shift(-o); }
+        auto operator>>(const other& o) const { return SDR(*this).shift(-o); }
         template<typename other>
-        auto operator<<=(const other o) { return shift(o); }
+        auto operator<<=(const other& o) { return shift(o); }
         template<typename other>
-        auto operator>>=(const other o) { return shift(-o); }
+        auto operator>>=(const other& o) { return shift(-o); }
         template<typename other>
-        auto operator<(const other o) { return join(o); }
+        auto operator<(const other& o) { return join(o); }
 
-        static SDR_t get_random_indice() {
+        // static ref to mersenne twister with result type SDR_t
+        static auto& get_twister() {
+            // same as mt19937
+            static std::mersenne_twister_engine<SDR_t,32,624,397,31,0x9908b0df,11,0xffffffff,7,0x9d2c5680,15,0xefc60000,18,1812433253> twister(time(NULL) * getpid());
+            return twister;
+        }
+
+        static SDR_t get_random_number() {
             return get_twister()();
         }
- 
-        using IndexType = SDR_t;
 
-        // rough benchmark for performance, also serves as some unit tests
+        // rough benchmark for performance
         static void do_benchark();
     
     private:
-        vector<SDR_t> v;
+        std::vector<SDR_t> v;
+
+        void assert_ascending(); // used in constructors
 
         union SDROPResult {
             SDR<SDR_t>* const sdr;
             unsigned int* const length;
         };
 
-        static auto& get_twister() {
-            static mt19937 twister(time(NULL) * getpid());
-            return twister;
-        }
-
         // if r_pos is NULL, this indicates normal operation, and that the output is appended to r.
         // if r_pos is not NULL, this indicates that the operation is placing the result in one of it's operands, and r_pos indicates the overwrite position
-        template <typename CIT, typename IT>
-        static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, IT a_pos, IT a_end, IT b_pos, IT b_end, SDR_t elem, const bool size_only);
+        template <typename CIT, typename AIT, typename BIT>
+        static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only);
         // and operation. computes A & B, and places the result in r.
-        static void andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, const bool size_only);
+        template <typename arg_t>
+        static void andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t>* const b, bool size_only);
         // or operation. places the result in r.
-        static void orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b,  const bool size_only, const bool exclusive);
+        static void orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b,  bool size_only, bool exclusive);
 
         struct FormatText {
             char arr[3 + (int)ceil(log10(sizeof(SDR_t) * 8 + 1))] = {0};
@@ -176,21 +185,33 @@ class SDR {
             }
         };
     
-    static_assert(is_integral<SDR_t>::value, "SDR_t must be integral");
+    // static_assert(std::is_integral<SDR_t>::value, "SDR_t must be integral");
     static constexpr bool print_type = false;
 };
 
 template<typename SDR_t>
-SDR<SDR_t>::SDR(initializer_list<SDR_t> l): v(l) {
-    if (l.size() == 0) return;
-    auto pos = l.begin();
-    auto end = l.end();
-    SDR_t prev_elem = *pos++;
-    while (pos != end) {
-        SDR_t elem = *pos++;
-        assert(prev_elem < elem);
-        prev_elem = elem;
-    }
+void SDR<SDR_t>::assert_ascending() {
+    #ifndef NDEBUG
+        if (v.size() == 0) return;
+        auto pos = v.begin();
+        auto end = v.end();
+        SDR_t prev_elem = *pos++;
+        while (pos != end) {
+            SDR_t elem = *pos++;
+            assert(prev_elem < elem);
+            prev_elem = elem;
+        }
+    #endif
+}
+
+template<typename SDR_t>
+SDR<SDR_t>::SDR(std::vector<SDR_t>&& v): v(std::move(v)) {
+    assert_ascending();
+}
+
+template<typename SDR_t>
+SDR<SDR_t>::SDR(std::initializer_list<SDR_t> l): v(l) {
+    assert_ascending();
 }
 
 template<typename SDR_t>
@@ -221,7 +242,7 @@ SDR<SDR_t>::SDR(float input, unsigned int size, unsigned int underlying_array_le
 
 template<typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::sample_length(unsigned int amount) {
-    vector<SDR_t> temp;
+    std::vector<SDR_t> temp;
     temp.reserve(amount);
     sample(cbegin(), cend(), back_inserter(temp), amount, get_twister());
     swap(temp, v);
@@ -231,7 +252,7 @@ SDR<SDR_t>& SDR<SDR_t>::sample_length(unsigned int amount) {
 template<typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::sample_portion(float amount) {
     assert(amount >= 0 && amount <= 1);
-    unsigned int check_val = amount * (get_twister().max() / 2);
+    SDR_t check_val = amount * (get_twister().max() / 2);
     auto to_offset = v.begin();
     auto from_offset = cbegin();
     auto end = v.end();
@@ -262,8 +283,8 @@ SDR<SDR_t>& SDR<SDR_t>::set(SDR_t index, bool value) {
 }
 
 template<typename SDR_t>
-template<typename CIT, typename IT>
-void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, IT a_pos, IT a_end, IT b_pos, IT b_end, SDR_t elem, const bool size_only) {
+template <typename CIT, typename AIT, typename BIT>
+void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only) {
     if (size_only) {
         ++*r.length;
     } else {
@@ -285,32 +306,38 @@ void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, IT a_pos, IT a_e
 }
 
 template<typename SDR_t>
-void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, const bool size_only) {
-    assert(size_only || r.sdr != b);
-    const bool is_inplace = !size_only && r.sdr == a;
+template<typename arg_t>
+void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t>* const b, bool size_only) {
+    assert(size_only || r.sdr != (const SDR<SDR_t>*)b);
+    bool is_inplace = !size_only && r.sdr == a;
     auto a_pos = a->cbegin();
     auto a_end = a->cend();
     auto b_pos = b->cbegin();
     auto b_end = b->cend();
+    SDR_t a_elem;
+    arg_t b_elem;
     auto r_pos = is_inplace ? r.sdr->v.begin() : (decltype(r.sdr->v.begin()))NULL;
-    SDR_t elem;
     decltype(a_pos) tmp;
     if (a_pos == a_end) goto end;
     loop:
-        elem = *a_pos++;
-        b_pos = lower_bound(b_pos, b_end, elem);
+        a_elem = *a_pos++;
+        b_pos = lower_bound(b_pos, b_end, a_elem);
         if (b_pos == b_end) goto end;
-        if (*b_pos == elem) {
+        if (*b_pos == a_elem) {
             ++b_pos;
-            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, elem, size_only);
+            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_elem, size_only);
             if (b_pos == b_end) goto end;
         }
-        tmp = a_pos;
-        a_pos = b_pos;
-        b_pos = tmp;
-        tmp = a_end;
-        a_end = b_end;
-        b_end = tmp;
+        // ============= a and b swapped ===^=V================
+        b_elem = *b_pos++;
+        a_pos = lower_bound(a_pos, a_end, b_elem);
+        if (a_pos == a_end) goto end;
+        a_elem = *a_pos;
+        if (a_elem == b_elem) {
+            ++a_pos;
+            sdrop_add_to_output(r, r_pos, b_pos, b_end, a_pos, a_end, a_elem, size_only);
+            if (a_pos == a_end) goto end;
+        }
     goto loop;
     end:
     if (is_inplace) r.sdr->v.resize(distance(r.sdr->v.begin(), r_pos));
@@ -318,7 +345,8 @@ void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t
 }
 
 template <typename SDR_t>
-SDR<SDR_t> SDR<SDR_t>::andb(const SDR<SDR_t>& arg) const {
+template<typename arg_t>
+SDR<SDR_t> SDR<SDR_t>::andb(const SDR<arg_t>& arg) const {
     SDR r;
     SDROPResult rop{.sdr=&r};
     andop(rop, this, &arg, false);
@@ -365,7 +393,7 @@ unsigned int SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const
 }
 
 template <typename SDR_t>
-void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, const bool size_only, const bool exclusive) {
+void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, bool size_only, bool exclusive) {
     assert(size_only || (r.sdr != a && r.sdr != b));
     auto a_pos = a->cbegin();
     auto a_end = a->cend();
@@ -462,7 +490,7 @@ SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
         } else {
             if (this_end == this_start) break;
             SDR_t this_val = *(this_end - 1);
-            auto new_arg_pos = lower_bound(arg_pos, arg_end, this_val, greater<int>());
+            auto new_arg_pos = lower_bound(arg_pos, arg_end, this_val, std::greater<int>());
             bool this_found = new_arg_pos != arg_pos && this_val == *new_arg_pos;
             arg_pos = new_arg_pos;
             if (this_found) {
@@ -506,7 +534,7 @@ SDR<SDR_t>& SDR<SDR_t>::join(const SDR<SDR_t>& arg) {
 }
 
 template <typename SDR_t>
-void separate(SDR<SDR_t>& a,SDR<SDR_t>& b) {
+void separate(SDR<SDR_t>& a, SDR<SDR_t>& b) {
     auto a_pos = a.v.begin();
     auto a_end = a.v.end();
     auto b_pos = b.v.begin();
@@ -536,8 +564,8 @@ void separate(SDR<SDR_t>& a,SDR<SDR_t>& b) {
 }
 
 template<typename SDR_t>
-ostream& operator<<(ostream& os, const SDR<SDR_t>& sdr) {
-    if (SDR<SDR_t>::print_type) {
+std::ostream& operator<<(std::ostream& os, const SDR<SDR_t>& sdr) {
+    if constexpr(SDR<SDR_t>::print_type) {
         static constexpr typename SDR<SDR_t>::FormatText beginning;
         os << beginning.arr;
     } else {
@@ -556,8 +584,8 @@ template <typename SDR_t>
 void SDR<SDR_t>::do_benchark() {
     enum test_op {andb, ands, orb, ors, xorb, xors, andi, rm};
     static struct {
-        inline void operator() (SDR a[], SDR b[], int num_sdr, string name, test_op op) const {
-            auto start = chrono::high_resolution_clock::now();
+        inline void operator() (SDR a[], SDR b[], int num_sdr, std::string name, test_op op) const {
+            auto start = std::chrono::high_resolution_clock::now();
             for (int i = 0; i < num_sdr; ++i) {
                 switch (op) {
                     case andb : a[i] & b[i]; break;
@@ -571,8 +599,8 @@ void SDR<SDR_t>::do_benchark() {
                 }
                 
             }
-            auto stop = chrono::high_resolution_clock::now();
-            cout << name << ": " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << endl;
+            auto stop = std::chrono::high_resolution_clock::now();
+            std::cout << name << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << std::endl;
         }
     } time_funct;
 
@@ -580,21 +608,21 @@ void SDR<SDR_t>::do_benchark() {
     constexpr static SDR_t index_max = 100000;
     SDR a[num_sdr];
     SDR b[num_sdr];
-    auto start = chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
     
     for (auto& elem : a) {
         for (SDR_t i = 0; i < index_max; ++i) {
-            elem += get_random_indice() % index_max;
+            elem += get_random_number() % index_max;
         }
     }
     for (auto& elem : b) {
         for (SDR_t i = 0; i < index_max; ++i) {
-            elem += get_random_indice() % index_max;
+            elem += get_random_number() % index_max;
         }
     }
-    auto stop = chrono::high_resolution_clock::now();
-    cout << "init: " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << endl;
-    cout << "sizes: " << a[0].size() << endl;
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::cout << "init: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << std::endl;
+    std::cout << "sizes: " << a[0].size() << std::endl;
     time_funct(a, b, num_sdr, "andb", test_op::andb);
     time_funct(a, b, num_sdr, "ands", test_op::ands);
     time_funct(a, b, num_sdr, "orb", test_op::orb);

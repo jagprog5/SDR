@@ -1,55 +1,65 @@
 #include <boost/graph/adjacency_list.hpp>
-#include <iomanip>
+#include <queue>
 #include "SparseDistributedRepresentation.hpp"
-
-using namespace boost;
 
 class Vertex {
     public:
         using AbstractionType = SDR<>::IndexType;
-        Vertex() : abstraction{SDR<>::get_random_indice()}, activity(0) {}
-        Vertex(float activity) : abstraction{SDR<>::get_random_indice()}, activity(activity) {}
-        Vertex(AbstractionType abstraction) : abstraction{SDR<>::get_random_indice()}, activity(activity) {}
+        Vertex() : abstraction{SDR<>::get_random_number()}, activity(0) {}
+        Vertex(AbstractionType abstraction) : abstraction{abstraction}, activity(0) {}
         Vertex(AbstractionType abstraction, float activity) : abstraction{abstraction}, activity(activity) {}
+    private:
+        AbstractionType abstraction; // serves as an index in the state, but also as a lazy uuid
+        float activity; // from 0 to 1; higher activity means a vertex has higher priority to be updated
+        bool queued = false;
+    public:
+        bool operator<(Vertex& other) { return activity < other.activity; }
         AbstractionType get_abstraction() const { return abstraction; }
         float get_activity() const { return activity; }
-    private:
-        AbstractionType abstraction; // serves as a index in the state, but also as a lazy uuid
-        float activity;
+        void set_activity(float a) { activity = a; }
+        void increase_activity(float other_activity) { activity += (1 - activity) * other_activity; }
+        void decrease_activity(float other_activity) { activity *= other_activity; }
+        bool get_queued() const { return queued; }
+        void set_queued(bool q) { queued = q; }
 };
 
 class Edge {
     public:
         Edge(SDR<> sdr) { attention = std::move(sdr); }
-        Edge() : Edge(SDR<>()) {}
-        SDR<> get_attention() const { return attention; }
+        operator SDR<>() { return attention; }
     private:
         SDR<> attention;
 };
 
-class SDRGraph: public adjacency_list<vecS, vecS, directedS, Vertex, Edge> {
+class SDRGraph {
     public:
-        using AdjacencyIterator = graph_traits<SDRGraph>::adjacency_iterator;
-        using OutEdgeIterator = graph_traits<SDRGraph>::out_edge_iterator;
-        using InEdgeIterator = graph_traits<SDRGraph>::in_edge_iterator;
-        using VertexIterator = graph_traits<SDRGraph>::vertex_iterator;
-        using EdgeIterator = graph_traits<SDRGraph>::edge_iterator;
-        using VertexDescriptor = graph_traits<SDRGraph>::vertex_descriptor;
-        using EdgeDescriptor = graph_traits<SDRGraph>::edge_descriptor;
+        using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, Vertex, Edge>;
+        using AdjacencyIterator = boost::graph_traits<Graph>::adjacency_iterator;
+        using OutEdgeIterator = boost::graph_traits<Graph>::out_edge_iterator;
+        using InEdgeIterator = boost::graph_traits<Graph>::in_edge_iterator;
+        using VertexIterator = boost::graph_traits<Graph>::vertex_iterator;
+        using EdgeIterator = boost::graph_traits<Graph>::edge_iterator;
+        using VertexDescriptor = boost::graph_traits<Graph>::vertex_descriptor;
+        using EdgeDescriptor = boost::graph_traits<Graph>::edge_descriptor;
 
-        friend ostream& operator<<(ostream& os, const SDRGraph& graph);
-
-        SDRGraph() {
-            VertexDescriptor v1 = add_vertex(Vertex(), *this);
-            VertexDescriptor v2 = add_vertex(Vertex(), *this);
-            add_edge(v1, v2, Edge(SDR<>{2, 3, 4}), *this);
-            add_edge(v1, v2, Edge(SDR<>{2, 3, 4, 50000}), *this);
-            cout << *this << endl;
-            cout << "test" << endl;
-        }
+        SDRGraph();
+        void update(SDR<> inputs);
+        friend std::ostream& operator<<(std::ostream& os, const SDRGraph& graph);
 
     private:
-        unsigned int outVertexOverlap(VertexDescriptor a, VertexDescriptor b, unsigned int depth);
-        
+        // the activity that must be exceed such that a vertex's index appears in the state
+        static constexpr float STATE_THRESHOLD = 0.2;
+        // the activity that must be exceed such that a vertex is added to the process queue
+        // todo this should increase with process queue size
+        static constexpr float ACTIVE_THRESHOLD = 0.4;
+        // upon failure to propogate a signal, at what rate does a vertex's activity decay
+        static constexpr float ACTIVITY_DECAY = 0.1;
+
+        void update_vertex(VertexDescriptor vd);
+
+        Graph graph;
         SDR<> state;
+        // It would be impossible to update every single vertices each timestep.
+        // This queue hold the most active vertices. This is iterated through instead.
+        std::priority_queue<VertexDescriptor> vertices_to_process;
 };

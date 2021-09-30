@@ -1,3 +1,4 @@
 .vscode
 secrets
+**/*.skip
 boost_*/
