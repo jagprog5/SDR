@@ -47,9 +47,38 @@ class SpatialPooler {
                     this->connections.shrink_to_fit();
                 }
 
-                // SDR<InputConnection> overlap(const SDR<SDR_t>& input) {
-                //     return this->connections.andb(input);
-                // }
+                std::vector<typename SDR<SDR_t>::size_type> overlap_indices(const SDR<SDR_t>& input) {
+                    return this->connections.andb(input);
+                }
+
+                void adjust_permanences(const std::vector<typename SDR<SDR_t>::size_type>& overlap_indices) {
+                    auto indices_pos = overlap_indices.cbegin();
+                    auto indices_end = overlap_indices.cend();
+                    for (unsigned int i = 0; i < this->permanences.size(); ++i) {
+                        bool end = indices_pos == indices_end;
+                        bool matched;
+                        if (!end) {
+                            matched = *indices_pos == i;
+                            if (matched) {
+                                ++indices_pos;
+                            }
+                        }
+                        if (end || !matched) {
+                            float perm = this->permanences[i] - PERMANENCE_DECREMENT;
+                            if (perm < PERMANENCE_MIN) perm = PERMANENCE_MIN;
+                            this->permanences[i] = perm;
+                        } else {
+                            float perm = this->permanences[i] + PERMANENCE_INCREMENT;
+                            if (perm > PERMANENCE_MAX) perm = PERMANENCE_MAX;
+                            this->permanences[i] = perm;
+                        }
+                    }
+                    auto perm_pos = this->permanences.cbegin();
+                    auto perm_end = this->permanences.cend();
+                    for (auto& p : this->permanences) {
+                        // if (overlap_pos)
+                    }
+                }
         };
 
         std::vector<Column> columns;

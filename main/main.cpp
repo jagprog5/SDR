@@ -13,9 +13,11 @@
 // };
 
 int main() {
-  SDR<> a{0, 1, 2, 3, 4, 5, 8};
-  SDR<> b{1, 3, 6, 7, 8, 9};
-  std::cerr << a.andp(b) << std::endl;
+  SDRGraph g;
+  std::cerr << "cake yep" << std::endl;
+  // SDR<> a{0, 1, 2, 3, 4, 5, 8};
+  // SDR<> b{1, 3, 6, 7, 8, 9};
+  // std::cerr << a.andp(b) << std::endl;
   // SDR<InputConnection> a;
   // a.push_back(InputConnection{0,0.5});
   // a.push_back(InputConnection{1,0.1});

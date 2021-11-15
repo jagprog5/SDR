@@ -47,7 +47,7 @@ class SDR {
         // and size. returns the number of bits from start to stop.
         unsigned int ands(SDR_t start_inclusive, SDR_t stop_exclusive) const;
         // and positions. returns the positions in this in which the elements of arg reside.
-        SDR<SDR_t> andp(const SDR<SDR_t>& arg) const;
+        std::vector<size_type> andp(const SDR<SDR_t>& arg) const;
 
         // or bits. 
         SDR<SDR_t> orb(const SDR<SDR_t>& arg) const;
@@ -65,9 +65,9 @@ class SDR {
         // turn off all bits in arg. Returns this.
         SDR<SDR_t>& rm(const SDR<SDR_t>& arg);
         
-        // Returns this.
+        // Sets bit in this, then returns this.
         SDR<SDR_t>& set(SDR_t index, bool value);
-        // Returns this.
+        // Sets bits in this, then returns this.
         SDR<SDR_t>& set(SDR<SDR_t> arg, bool value);
 
         // Returns this, shifted by amount.
@@ -138,6 +138,8 @@ class SDR {
         auto operator>>=(const other& o) { return shift(-o); }
         template<typename other>
         auto operator<(const other& o) { return join(o); }
+        auto operator==(const SDR<SDR_t>& other) const { return other.v == this->v; }
+        auto operator!=(const SDR<SDR_t>& other) const { return !(other == *this); }
 
         // static ref to mersenne twister with result type SDR_t
         static auto& get_twister() {
@@ -159,8 +161,8 @@ class SDR {
         void assert_ascending(); // used in constructors
 
         union SDROPResult {
-            SDR<SDR_t>* const sdr;
-            unsigned int* const length;
+            SDR<SDR_t>* sdr;
+            unsigned int* length;
         };
 
         // if r_pos is NULL, this indicates normal operation, and that the output is appended to r.
@@ -351,7 +353,8 @@ template <typename SDR_t>
 template<typename arg_t>
 SDR<SDR_t> SDR<SDR_t>::andb(const SDR<arg_t>& arg) const {
     SDR r;
-    SDROPResult rop{.sdr=&r};
+    SDROPResult rop;
+    rop.sdr = &r;
     andop(rop, this, &arg, false);
     return r; // nrvo 
 }
@@ -368,7 +371,8 @@ SDR<SDR_t> SDR<SDR_t>::andb(SDR_t start_inclusive, SDR_t stop_exclusive) const {
 
 template<typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::andi(const SDR<SDR_t>& arg) {
-    SDROPResult rop{.sdr = this};
+    SDROPResult rop;
+    rop.sdr = this;
     andop(rop, this, &arg, false);
     return *this;
 }
@@ -381,7 +385,8 @@ unsigned int SDR<SDR_t>::ands(SDR_t val) const {
 template <typename SDR_t>
 unsigned int SDR<SDR_t>::ands(const SDR<SDR_t>& arg) const {
     unsigned int r = 0;
-    SDROPResult rop{.length=&r};
+    SDROPResult rop;
+    rop.length = &r;
     andop(rop, this, &arg, true);
     return r;
 }
@@ -396,8 +401,8 @@ unsigned int SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const
 }
 
 template<typename SDR_t>
-SDR<SDR_t> SDR<SDR_t>::andp(const SDR<SDR_t>& arg) const {
-    SDR ret;
+std::vector<typename SDR<SDR_t>::size_type> SDR<SDR_t>::andp(const SDR<SDR_t>& arg) const {
+    std::vector<typename SDR<SDR_t>::size_type> ret;
     auto begin = cbegin();
     auto pos = begin;
     auto end = cend();
@@ -444,7 +449,8 @@ void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>
 template <typename SDR_t>
 SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& arg) const {
     SDR r;
-    SDROPResult rop{.sdr=&r};
+    SDROPResult rop;
+    rop.sdr = &r;
     orop(rop, this, &arg, false, false);
     return r; // nrvo 
 }
@@ -452,7 +458,8 @@ SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& arg) const {
 template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& arg) {
     SDR r;
-    SDROPResult rop{.sdr=&r};
+    SDROPResult rop;
+    rop.sdr = &r;
     orop(rop, this, &arg, false, false);
     swap(r.v, v);
     return *this;
@@ -461,7 +468,8 @@ SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& arg) {
 template <typename SDR_t>
 unsigned int SDR<SDR_t>::ors(const SDR<SDR_t>& arg) const {
     unsigned int r = 0;
-    SDROPResult rop{.length = &r};
+    SDROPResult rop;
+    rop.length = &r;
     orop(rop, this, &arg, true, false);
     return r;
 }
@@ -469,7 +477,8 @@ unsigned int SDR<SDR_t>::ors(const SDR<SDR_t>& arg) const {
 template <typename SDR_t>
 SDR<SDR_t> SDR<SDR_t>::xorb(const SDR<SDR_t>& arg) const {
     SDR r;
-    SDROPResult rop{.sdr = &r};
+    SDROPResult rop;
+    rop.sdr = &r;
     orop(rop, this, &arg, false, true);
     return r; // nrvo
 }
@@ -477,7 +486,8 @@ SDR<SDR_t> SDR<SDR_t>::xorb(const SDR<SDR_t>& arg) const {
 template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::xori(const SDR<SDR_t>& arg) {
     SDR r;
-    SDROPResult rop{.sdr = &r};
+    SDROPResult rop;
+    rop.sdr = &r;
     orop(rop, this, &arg, false, true);
     swap(r.c, v);
     return *this;
@@ -486,7 +496,8 @@ SDR<SDR_t>& SDR<SDR_t>::xori(const SDR<SDR_t>& arg) {
 template <typename SDR_t>
 unsigned int SDR<SDR_t>::xors(const SDR<SDR_t>& arg) const {
     unsigned int r = 0;
-    SDROPResult rop{.length = &r};
+    SDROPResult rop;
+    rop.length = &r;
     orop(rop, this, &arg, true, true);
     return r;
 }
