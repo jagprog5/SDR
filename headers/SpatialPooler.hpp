@@ -31,27 +31,25 @@ class SpatialPooler {
             }
 
                 const SDR_t output;
-                SDR<SDR_t> connections; // attention over the input
-                std::vector<float> permanences; // permanence for each connection
+                std::vector<float> permanences;
+                SDR<SDR_t> connections;
             public:
-                Column(SDR<SDR_t> inputs, SDR_t output): output(output) {
+                Column(const SDR<SDR_t>& inputs, SDR_t output): output(output) {
+                    this->permanences.reserve(inputs.size() * CONNECTION_CHANCE);
+                    this->connections.reserve(inputs.size() * CONNECTION_CHANCE);
                     for (SDR_t in : inputs) {
                         if (should_connect()) {
-                            connections.push_back(in);
                             permanences.push_back(get_random_permanence());
+                            connections.push_back(in);
                         }
                     }
+                    this->permanences.shrink_to_fit();
+                    this->connections.shrink_to_fit();
                 }
 
-                unsigned int score(const SDR<SDR_t>& input) {
-                    // get the overlap score between the inputs and the connections, but only for great enough permanences
-                    SDR<SDR_t> overlap = input.andb(this->connections);
-                    unsigned int score = 0;
-                    for (SDR_t elem : overlap) {
-                        
-                    }
-                    return score;
-                }
+                // SDR<InputConnection> overlap(const SDR<SDR_t>& input) {
+                //     return this->connections.andb(input);
+                // }
         };
 
         std::vector<Column> columns;

@@ -46,6 +46,8 @@ class SDR {
         unsigned int ands(const SDR<SDR_t>& arg) const;
         // and size. returns the number of bits from start to stop.
         unsigned int ands(SDR_t start_inclusive, SDR_t stop_exclusive) const;
+        // and positions. returns the positions in this in which the elements of arg reside.
+        SDR<SDR_t> andp(const SDR<SDR_t>& arg) const;
 
         // or bits. 
         SDR<SDR_t> orb(const SDR<SDR_t>& arg) const;
@@ -86,6 +88,7 @@ class SDR {
         auto operator[](unsigned int index) const { return v[index]; };
         void resize(size_type n) { assert(n <= v.size()); v.resize(n); }
         void reserve(size_type n) { v.reserve(n); }
+        void shrink_to_fit() { v.shrink_to_fit(); }
         void push_back(SDR_t i) { assert(size() == 0 || v[v.size() - 1] < i); v.push_back(i); }
 
         template<typename SDR_t_inner>
@@ -390,6 +393,20 @@ unsigned int SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const
     auto pos = lower_bound(cbegin(), end, start_inclusive);
     auto end_it = lower_bound(pos, end, stop_exclusive);
     return (unsigned int)(distance(pos, end_it));
+}
+
+template<typename SDR_t>
+SDR<SDR_t> SDR<SDR_t>::andp(const SDR<SDR_t>& arg) const {
+    SDR ret;
+    auto begin = cbegin();
+    auto pos = begin;
+    auto end = cend();
+    for (SDR_t a : arg.v) {
+        pos = lower_bound(pos, end, a);
+        if (pos == end) return ret;
+        if (*pos == a) ret.v.push_back(pos - begin);
+    }
+    return ret;
 }
 
 template <typename SDR_t>
