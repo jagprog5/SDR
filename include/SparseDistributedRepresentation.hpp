@@ -18,15 +18,27 @@ class SDR {
     public:
         using IndexType = SDR_t;
         using size_type = typename std::vector<SDR_t>::size_type;
+        using const_iterator = typename std::vector<SDR_t>::const_iterator;
 
         SDR() {}
         SDR(std::vector<SDR_t>&& v);
         SDR(std::initializer_list<SDR_t> l);
-        SDR(float input, unsigned int size, unsigned int underlying_array_length);
-        SDR(float input, float period, unsigned int size, unsigned int underlying_array_length);
+
+        // Encode a float as an SDR.
+        // input: the float to encode. Should be from 0 to 1 inclusively. Must be non-zero.
+        // size: the size of the instantiated SDR result.
+        // underlying_array_length: the size of the dense array being represented.
+        SDR(float input, size_type size, size_type underlying_array_length);
+
+        // Encode a float as an SDR.
+        // input: the float to encode.
+        // period: encodes the input such that it wraps back to 0 as it approaches a multiple of the period.
+        // size: the size of the instantiated SDR result.
+        // underlying_array_length: the size of the dense array being represented.
+        SDR(float input, float period, size_type size, size_type underlying_array_length);
 
         // Turns off bits such that the length matches the specified amount.
-        SDR<SDR_t>& sample_length(unsigned int amount);
+        SDR<SDR_t>& sample_length(size_type amount);
 
         // Each bit has a chance of being turned off, specified by amount, where 0 nearly always clears the sdr, and 1 leaves it unchanged.
         SDR<SDR_t>& sample_portion(float amount);
@@ -34,18 +46,18 @@ class SDR {
         // and bit. returns the state of a bit.
         bool andb(SDR_t val) const;
         // and bits. returns the state of many bits.
-        template<typename arg_t = unsigned int>
+        template<typename arg_t>
         SDR<SDR_t> andb(const SDR<arg_t>& arg) const;
         // and bits. returns the state of many bits from start to stop.
         SDR<SDR_t> andb(SDR_t start_inclusive, SDR_t stop_exclusive) const;
         // and inplace. turn off all bits not in arg (compute arg AND this, and place the result in this). Returns this.
         SDR<SDR_t>& andi(const SDR<SDR_t>& arg);
         // and size. returns 0 if the bit is not contained in this, else 1.
-        unsigned int ands(SDR_t val) const;
+        size_type ands(SDR_t val) const;
         // and size. returns the number of bits in both this and arg.
-        unsigned int ands(const SDR<SDR_t>& arg) const;
+        size_type ands(const SDR<SDR_t>& arg) const;
         // and size. returns the number of bits from start to stop.
-        unsigned int ands(SDR_t start_inclusive, SDR_t stop_exclusive) const;
+        size_type ands(SDR_t start_inclusive, SDR_t stop_exclusive) const;
         // and positions. returns the positions in this in which the elements of arg reside.
         std::vector<size_type> andp(const SDR<SDR_t>& arg) const;
 
@@ -54,13 +66,13 @@ class SDR {
         // or inplace. turn on all bits in arg. Returns this.
         SDR<SDR_t>& ori(const SDR<SDR_t>& arg);
         // or size. returns the number of bits in this or arg.
-        unsigned int ors(const SDR<SDR_t>& arg) const;
+        size_type ors(const SDR<SDR_t>& arg) const;
         // xor bits. 
         SDR<SDR_t> xorb(const SDR<SDR_t>& arg) const;
         // xor inplace. computes this xor arg, and places the result in this. Returns this.
         SDR<SDR_t>& xori(const SDR<SDR_t>& arg);
         // xor size, aka hamming distance. returns the number of bits in this xor arg.
-        unsigned int xors(const SDR<SDR_t>& arg) const;
+        size_type xors(const SDR<SDR_t>& arg) const;
 
         // turn off all bits in arg. Returns this.
         SDR<SDR_t>& rm(const SDR<SDR_t>& arg);
@@ -77,15 +89,14 @@ class SDR {
         SDR<SDR_t>& join(const SDR<SDR_t>& arg);
 
         // removes the bits in common between a and b.
-        template<typename SDR_t_inner>
-        friend void separate(SDR<SDR_t_inner>& a, SDR<SDR_t_inner>& b);
+        static void separate(SDR<SDR_t>& a, SDR<SDR_t>& b);
 
         auto cbegin() const { return v.cbegin(); }
         auto cend() const { return v.cend(); }
         auto crbegin() const { return v.crbegin(); }
         auto crend() const { return v.crend(); }
         auto size() const { return v.size(); }
-        auto operator[](unsigned int index) const { return v[index]; };
+        auto operator[](size_type index) const { return v[index]; };
         void resize(size_type n) { assert(n <= v.size()); v.resize(n); }
         void reserve(size_type n) { v.reserve(n); }
         void shrink_to_fit() { v.shrink_to_fit(); }
@@ -162,7 +173,7 @@ class SDR {
 
         union SDROPResult {
             SDR<SDR_t>* sdr;
-            unsigned int* length;
+            size_type* length;
         };
 
         // if r_pos is NULL, this indicates normal operation, and that the output is appended to r.
@@ -220,7 +231,7 @@ SDR<SDR_t>::SDR(std::initializer_list<SDR_t> l): v(l) {
 }
 
 template<typename SDR_t>
-SDR<SDR_t>::SDR(float input, float period, unsigned int size, unsigned int underlying_array_length) {
+SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length && period != 0);
     v.reserve(size);
     float progress = input / period;
@@ -238,15 +249,16 @@ SDR<SDR_t>::SDR(float input, float period, unsigned int size, unsigned int under
 }
 
 template<typename SDR_t>
-SDR<SDR_t>::SDR(float input, unsigned int size, unsigned int underlying_array_length) {
+SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length);
+    assert(input >= 0);
     v.reserve(size);
     SDR_t start_index = roundf((underlying_array_length - size) * input);
     for (SDR_t i = 0; i < size; ++i) v.push_back(start_index + i);
 }
 
 template<typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::sample_length(unsigned int amount) {
+SDR<SDR_t>& SDR<SDR_t>::sample_length(size_type amount) {
     std::vector<SDR_t> temp;
     temp.reserve(amount);
     sample(cbegin(), cend(), back_inserter(temp), amount, get_twister());
@@ -273,7 +285,8 @@ SDR<SDR_t>& SDR<SDR_t>::sample_portion(float amount) {
 
 template<typename SDR_t>
 bool SDR<SDR_t>::andb(SDR_t val) const {
-    return lower_bound(cbegin(), cend(), val) == cend();
+    auto pos = lower_bound(cbegin(), cend(), val);
+    return pos != cend() && *pos == val;
 }
 
 template<typename SDR_t>
@@ -299,10 +312,10 @@ void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a
             auto &rsdr = r.sdr->v;
             // allocate for half the max possible remaining elements
             if (rsdr.capacity() == rsdr.size()) {
-                unsigned int a_left = distance(a_pos, a_end);
-                unsigned int b_left = distance(b_pos, b_end);
-                unsigned int max_remaining = a_left < b_left ? a_left : b_left;
-                unsigned int cap_increase = (max_remaining + 1) / 2 + 1;
+                size_type a_left = distance(a_pos, a_end);
+                size_type b_left = distance(b_pos, b_end);
+                size_type max_remaining = a_left < b_left ? a_left : b_left;
+                size_type cap_increase = (max_remaining + 1) / 2 + 1;
                 rsdr.reserve(rsdr.capacity() + cap_increase);
             }
             rsdr.insert(rsdr.end(), elem);
@@ -324,7 +337,7 @@ void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t
     auto r_pos = is_inplace ? r.sdr->v.begin() : (decltype(r.sdr->v.begin()))NULL;
     decltype(a_pos) tmp;
     if (a_pos == a_end) goto end;
-    loop:
+    while (true) {
         a_elem = *a_pos++;
         b_pos = lower_bound(b_pos, b_end, a_elem);
         if (b_pos == b_end) goto end;
@@ -343,7 +356,7 @@ void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t
             sdrop_add_to_output(r, r_pos, b_pos, b_end, a_pos, a_end, a_elem, size_only);
             if (a_pos == a_end) goto end;
         }
-    goto loop;
+    }
     end:
     if (is_inplace) r.sdr->v.resize(distance(r.sdr->v.begin(), r_pos));
     if (!size_only) r.sdr->v.shrink_to_fit();
@@ -361,6 +374,7 @@ SDR<SDR_t> SDR<SDR_t>::andb(const SDR<arg_t>& arg) const {
 
 template<typename SDR_t>
 SDR<SDR_t> SDR<SDR_t>::andb(SDR_t start_inclusive, SDR_t stop_exclusive) const {
+    assert(start_inclusive <= stop_exclusive);
     SDR sdr;
     auto start_it = lower_bound(cbegin(), cend(), start_inclusive);
     auto end_it = lower_bound(start_it, cend(), stop_exclusive);
@@ -378,13 +392,13 @@ SDR<SDR_t>& SDR<SDR_t>::andi(const SDR<SDR_t>& arg) {
 }
 
 template <typename SDR_t>
-unsigned int SDR<SDR_t>::ands(SDR_t val) const {
+typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(SDR_t val) const {
     return andb(val) ? 1 : 0;
 };
 
 template <typename SDR_t>
-unsigned int SDR<SDR_t>::ands(const SDR<SDR_t>& arg) const {
-    unsigned int r = 0;
+typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(const SDR<SDR_t>& arg) const {
+    size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
     andop(rop, this, &arg, true);
@@ -392,12 +406,11 @@ unsigned int SDR<SDR_t>::ands(const SDR<SDR_t>& arg) const {
 }
 
 template<typename SDR_t>
-unsigned int SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const {
+typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(SDR_t start_inclusive, SDR_t stop_exclusive) const {
     SDR sdr;
-    auto end = cend();
-    auto pos = lower_bound(cbegin(), end, start_inclusive);
-    auto end_it = lower_bound(pos, end, stop_exclusive);
-    return (unsigned int)(distance(pos, end_it));
+    auto pos = lower_bound(cbegin(), cend(), start_inclusive);
+    auto end_it = lower_bound(pos, cend(), stop_exclusive);
+    return (size_type)(distance(pos, end_it));
 }
 
 template<typename SDR_t>
@@ -409,7 +422,7 @@ std::vector<typename SDR<SDR_t>::size_type> SDR<SDR_t>::andp(const SDR<SDR_t>& a
     for (SDR_t a : arg.v) {
         pos = lower_bound(pos, end, a);
         if (pos == end) return ret;
-        if (*pos == a) ret.v.push_back(pos - begin);
+        if (*pos == a) ret.push_back(pos - begin);
     }
     return ret;
 }
@@ -466,8 +479,8 @@ SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& arg) {
 }
 
 template <typename SDR_t>
-unsigned int SDR<SDR_t>::ors(const SDR<SDR_t>& arg) const {
-    unsigned int r = 0;
+typename SDR<SDR_t>::size_type SDR<SDR_t>::ors(const SDR<SDR_t>& arg) const {
+    size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
     orop(rop, this, &arg, true, false);
@@ -489,13 +502,13 @@ SDR<SDR_t>& SDR<SDR_t>::xori(const SDR<SDR_t>& arg) {
     SDROPResult rop;
     rop.sdr = &r;
     orop(rop, this, &arg, false, true);
-    swap(r.c, v);
+    swap(r.v, v);
     return *this;
 }
 
 template <typename SDR_t>
-unsigned int SDR<SDR_t>::xors(const SDR<SDR_t>& arg) const {
-    unsigned int r = 0;
+typename SDR<SDR_t>::size_type SDR<SDR_t>::xors(const SDR<SDR_t>& arg) const {
+    size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
     orop(rop, this, &arg, true, true);
@@ -506,27 +519,38 @@ template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
     auto arg_pos = arg.crbegin();
     auto arg_end = arg.crend();
-    auto this_start = v.begin();
-    auto this_end = v.end();
-    while (arg_pos != arg_end) {
-        SDR_t arg_val = *arg_pos++;
-        auto new_this_end = lower_bound(this_start, this_end, arg_val);
-        bool arg_found = new_this_end != this_end && arg_val == *new_this_end;
-        this_end = new_this_end;
-        if (arg_found) {
-            v.erase(this_end);
-        } else {
-            if (this_end == this_start) break;
-            SDR_t this_val = *(this_end - 1);
-            auto new_arg_pos = lower_bound(arg_pos, arg_end, this_val, std::greater<int>());
-            bool this_found = new_arg_pos != arg_pos && this_val == *new_arg_pos;
-            arg_pos = new_arg_pos;
-            if (this_found) {
-                v.erase(this_end - 1);
-                ++arg_pos;
+    auto this_pos = v.rbegin();
+    auto this_end = v.rend();
+    while (true) {
+        if (arg_pos == arg_end) goto end;
+        SDR_t elem = *arg_pos++;
+        this_pos = lower_bound(this_pos, this_end, elem, std::greater<SDR_t>());
+        if (this_pos == this_end) goto end;
+        if (*this_pos == elem) {
+            // removing with a reverse iterator is weird
+            this_pos = decltype(this_pos)(v.erase(std::next(this_pos).base()));
+            if (this_pos == this_end) goto end;
+            if (this_end != v.rend()) {
+                // revalidate iterators
+                this_pos = v.rend() - (this_end - this_pos);
+                this_end = v.rend();
+            }
+            elem = *this_pos;
+        }
+        // =====
+        arg_pos = lower_bound(arg_pos, arg_end, elem, std::greater<SDR_t>());
+        if (arg_pos == arg_end) goto end;
+        if (*arg_pos == elem) {
+            this_pos = decltype(this_pos)(v.erase(std::next(this_pos).base()));
+            if (this_pos == this_end) goto end;
+            if (this_end != v.rend()) {
+                // revalidate iterators
+                this_pos = v.rend() - (this_end - this_pos);
+                this_end = v.rend();
             }
         }
     }
+    end:
     v.shrink_to_fit();
     return *this;
 }
@@ -562,30 +586,48 @@ SDR<SDR_t>& SDR<SDR_t>::join(const SDR<SDR_t>& arg) {
 }
 
 template <typename SDR_t>
-void separate(SDR<SDR_t>& a, SDR<SDR_t>& b) {
-    auto a_pos = a.v.begin();
-    auto a_end = a.v.end();
-    auto b_pos = b.v.begin();
-    auto b_end = b.v.end();
+void SDR<SDR_t>::separate(SDR<SDR_t>& a, SDR<SDR_t>& b) {
+    assert(&a != &b);
+    auto a_pos = a.v.rbegin();
+    auto a_end = a.v.rend();
+    auto b_pos = b.v.rbegin();
+    auto b_end = b.v.rend();
     SDR_t elem;
     if (a_pos == a_end) goto end;
-    loop:
-        elem = *a_pos++;
-        b_pos = lower_bound(b_pos, b_end, elem);
+    while (true) {
+        elem = *a_pos;
+        b_pos = lower_bound(b_pos, b_end, elem, std::greater<SDR_t>());
         if (b_pos == b_end) goto end;
         if (*b_pos == elem) {
-            b_pos = b.v.erase(b_pos);
-            if (b_pos == b_end) goto end;
+            a_pos = decltype(a_pos)(a.v.erase(std::next(a_pos).base()));
+            b_pos = decltype(b_pos)(b.v.erase(std::next(b_pos).base()));
+            if (a_pos == a_end || b_pos == b_end) goto end;
+            if (a_end != a.v.rend()) {
+                a_pos = a.v.rend() - (a_end - a_pos);
+                a_end = a.v.rend();
+            }
+            if (b_end != b.v.rend()) {
+                b_pos = b.v.rend() - (b_end - b_pos);
+                b_end = b.v.rend();
+            }
         }
-        // ======
-        elem = *b_pos++;
-        a_pos = lower_bound(a_pos, a_end, elem);
+        elem = *b_pos;
+        a_pos = lower_bound(a_pos, a_end, elem, std::greater<SDR_t>());
         if (a_pos == a_end) goto end;
         if (*a_pos == elem) {
-            a_pos = a.v.erase(a_pos);
-            if (a_pos == a_end) goto end;
+            a_pos = decltype(a_pos)(a.v.erase(std::next(a_pos).base()));
+            b_pos = decltype(b_pos)(b.v.erase(std::next(b_pos).base()));
+            if (a_pos == a_end || b_pos == b_end) goto end;
+            if (a_end != a.v.rend()) {
+                a_pos = a.v.rend() - (a_end - a_pos);
+                a_end = a.v.rend();
+            }
+            if (b_end != b.v.rend()) {
+                b_pos = b.v.rend() - (b_end - b_pos);
+                b_end = b.v.rend();
+            }
         }
-    goto loop;
+    }
     end:
     a.v.shrink_to_fit();
     b.v.shrink_to_fit();
