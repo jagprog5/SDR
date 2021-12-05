@@ -15,6 +15,9 @@
 
 template<typename SDR_t = unsigned int>
 class SDR {
+    private:
+        void assert_ascending(); // used in constructors
+
     public:
         using IndexType = SDR_t;
         using size_type = typename std::vector<SDR_t>::size_type;
@@ -22,10 +25,11 @@ class SDR {
 
         SDR() {}
         SDR(std::vector<SDR_t>&& v);
-        SDR(std::initializer_list<SDR_t> l);
+        SDR<SDR_t>& operator=(std::vector<SDR_t>&& v);
+        SDR(std::initializer_list<SDR_t> list);
 
         // Encode a float as an SDR.
-        // input: the float to encode. Should be from 0 to 1 inclusively. Must be non-zero.
+        // input: the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
         // size: the size of the instantiated SDR result.
         // underlying_array_length: the size of the dense array being represented.
         SDR(float input, size_type size, size_type underlying_array_length);
@@ -159,6 +163,7 @@ class SDR {
             return twister;
         }
 
+        // uses the mersenne twister, SDR<SDR_t>::get_twister()
         static SDR_t get_random_number() {
             return get_twister()();
         }
@@ -168,8 +173,6 @@ class SDR {
     
     private:
         std::vector<SDR_t> v;
-
-        void assert_ascending(); // used in constructors
 
         union SDROPResult {
             SDR<SDR_t>* sdr;
@@ -201,7 +204,6 @@ class SDR {
             }
         };
     
-    // static_assert(std::is_integral<SDR_t>::value, "SDR_t must be integral");
     static constexpr bool print_type = false;
 };
 
@@ -216,23 +218,29 @@ void SDR<SDR_t>::assert_ascending() {
             SDR_t elem = *pos++;
             assert(prev_elem < elem);
             prev_elem = elem;
-        }
+        }   
     #endif
 }
 
 template<typename SDR_t>
-SDR<SDR_t>::SDR(std::vector<SDR_t>&& v): v(std::move(v)) {
+SDR<SDR_t>& SDR<SDR_t>::operator=(std::vector<SDR_t>&& v) {
+    this->v = v;
+    return *this;
+}
+
+template<typename SDR_t>
+SDR<SDR_t>::SDR(std::vector<SDR_t>&& v): v(v) {
     assert_ascending();
 }
 
 template<typename SDR_t>
-SDR<SDR_t>::SDR(std::initializer_list<SDR_t> l): v(l) {
+SDR<SDR_t>::SDR(std::initializer_list<SDR_t> list): v(list) {
     assert_ascending();
 }
 
 template<typename SDR_t>
 SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
-    assert(size <= underlying_array_length && period != 0);
+    assert(size <= underlying_array_length && period != 0 && underlying_array_length != 0);
     v.reserve(size);
     float progress = input / period;
     progress -= (int)progress;
@@ -245,7 +253,7 @@ SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_
         while (non_leading_indice < underlying_array_length) v.push_back(non_leading_indice++);
     } else {
         for (SDR_t i = 0; i < size; ++i) v.push_back(start_index + i);
-    }
+    } 
 }
 
 template<typename SDR_t>
@@ -558,11 +566,10 @@ SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
 template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::set(SDR<SDR_t> arg, bool value) {
     if (value) {
-        ori(arg);
+        return ori(arg);
     } else {
-        rm(arg);
+        return rm(arg);
     }
-    return *this;
 }
 
 template <typename SDR_t>
@@ -579,7 +586,7 @@ SDR<SDR_t>& SDR<SDR_t>::shift(int amount) {
 
 template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::join(const SDR<SDR_t>& arg) {
-    assert(ands(arg) == 0 && (size() == 0 || arg.size() == 0 || *v.crbegin() < *arg.v.cbegin()));
+    assert(size() == 0 || arg.size() == 0 || *v.crbegin() < *arg.v.cbegin());
     v.reserve(v.size() + arg.v.size());
     for (auto e : arg.v) { v.push_back(e); }
     return *this;

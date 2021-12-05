@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE( rm_generic ) {
         BOOST_REQUIRE_EQUAL(!a_elem_in_b, result & a_elem);
         if (!a_elem_in_b) i++;
     }
-    // the result can contain no other elements
+    // the result can't contain any other elements
     BOOST_REQUIRE_EQUAL(i, result.size());
 }
 
@@ -185,6 +185,19 @@ BOOST_AUTO_TEST_CASE( empty_operands ) {
 
     BOOST_REQUIRE_EQUAL(SDR<>() - (SDR<>{1}), SDR<>());
     BOOST_REQUIRE_EQUAL((SDR<>{1}) - SDR<>(), (SDR<>{1}));
+}
+
+BOOST_AUTO_TEST_CASE( test_encode ) {
+    BOOST_REQUIRE_EQUAL(SDR<>(0, 3, 100), (SDR<>{0, 1, 2}));
+    BOOST_REQUIRE_EQUAL(SDR<>(0.5, 3, 100), (SDR<>{49, 50, 51}));
+    BOOST_REQUIRE_EQUAL(SDR<>(1, 3, 100), (SDR<>{97, 98, 99}));
+}
+
+BOOST_AUTO_TEST_CASE( test_encode_periodic ) {
+    float rand_input_0 = (double)(SDR<>::get_random_number() % 10) / 10;
+    int rand_period = SDR<>::get_random_number() % 9 + 1;
+    float rand_input_1 = rand_input_0 + rand_period * (SDR<>::get_random_number() % 7);
+    BOOST_REQUIRE_EQUAL(SDR<>(rand_input_0, rand_period, 3, 100), SDR<>(rand_input_1, rand_period, 3, 100));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
