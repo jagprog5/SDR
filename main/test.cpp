@@ -14,16 +14,6 @@ SDR<> get_random_sdr() {
 
 BOOST_AUTO_TEST_SUITE( sdr )
 
-BOOST_AUTO_TEST_CASE( contains ) {
-    SDR<> a = get_random_sdr();
-    for (int i = -100; i < rand_sdr_range + 100; ++i) {
-        auto val = SDR<>::get_random_number();
-        bool expected = std::find(a.cbegin(), a.cend(), val) != a.cend();
-        bool tested = a & val;
-        BOOST_REQUIRE_EQUAL(expected, tested);
-    }
-}
-
 BOOST_AUTO_TEST_CASE( andop_simple ) {
     BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} & SDR<>{2, 3, 4}), (SDR<>{2, 3}));
     BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} && SDR<>{2, 3, 4}), 2);
@@ -100,7 +90,7 @@ BOOST_AUTO_TEST_CASE( orop_inplace_simple ) {
 
 BOOST_AUTO_TEST_CASE( xorop_simple ) {
     BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} ^ SDR<>{2, 3, 4}), (SDR<>{1, 4}));
-    BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} <= SDR<>{2, 3, 4}), 2);
+    BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} / SDR<>{2, 3, 4}), 2);
 }
 
 BOOST_AUTO_TEST_CASE( xorop_generic ) {
@@ -194,10 +184,24 @@ BOOST_AUTO_TEST_CASE( test_encode ) {
 }
 
 BOOST_AUTO_TEST_CASE( test_encode_periodic ) {
-    float rand_input_0 = (double)(SDR<>::get_random_number() % 10) / 10;
-    int rand_period = SDR<>::get_random_number() % 9 + 1;
-    float rand_input_1 = rand_input_0 + rand_period * (SDR<>::get_random_number() % 7);
-    BOOST_REQUIRE_EQUAL(SDR<>(rand_input_0, rand_period, 3, 100), SDR<>(rand_input_1, rand_period, 3, 100));
+    std::mt19937 random_number(time(NULL) * getpid());
+    static constexpr int DENSE_LENGTH = 100;
+    static constexpr int SPARSE_LENGTH = 3;
+    float rand_input_0 = (double)(random_number() % 10) / 10;
+    int rand_period = random_number() % 9 + 1;
+    float rand_input_1 = rand_input_0 + rand_period * (random_number() % 7);
+
+    // there's a case where the input is directly between two representations.
+    float progress = rand_input_1 / rand_period * DENSE_LENGTH;
+    progress -= (int)progress;
+    if (std::abs(progress - 0.5) < 0.0001) {
+        rand_input_0 += 0.0001;
+        rand_input_1 += 0.0001;
+    }
+    
+    SDR<> a(rand_input_0, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
+    SDR<> b(rand_input_1, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
+    BOOST_REQUIRE_EQUAL(a, b);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

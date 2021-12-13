@@ -1,16 +1,12 @@
 #pragma once
 
+#include <unistd.h>
 #include <assert.h>
 #include <initializer_list>
 #include <algorithm>
-#include <functional>
 #include <random>
 #include <vector>
 #include <iostream>
-#include <math.h>
-#include <time.h>
-#include <unistd.h>
-#include <stdbool.h>
 #include <chrono>
 
 template<typename SDR_t = unsigned int>
@@ -124,7 +120,7 @@ class SDR {
         template<typename other>
         auto operator^(const other& o) const { return xorb(o); }
         template<typename other>
-        auto operator<=(const other& o) const { return xors(o); } // should be ^^. <= kinda works (hamming distance from a <= b).
+        auto operator/(const other& o) const { return xors(o); } // should be ^^
         template<typename other>
         auto operator^=(const other& o) { return xori(o); }
         template<typename other>
@@ -151,10 +147,12 @@ class SDR {
         auto operator<<=(const other& o) { return shift(o); }
         template<typename other>
         auto operator>>=(const other& o) { return shift(-o); }
-        template<typename other>
-        auto operator<(const other& o) { return join(o); }
         auto operator==(const SDR<SDR_t>& other) const { return other.v == this->v; }
         auto operator!=(const SDR<SDR_t>& other) const { return !(other == *this); }
+        auto operator<(const SDR<SDR_t>& other) const { return other.v < this->v; }
+        auto operator<=(const SDR<SDR_t>& other) const { return other.v <= this->v; }
+        auto operator>(const SDR<SDR_t>& other) const { return other.v > this->v; }
+        auto operator>=(const SDR<SDR_t>& other) const { return other.v >= this->v; }
 
         // static ref to mersenne twister with result type SDR_t
         static auto& get_twister() {
@@ -243,9 +241,9 @@ SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_
     assert(size <= underlying_array_length && period != 0 && underlying_array_length != 0);
     v.reserve(size);
     float progress = input / period;
-    progress -= (int)progress;
+    progress -= (int)progress; // 0.225
     assert(progress >= 0);
-    SDR_t start_index = roundf(progress * underlying_array_length);
+    SDR_t start_index = std::round(progress * underlying_array_length);
     if (start_index + size > underlying_array_length) {
         SDR_t leading_indices = start_index + size - underlying_array_length;
         SDR_t non_leading_indice = underlying_array_length - leading_indices - 1;
@@ -261,7 +259,7 @@ SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) 
     assert(size <= underlying_array_length);
     assert(input >= 0);
     v.reserve(size);
-    SDR_t start_index = roundf((underlying_array_length - size) * input);
+    SDR_t start_index = std::round((underlying_array_length - size) * input);
     for (SDR_t i = 0; i < size; ++i) v.push_back(start_index + i);
 }
 

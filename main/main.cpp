@@ -1,5 +1,4 @@
-#include "SDRGraph.hpp"
-#include "SpatialPooler.hpp"
+#include "SDRMemory.hpp"
 
 // struct InputConnection {
 //     SDR_t input;
@@ -13,8 +12,9 @@
 // };
 
 int main() {
-  SDRGraph g;
-  std::cerr << "cake yep" << std::endl;
+  // SDRMemory
+  // SDRGraph g;
+  // std::cerr << "cake yep" << std::endl;
   // SDR<> a{0, 1, 2, 3, 4, 5, 8};
   // SDR<> b{1, 3, 6, 7, 8, 9};
   // std::cerr << a.andp(b) << std::endl;
