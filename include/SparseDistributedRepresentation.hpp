@@ -15,7 +15,7 @@ class SDR {
         void assert_ascending(); // used in constructors
 
     public:
-        using IndexType = SDR_t;
+        using index_type = SDR_t;
         using size_type = typename std::vector<SDR_t>::size_type;
         using const_iterator = typename std::vector<SDR_t>::const_iterator;
 
@@ -25,16 +25,16 @@ class SDR {
         SDR(std::initializer_list<SDR_t> list);
 
         // Encode a float as an SDR.
-        // input: the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
-        // size: the size of the instantiated SDR result.
-        // underlying_array_length: the size of the dense array being represented.
+        // @param input the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
+        // @param size the size of the instantiated SDR result.
+        // @param underlying_array_length the size of the dense array being represented.
         SDR(float input, size_type size, size_type underlying_array_length);
 
         // Encode a float as an SDR.
-        // input: the float to encode.
-        // period: encodes the input such that it wraps back to 0 as it approaches a multiple of the period.
-        // size: the size of the instantiated SDR result.
-        // underlying_array_length: the size of the dense array being represented.
+        // @param input the float to encode.
+        // @param period encodes the input such that it wraps back to 0 as it approaches a multiple of the period.
+        // @param size the size of the instantiated SDR result.
+        // @param underlying_array_length the size of the dense array being represented.
         SDR(float input, float period, size_type size, size_type underlying_array_length);
 
         // Turns off bits such that the length matches the specified amount.
@@ -100,7 +100,7 @@ class SDR {
         void resize(size_type n) { assert(n <= v.size()); v.resize(n); }
         void reserve(size_type n) { v.reserve(n); }
         void shrink_to_fit() { v.shrink_to_fit(); }
-        void push_back(SDR_t i) { assert(size() == 0 || v[v.size() - 1] < i); v.push_back(i); }
+        void push_back(SDR_t i) { assert(size() == 0 || *v.crbegin() < i); v.push_back(i); }
 
         template<typename SDR_t_inner>
         friend std::ostream& operator<<(std::ostream& os, const SDR<SDR_t_inner>& sdr);
