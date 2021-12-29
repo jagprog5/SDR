@@ -9,13 +9,18 @@
 #include <iostream>
 #include <chrono>
 
+/*
+ * Based off the ideas explained in this series:
+ * https://youtu.be/ZDgCdWTuIzc
+ * Numenta: SDR Capacity & Comparison (Episode 2)
+ */
 template<typename SDR_t = unsigned int>
 class SDR {
     private:
         void assert_ascending(); // used in constructors
 
     public:
-        using IndexType = SDR_t;
+        using index_type = SDR_t;
         using size_type = typename std::vector<SDR_t>::size_type;
         using const_iterator = typename std::vector<SDR_t>::const_iterator;
 
@@ -25,16 +30,16 @@ class SDR {
         SDR(std::initializer_list<SDR_t> list);
 
         // Encode a float as an SDR.
-        // input: the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
-        // size: the size of the instantiated SDR result.
-        // underlying_array_length: the size of the dense array being represented.
+        // @param input the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
+        // @param size the size of the instantiated SDR result.
+        // @param underlying_array_length the size of the dense array being represented.
         SDR(float input, size_type size, size_type underlying_array_length);
 
         // Encode a float as an SDR.
-        // input: the float to encode.
-        // period: encodes the input such that it wraps back to 0 as it approaches a multiple of the period.
-        // size: the size of the instantiated SDR result.
-        // underlying_array_length: the size of the dense array being represented.
+        // @param input the float to encode.
+        // @param period encodes the input such that it wraps back to 0 as it approaches a multiple of the period.
+        // @param size the size of the instantiated SDR result.
+        // @param underlying_array_length the size of the dense array being represented.
         SDR(float input, float period, size_type size, size_type underlying_array_length);
 
         // Turns off bits such that the length matches the specified amount.
@@ -100,7 +105,7 @@ class SDR {
         void resize(size_type n) { assert(n <= v.size()); v.resize(n); }
         void reserve(size_type n) { v.reserve(n); }
         void shrink_to_fit() { v.shrink_to_fit(); }
-        void push_back(SDR_t i) { assert(size() == 0 || v[v.size() - 1] < i); v.push_back(i); }
+        void push_back(SDR_t i) { assert(size() == 0 || *v.crbegin() < i); v.push_back(i); }
 
         template<typename SDR_t_inner>
         friend std::ostream& operator<<(std::ostream& os, const SDR<SDR_t_inner>& sdr);
@@ -147,12 +152,14 @@ class SDR {
         auto operator<<=(const other& o) { return shift(o); }
         template<typename other>
         auto operator>>=(const other& o) { return shift(-o); }
-        auto operator==(const SDR<SDR_t>& other) const { return other.v == this->v; }
-        auto operator!=(const SDR<SDR_t>& other) const { return !(other == *this); }
-        auto operator<(const SDR<SDR_t>& other) const { return other.v < this->v; }
-        auto operator<=(const SDR<SDR_t>& other) const { return other.v <= this->v; }
-        auto operator>(const SDR<SDR_t>& other) const { return other.v > this->v; }
-        auto operator>=(const SDR<SDR_t>& other) const { return other.v >= this->v; }
+        auto operator==(const SDR<SDR_t>& other) const { return this->v == other.v; }
+        auto operator!=(const SDR<SDR_t>& other) const { return !(*this == other); }
+        auto operator<(const SDR<SDR_t>& other) const {
+            return std::lexicographical_compare(this->v.crbegin(), this->v.crend(), other.v.crbegin(), other.v.crend());
+        }
+        auto operator>=(const SDR<SDR_t>& other) const { return !(*this < other); }
+        auto operator>(const SDR<SDR_t>& other) const { return other < *this; }
+        auto operator<=(const SDR<SDR_t>& other) const { return !(*this > other); }
 
         // static ref to mersenne twister with result type SDR_t
         static auto& get_twister() {
@@ -166,9 +173,6 @@ class SDR {
             return get_twister()();
         }
 
-        // rough benchmark for performance
-        static void do_benchark();
-    
     private:
         std::vector<SDR_t> v;
 
@@ -241,16 +245,16 @@ SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_
     assert(size <= underlying_array_length && period != 0 && underlying_array_length != 0);
     v.reserve(size);
     float progress = input / period;
-    progress -= (int)progress; // 0.225
+    progress -= (int)progress;
     assert(progress >= 0);
     SDR_t start_index = std::round(progress * underlying_array_length);
     if (start_index + size > underlying_array_length) {
         SDR_t leading_indices = start_index + size - underlying_array_length;
         SDR_t non_leading_indice = underlying_array_length - leading_indices - 1;
         while (leading_indices > 0) v.push_back(--leading_indices);
-        while (non_leading_indice < underlying_array_length) v.push_back(non_leading_indice++);
+        while (non_leading_indice < (SDR_t)underlying_array_length) v.push_back(non_leading_indice++);
     } else {
-        for (SDR_t i = 0; i < size; ++i) v.push_back(start_index + i);
+        for (SDR_t i = 0; i < (SDR_t)size; ++i) v.push_back(start_index + i);
     } 
 }
 
@@ -260,7 +264,7 @@ SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) 
     assert(input >= 0);
     v.reserve(size);
     SDR_t start_index = std::round((underlying_array_length - size) * input);
-    for (SDR_t i = 0; i < size; ++i) v.push_back(start_index + i);
+    for (SDR_t i = 0; i < (SDR_t)size; ++i) v.push_back(start_index + i);
 }
 
 template<typename SDR_t>
@@ -400,7 +404,7 @@ SDR<SDR_t>& SDR<SDR_t>::andi(const SDR<SDR_t>& arg) {
 template <typename SDR_t>
 typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(SDR_t val) const {
     return andb(val) ? 1 : 0;
-};
+}
 
 template <typename SDR_t>
 typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(const SDR<SDR_t>& arg) const {
@@ -653,57 +657,4 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDR_t>& sdr) {
     }
     os << ']';
     return os;
-}
-
-template <typename SDR_t>
-void SDR<SDR_t>::do_benchark() {
-    enum test_op {andb, ands, orb, ors, xorb, xors, andi, rm};
-    static struct {
-        inline void operator() (SDR a[], SDR b[], int num_sdr, std::string name, test_op op) const {
-            auto start = std::chrono::high_resolution_clock::now();
-            for (int i = 0; i < num_sdr; ++i) {
-                switch (op) {
-                    case andb : a[i] & b[i]; break;
-                    case ands : a[i] && b[i]; break;
-                    case orb : a[i] | b[i]; break;
-                    case ors : a[i] || b[i]; break;
-                    case xorb : a[i] ^ b[i]; break;
-                    case xors : a[i] <= b[i]; break;
-                    case andi : a[i] &= b[i]; break;
-                    case rm : a[i] -= b[i]; break;
-                }
-                
-            }
-            auto stop = std::chrono::high_resolution_clock::now();
-            std::cout << name << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << std::endl;
-        }
-    } time_funct;
-
-    constexpr static int num_sdr = 5;
-    constexpr static SDR_t index_max = 100000;
-    SDR a[num_sdr];
-    SDR b[num_sdr];
-    auto start = std::chrono::high_resolution_clock::now();
-    
-    for (auto& elem : a) {
-        for (SDR_t i = 0; i < index_max; ++i) {
-            elem += get_random_number() % index_max;
-        }
-    }
-    for (auto& elem : b) {
-        for (SDR_t i = 0; i < index_max; ++i) {
-            elem += get_random_number() % index_max;
-        }
-    }
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << "init: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << std::endl;
-    std::cout << "sizes: " << a[0].size() << std::endl;
-    time_funct(a, b, num_sdr, "andb", test_op::andb);
-    time_funct(a, b, num_sdr, "ands", test_op::ands);
-    time_funct(a, b, num_sdr, "orb", test_op::orb);
-    time_funct(a, b, num_sdr, "ors", test_op::ors);
-    time_funct(a, b, num_sdr, "xorb", test_op::xorb);
-    time_funct(a, b, num_sdr, "xors", test_op::xors);
-    time_funct(a, b, num_sdr, "andi", test_op::andi);
-    time_funct(a, b, num_sdr, "rm", test_op::rm);
 }

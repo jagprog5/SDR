@@ -204,4 +204,34 @@ BOOST_AUTO_TEST_CASE( test_encode_periodic ) {
     BOOST_REQUIRE_EQUAL(a, b);
 }
 
+struct LoadedType {
+    int index;
+    int data;
+    friend std::ostream& operator<<(std::ostream&, const LoadedType&);
+    bool operator<(const LoadedType& l) const { return index < l.index; }
+    bool operator==(const LoadedType& l) const { return index == l.index; }
+    operator decltype(index)() const { return index; }
+};
+
+std::ostream& operator<<(std::ostream& os, const LoadedType& l) {
+    os << l.index;
+    return os;
+}
+
+BOOST_AUTO_TEST_CASE( test_specialized_and ) {
+    SDR<LoadedType> loaded;
+    loaded.push_back(LoadedType{0, 2});
+    loaded.push_back(LoadedType{1, 1});
+    loaded.push_back(LoadedType{2, 0});
+    SDR<decltype(LoadedType::index)> selection{0};
+    BOOST_REQUIRE_EQUAL((loaded & selection)[0].data, 2);
+}
+
+BOOST_AUTO_TEST_CASE( test_comparison ) {
+    BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
+    BOOST_REQUIRE_NE((SDR<>{0, 2, 3}), (SDR<>{1, 2, 3}));
+    BOOST_REQUIRE_LT((SDR<>{0, 2, 3}), (SDR<>{1, 2, 3}));
+    BOOST_REQUIRE_GT((SDR<>{4}), (SDR<>{0, 1, 2}));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

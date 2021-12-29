@@ -4,7 +4,7 @@
 
 class Vertex {
     public:
-        using AbstractionType = SDR<>::IndexType;
+        using AbstractionType = SDR<>::index_type;
         Vertex() : abstraction{SDR<>::get_random_number()}, activity(0) {}
         Vertex(AbstractionType abstraction) : abstraction{abstraction}, activity(0) {}
         Vertex(AbstractionType abstraction, float activity) : abstraction{abstraction}, activity(activity) {}
