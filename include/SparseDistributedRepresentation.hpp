@@ -149,10 +149,6 @@ class SDR {
         auto operator>>=(const other& o) { return shift(-o); }
         auto operator==(const SDR<SDR_t>& other) const { return other.v == this->v; }
         auto operator!=(const SDR<SDR_t>& other) const { return !(other == *this); }
-        auto operator<(const SDR<SDR_t>& other) const { return other.v < this->v; }
-        auto operator<=(const SDR<SDR_t>& other) const { return other.v <= this->v; }
-        auto operator>(const SDR<SDR_t>& other) const { return other.v > this->v; }
-        auto operator>=(const SDR<SDR_t>& other) const { return other.v >= this->v; }
 
         // static ref to mersenne twister with result type SDR_t
         static auto& get_twister() {
@@ -260,7 +256,7 @@ SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) 
     assert(input >= 0);
     v.reserve(size);
     SDR_t start_index = std::round((underlying_array_length - size) * input);
-    for (SDR_t i = 0; i < size; ++i) v.push_back(start_index + i);
+    for (SDR_t i = 0; i < (SDR_t)size; ++i) v.push_back(start_index + i);
 }
 
 template<typename SDR_t>

@@ -12,6 +12,9 @@
 // };
 
 int main() {
+  SDRMemory<int, int> mem;
+  mem.write(SDR<int>(0.5, 3, 100), 5);
+  // std::cerr << (a < b) << '\n';
   // SDRMemory
   // SDRGraph g;
   // std::cerr << "cake yep" << std::endl;
