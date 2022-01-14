@@ -79,8 +79,12 @@ class SDR {
         // xor size, aka hamming distance. returns the number of bits in this xor arg.
         size_type xors(const SDR<SDR_t>& arg) const;
 
-        // turn off all bits in arg. Returns this.
-        SDR<SDR_t>& rm(const SDR<SDR_t>& arg);
+        // Returns a copy of this which lacks any bit from arg.
+        SDR<SDR_t> rm(const SDR<SDR_t>& arg) const;
+        // Remove inplace. Remove all bits in arg from this, then returns this.
+        SDR<SDR_t>& rmi(const SDR<SDR_t>& arg);
+        // Returns the number of elements in this that are not in arg.
+        size_type rms(const SDR<SDR_t>& arg) const;
         
         // Sets bit in this, then returns this.
         SDR<SDR_t>& set(SDR_t index, bool value);
@@ -189,7 +193,9 @@ class SDR {
         template <typename arg_t>
         static void andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t>* const b, bool size_only);
         // or operation. places the result in r.
-        static void orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b,  bool size_only, bool exclusive);
+        static void orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, bool size_only, bool exclusive);
+        // rm operation. places the result in r.
+        static void rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<SDR_t>* const arg, bool size_only);
 
         struct FormatText {
             char arr[3 + (int)ceil(log10(sizeof(SDR_t) * 8 + 1))] = {0};
@@ -526,13 +532,13 @@ typename SDR<SDR_t>::size_type SDR<SDR_t>::xors(const SDR<SDR_t>& arg) const {
 }
 
 template <typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
+SDR<SDR_t>& SDR<SDR_t>::rmi(const SDR<SDR_t>& arg) {
     auto arg_pos = arg.crbegin();
     auto arg_end = arg.crend();
     auto this_pos = v.rbegin();
     auto this_end = v.rend();
+    if (arg_pos == arg_end) goto end;
     while (true) {
-        if (arg_pos == arg_end) goto end;
         SDR_t elem = *arg_pos++;
         this_pos = lower_bound(this_pos, this_end, elem, std::greater<SDR_t>());
         if (this_pos == this_end) goto end;
@@ -566,11 +572,78 @@ SDR<SDR_t>& SDR<SDR_t>::rm(const SDR<SDR_t>& arg) {
 }
 
 template <typename SDR_t>
+void SDR<SDR_t>::rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<SDR_t>* const arg, bool size_only) {
+    assert(size_only || (r.sdr != me && r.sdr != arg));
+    SDR<SDR_t> ret;
+    auto arg_pos = arg->cbegin();
+    auto arg_end = arg->cend();
+    auto this_pos = me->cbegin();
+    auto this_end = me->cend();
+    SDR_t arg_elem;
+    SDR_t this_elem;
+
+    auto get_next_this = [&this_elem, &this_pos, &this_end]() -> bool {
+        if (this_pos == this_end) return false;
+        this_elem = *this_pos++;
+        return true;
+    };
+
+    auto get_next_arg = [&arg_elem, &arg_pos, &arg_end]() -> bool {
+        if (arg_pos == arg_end) return false;
+        arg_elem = *arg_pos++;
+        return true;
+    };
+
+    if (!get_next_this()) return;
+    if (!get_next_arg()) goto dump_remaining_this;
+
+    while (true) {
+        if (this_elem < arg_elem) {
+            if (size_only)
+                ++*r.length;
+            else
+                r.sdr->push_back(this_elem);
+            if (!get_next_this()) return;
+        } else if (this_elem == arg_elem) {
+            if (!get_next_this()) return;
+            if (!get_next_arg()) goto dump_remaining_this;
+        } else {
+            if (!get_next_arg()) goto dump_remaining_this;
+        }
+    }
+    dump_remaining_this:
+    while (this_pos != this_end) {
+        if (size_only)
+            ++*r.length;
+        else
+            r.sdr->push_back(this_elem);
+    }
+}
+
+template <typename SDR_t>
+SDR<SDR_t> SDR<SDR_t>::rm(const SDR<SDR_t>& arg) const {
+    SDR r;
+    SDROPResult rop;
+    rop.sdr = &r;
+    rmop(rop, this, &arg, false);
+    return r;
+}
+
+template <typename SDR_t>
+typename SDR<SDR_t>::size_type SDR<SDR_t>::rms(const SDR<SDR_t>& arg) const {
+    size_type r = 0;
+    SDROPResult rop;
+    rop.length = &r;
+    rmop(rop, this, &arg, true);
+    return r;
+}
+
+template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::set(SDR<SDR_t> arg, bool value) {
     if (value) {
         return ori(arg);
     } else {
-        return rm(arg);
+        return rmi(arg);
     }
 }
 
