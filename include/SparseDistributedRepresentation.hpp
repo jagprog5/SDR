@@ -36,8 +36,8 @@ class SDR {
         SDR(float input, size_type size, size_type underlying_array_length);
 
         // Encode a float as an SDR.
-        // @param input the float to encode.
-        // @param period encodes the input such that it wraps back to 0 as it approaches a multiple of the period.
+        // @param input the float to encode. Must be non-negative.
+        // @param period encodes the input such that it wraps back to 0 as it approaches a multiple of the period. Must be non-negative.
         // @param size the size of the instantiated SDR result.
         // @param underlying_array_length the size of the dense array being represented.
         SDR(float input, float period, size_type size, size_type underlying_array_length);
@@ -80,7 +80,7 @@ class SDR {
         size_type xors(const SDR<SDR_t>& arg) const;
 
         // Returns a copy of this which lacks any bit from arg.
-        SDR<SDR_t> rm(const SDR<SDR_t>& arg) const;
+        SDR<SDR_t> rmb(const SDR<SDR_t>& arg) const;
         // Remove inplace. Remove all bits in arg from this, then returns this.
         SDR<SDR_t>& rmi(const SDR<SDR_t>& arg);
         // Returns the number of elements in this that are not in arg.
@@ -137,7 +137,7 @@ class SDR {
         template<typename other>
         auto operator+=(const other& o) { return set(o, true); }
         template<typename other>
-        auto operator-(const other& o) const { return SDR(*this).set(o, false); }
+        auto operator-(const other& o) const { return rmb(o); }
         template<typename other>
         auto operator-=(const other& o) { return set(o, false); }
         template<typename other>
@@ -248,20 +248,27 @@ SDR<SDR_t>::SDR(std::initializer_list<SDR_t> list): v(list) {
 
 template<typename SDR_t>
 SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
-    assert(size <= underlying_array_length && period != 0 && underlying_array_length != 0);
+    assert(size <= underlying_array_length && period >= 0 && input >= 0);
     v.reserve(size);
     float progress = input / period;
     progress -= (int)progress;
-    assert(progress >= 0);
     SDR_t start_index = std::round(progress * underlying_array_length);
+
     if (start_index + size > underlying_array_length) {
-        SDR_t leading_indices = start_index + size - underlying_array_length;
-        SDR_t non_leading_indice = underlying_array_length - leading_indices - 1;
-        while (leading_indices > 0) v.push_back(--leading_indices);
-        while (non_leading_indice < (SDR_t)underlying_array_length) v.push_back(non_leading_indice++);
+        // if elements would go off the end of the array, wrap them back to the start
+
+        // the number of elements that wrap off the end
+        SDR_t wrapped_elements = start_index + size - underlying_array_length;
+        
+        // the number of elements that don't wrap off the end
+        SDR_t non_wrapped_elements = size - wrapped_elements;
+
+        for (SDR_t i = 0; i < (SDR_t)wrapped_elements; ++i) v.push_back(i);
+        for (SDR_t i = 0; i < (SDR_t)non_wrapped_elements; ++i) v.push_back(start_index + i);
     } else {
+        // no elements are wrapped from the end
         for (SDR_t i = 0; i < (SDR_t)size; ++i) v.push_back(start_index + i);
-    } 
+    }
 }
 
 template<typename SDR_t>
@@ -270,7 +277,7 @@ SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) 
     assert(input >= 0);
     v.reserve(size);
     SDR_t start_index = std::round((underlying_array_length - size) * input);
-    for (SDR_t i = 0; i < (SDR_t)size; ++i) v.push_back(start_index + i);
+    for (SDR_t i = 0; i < (SDR_t)size; ++i) push_back(start_index + i);
 }
 
 template<typename SDR_t>
@@ -457,6 +464,8 @@ void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>
     auto r_pos = (decltype(v.begin()))NULL;
     if (a_pos != a_end) a_val = *a_pos++; else a_valid = false; // get from a, or update a_valid if no more elements
     if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     while (a_valid || b_valid) {
         if ((a_valid && !b_valid) || (a_valid && b_valid && a_val < b_val)) {
             sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only);
@@ -472,6 +481,7 @@ void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>
             if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
         }
     }
+    #pragma GCC diagnostic pop
     if (!size_only) r.sdr->v.shrink_to_fit();
 }
 
@@ -594,8 +604,8 @@ void SDR<SDR_t>::rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<SDR_t
         return true;
     };
 
-    if (!get_next_this()) return;
     if (!get_next_arg()) goto dump_remaining_this;
+    if (!get_next_this()) return;
 
     while (true) {
         if (this_elem < arg_elem) {
@@ -605,23 +615,30 @@ void SDR<SDR_t>::rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<SDR_t
                 r.sdr->push_back(this_elem);
             if (!get_next_this()) return;
         } else if (this_elem == arg_elem) {
+            if (!get_next_arg()) goto dump_remaining_this;
             if (!get_next_this()) return;
-            if (!get_next_arg()) goto dump_remaining_this;
         } else {
-            if (!get_next_arg()) goto dump_remaining_this;
+            if (!get_next_arg()) {
+                if (size_only)
+                    ++*r.length;
+                else
+                    r.sdr->push_back(this_elem);
+                goto dump_remaining_this;
+            }
         }
     }
     dump_remaining_this:
-    while (this_pos != this_end) {
-        if (size_only)
-            ++*r.length;
-        else
-            r.sdr->push_back(this_elem);
+    if (size_only) {
+        *r.length += this_end - this_pos;
+    } else {
+        while (this_pos != this_end) {
+            r.sdr->push_back(*this_pos++);
+        }
     }
 }
 
 template <typename SDR_t>
-SDR<SDR_t> SDR<SDR_t>::rm(const SDR<SDR_t>& arg) const {
+SDR<SDR_t> SDR<SDR_t>::rmb(const SDR<SDR_t>& arg) const {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -663,7 +680,7 @@ template <typename SDR_t>
 SDR<SDR_t>& SDR<SDR_t>::join(const SDR<SDR_t>& arg) {
     assert(size() == 0 || arg.size() == 0 || *v.crbegin() < *arg.v.cbegin());
     v.reserve(v.size() + arg.v.size());
-    for (auto e : arg.v) { v.push_back(e); }
+    for (auto e : arg.v) { push_back(e); }
     return *this;
 }
 
