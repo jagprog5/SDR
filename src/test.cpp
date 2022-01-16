@@ -92,13 +92,23 @@ std::ostream& operator<<(std::ostream& os, const LoadedType& l) {
     return os;
 }
 
-BOOST_AUTO_TEST_CASE( test_specialized_and ) {
+BOOST_AUTO_TEST_CASE( test_loaded_types ) {
     SDR<LoadedType> loaded;
     loaded.push_back(LoadedType{0, 2});
     loaded.push_back(LoadedType{1, 1});
     loaded.push_back(LoadedType{2, 0});
     SDR<decltype(LoadedType::index)> selection{0};
-    BOOST_REQUIRE_EQUAL((loaded & selection)[0].data, 2);
+
+    SDR<LoadedType> and_result = loaded.andb(selection);
+    BOOST_REQUIRE_EQUAL(and_result[0].data, 2);
+
+    SDR<LoadedType> rm_result = loaded.rmb(selection);
+    BOOST_REQUIRE_EQUAL(rm_result[0].data, 1);
+    BOOST_REQUIRE_EQUAL(rm_result[1].data, 0);
+
+    SDR<LoadedType> rmi_result = SDR<LoadedType>(loaded).rmi(selection);
+    BOOST_REQUIRE_EQUAL(rmi_result[0].data, 1);
+    BOOST_REQUIRE_EQUAL(rmi_result[1].data, 0);
 }
 
 BOOST_AUTO_TEST_CASE( test_comparison ) {
