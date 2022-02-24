@@ -14,19 +14,16 @@
  * https://youtu.be/ZDgCdWTuIzc
  * Numenta: SDR Capacity & Comparison (Episode 2)
  */
-template<typename SDR_t = unsigned int>
+template<typename SDR_t = unsigned int, typename container_t = std::vector<SDR_t>>
 class SDR {
-    private:
-        void assert_ascending(); // used in constructors
-
     public:
         using index_type = SDR_t;
-        using size_type = typename std::vector<SDR_t>::size_type;
-        using const_iterator = typename std::vector<SDR_t>::const_iterator;
+        using size_type = container_t::size_type;
+        using const_iterator = container_t::const_iterator;
 
         SDR() {}
-        SDR(std::vector<SDR_t>&& v);
-        SDR<SDR_t>& operator=(std::vector<SDR_t>&& v);
+        SDR(container_t&& v);
+        SDR<SDR_t, container_t>& operator=(container_t&& v);
         SDR(std::initializer_list<SDR_t> list);
 
         // Encode a float as an SDR.
@@ -43,60 +40,76 @@ class SDR {
         SDR(float input, float period, size_type size, size_type underlying_array_length);
 
         // Turns off bits such that the length matches the specified amount.
-        SDR<SDR_t>& sample_length(size_type amount);
+        SDR<SDR_t, container_t>& sample_length(size_type amount);
+
         // Each bit has a chance of being turned off, specified by amount, where 0 nearly always clears the sdr, and 1 leaves it unchanged.
-        SDR<SDR_t>& sample_portion(float amount);
+        SDR<SDR_t, container_t>& sample_portion(float amount);
 
         // and bit. returns the state of a bit.
         template<typename arg_t>
         bool andb(arg_t val) const;
+
         // and bits. returns the state of many bits.
-        template<typename arg_t>
-        SDR<SDR_t> andb(const SDR<arg_t>& arg) const;
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t> andb(const SDR<arg_t, c_arg_t>& arg) const;
+
         // and bits. returns the state of many bits from start to stop.
         template<typename arg_t>
-        SDR<SDR_t> andb(arg_t start_inclusive, arg_t stop_exclusive) const;
+        SDR<SDR_t, container_t> andb(arg_t start_inclusive, arg_t stop_exclusive) const;
+
         // and inplace. turn off all bits not in arg (compute arg AND this, and place the result in this). Returns this.
-        template<typename arg_t>
-        SDR<SDR_t>& andi(const SDR<arg_t>& arg);
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t>& andi(const SDR<arg_t, c_arg_t>& arg);
+
         // and size. returns 0 if the bit is not contained in this, else 1.
-         template<typename arg_t>
-        size_type ands(arg_t val) const;
-        // and size. returns the number of bits in both this and arg.
         template<typename arg_t>
-        size_type ands(const SDR<arg_t>& arg) const;
+        size_type ands(arg_t val) const;
+
+        // and size. returns the number of bits in both this and arg.
+        template<typename arg_t, typename c_arg_t>
+        size_type ands(const SDR<arg_t, c_arg_t>& arg) const;
+
         // and size. returns the number of bits from start to stop.
         template<typename arg_t>
         size_type ands(arg_t start_inclusive, arg_t stop_exclusive) const;
+        
         // and positions. returns the positions in this in which the elements of arg reside.
         template<typename arg_t>
         std::vector<size_type> andp(const SDR<arg_t>& arg) const;
 
         // or bits. 
         SDR<SDR_t> orb(const SDR<SDR_t>& arg) const;
+
         // or inplace. turn on all bits in arg. Returns this.
         SDR<SDR_t>& ori(const SDR<SDR_t>& arg);
+
         // or size. returns the number of bits in this or arg.
         size_type ors(const SDR<SDR_t>& arg) const;
+
         // xor bits. 
         SDR<SDR_t> xorb(const SDR<SDR_t>& arg) const;
+
         // xor inplace. computes this xor arg, and places the result in this. Returns this.
         SDR<SDR_t>& xori(const SDR<SDR_t>& arg);
+
         // xor size, aka hamming distance. returns the number of bits in this xor arg.
         size_type xors(const SDR<SDR_t>& arg) const;
 
         // Returns a copy of this which lacks any bit from arg.
         template<typename arg_t>
         SDR<SDR_t> rmb(const SDR<arg_t>& arg) const;
+
         // Remove inplace. Remove all bits in arg from this, then returns this.
         template<typename arg_t>
         SDR<SDR_t>& rmi(const SDR<arg_t>& arg);
+
         // Returns the number of elements in this that are not in arg.
         template<typename arg_t>
         size_type rms(const SDR<arg_t>& arg) const;
         
         // Sets bit in this, then returns this.
         SDR<SDR_t>& set(SDR_t index, bool value);
+
         // Sets bits in this, then returns this.
         SDR<SDR_t>& set(SDR<SDR_t> arg, bool value);
 
@@ -181,13 +194,15 @@ class SDR {
             return twister;
         }
 
-        // uses the mersenne twister, SDR<SDR_t>::get_twister()
+        // uses the mersenne twister, SDR<SDR_t, container_t>::get_twister()
         static SDR_t get_random_number() {
             return get_twister()();
         }
 
     private:
         std::vector<SDR_t> v;
+
+        void assert_ascending();
 
         union SDROPResult {
             SDR<SDR_t>* sdr;
@@ -225,8 +240,8 @@ class SDR {
     static constexpr bool print_type = false;
 };
 
-template<typename SDR_t>
-void SDR<SDR_t>::assert_ascending() {
+template<typename SDR_t, typename container_t>
+void SDR<SDR_t, container_t>::assert_ascending() {
     #ifndef NDEBUG
         if (v.size() == 0) return;
         auto pos = v.begin();
@@ -240,24 +255,24 @@ void SDR<SDR_t>::assert_ascending() {
     #endif
 }
 
-template<typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::operator=(std::vector<SDR_t>&& v) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::operator=(container_t&& v) {
     this->v = v;
     return *this;
 }
 
-template<typename SDR_t>
-SDR<SDR_t>::SDR(std::vector<SDR_t>&& v): v(v) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t, container_t>::SDR(container_t&& v): v(v) {
     assert_ascending();
 }
 
-template<typename SDR_t>
-SDR<SDR_t>::SDR(std::initializer_list<SDR_t> list): v(list) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t, container_t>::SDR(std::initializer_list<SDR_t> list): v(list) {
     assert_ascending();
 }
 
-template<typename SDR_t>
-SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length && period >= 0 && input >= 0);
     v.reserve(size);
     float progress = input / period;
@@ -281,8 +296,8 @@ SDR<SDR_t>::SDR(float input, float period, size_type size, size_type underlying_
     }
 }
 
-template<typename SDR_t>
-SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length);
     assert(input >= 0);
     v.reserve(size);
@@ -290,8 +305,8 @@ SDR<SDR_t>::SDR(float input, size_type size, size_type underlying_array_length) 
     for (SDR_t i = 0; i < (SDR_t)size; ++i) push_back(start_index + i);
 }
 
-template<typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::sample_length(size_type amount) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::sample_length(size_type amount) {
     std::vector<SDR_t> temp;
     temp.reserve(amount);
     sample(cbegin(), cend(), back_inserter(temp), amount, get_twister());
@@ -299,8 +314,8 @@ SDR<SDR_t>& SDR<SDR_t>::sample_length(size_type amount) {
     return *this;
 }
 
-template<typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::sample_portion(float amount) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
     assert(amount >= 0 && amount <= 1);
     SDR_t check_val = amount * (get_twister().max() / 2);
     auto to_offset = v.begin();
@@ -316,15 +331,15 @@ SDR<SDR_t>& SDR<SDR_t>::sample_portion(float amount) {
     return *this;
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-bool SDR<SDR_t>::andb(arg_t val) const {
+bool SDR<SDR_t, container_t>::andb(arg_t val) const {
     auto pos = lower_bound(cbegin(), cend(), val);
     return pos != cend() && *pos == val;
 }
 
-template<typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::set(SDR_t index, bool value) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::set(SDR_t index, bool value) {
     auto it = lower_bound(cbegin(), cend(), index);
     if (value) {
         if (it == cend() || *it != index) v.insert(it, index);
@@ -334,9 +349,9 @@ SDR<SDR_t>& SDR<SDR_t>::set(SDR_t index, bool value) {
     return *this;
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template <typename CIT, typename AIT, typename BIT>
-void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only) {
+void SDR<SDR_t, container_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only) {
     if (size_only) {
         ++*r.length;
     } else {
@@ -357,9 +372,9 @@ void SDR<SDR_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a
     }
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t>* const b, bool size_only) {
+void SDR<SDR_t, container_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t>* const b, bool size_only) {
     assert(size_only || r.sdr != (const SDR<SDR_t>*)b);
     bool is_inplace = !size_only && r.sdr == a;
     auto a_pos = a->cbegin();
@@ -396,9 +411,9 @@ void SDR<SDR_t>::andop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<arg_t
     if (!size_only) r.sdr->v.shrink_to_fit();
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-SDR<SDR_t> SDR<SDR_t>::andb(const SDR<arg_t>& arg) const {
+SDR<SDR_t> SDR<SDR_t, container_t>::andb(const SDR<arg_t>& arg) const {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -406,9 +421,9 @@ SDR<SDR_t> SDR<SDR_t>::andb(const SDR<arg_t>& arg) const {
     return r; // nrvo 
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-SDR<SDR_t> SDR<SDR_t>::andb(arg_t start_inclusive, arg_t stop_exclusive) const {
+SDR<SDR_t> SDR<SDR_t, container_t>::andb(arg_t start_inclusive, arg_t stop_exclusive) const {
     assert(start_inclusive <= stop_exclusive);
     SDR sdr;
     auto start_it = lower_bound(cbegin(), cend(), start_inclusive);
@@ -418,24 +433,24 @@ SDR<SDR_t> SDR<SDR_t>::andb(arg_t start_inclusive, arg_t stop_exclusive) const {
     return sdr; // nrvo
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-SDR<SDR_t>& SDR<SDR_t>::andi(const SDR<arg_t>& arg) {
+SDR<SDR_t>& SDR<SDR_t, container_t>::andi(const SDR<arg_t>& arg) {
     SDROPResult rop;
     rop.sdr = this;
     andop(rop, this, &arg, false);
     return *this;
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(arg_t val) const {
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t val) const {
     return andb(val) ? 1 : 0;
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(const SDR<arg_t>& arg) const {
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(const SDR<arg_t>& arg) const {
     size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
@@ -443,19 +458,19 @@ typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(const SDR<arg_t>& arg) const {
     return r;
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-typename SDR<SDR_t>::size_type SDR<SDR_t>::ands(arg_t start_inclusive, arg_t stop_exclusive) const {
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t start_inclusive, arg_t stop_exclusive) const {
     SDR sdr;
     auto pos = lower_bound(cbegin(), cend(), start_inclusive);
     auto end_it = lower_bound(pos, cend(), stop_exclusive);
     return (size_type)(distance(pos, end_it));
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-std::vector<typename SDR<SDR_t>::size_type> SDR<SDR_t>::andp(const SDR<arg_t>& arg) const {
-    std::vector<typename SDR<SDR_t>::size_type> ret;
+std::vector<typename SDR<SDR_t, container_t>::size_type> SDR<SDR_t, container_t>::andp(const SDR<arg_t>& arg) const {
+    std::vector<typename SDR<SDR_t, container_t>::size_type> ret;
     auto begin = cbegin();
     auto pos = begin;
     auto end = cend();
@@ -467,8 +482,8 @@ std::vector<typename SDR<SDR_t>::size_type> SDR<SDR_t>::andp(const SDR<arg_t>& a
     return ret;
 }
 
-template <typename SDR_t>
-void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, bool size_only, bool exclusive) {
+template<typename SDR_t, typename container_t>
+void SDR<SDR_t, container_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>* const b, bool size_only, bool exclusive) {
     assert(size_only || (r.sdr != a && r.sdr != b));
     auto a_pos = a->cbegin();
     auto a_end = a->cend();
@@ -502,8 +517,8 @@ void SDR<SDR_t>::orop(SDROPResult r, const SDR<SDR_t>* const a, const SDR<SDR_t>
     if (!size_only) r.sdr->v.shrink_to_fit();
 }
 
-template <typename SDR_t>
-SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& arg) const {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t> SDR<SDR_t, container_t>::orb(const SDR<SDR_t>& arg) const {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -511,8 +526,8 @@ SDR<SDR_t> SDR<SDR_t>::orb(const SDR<SDR_t>& arg) const {
     return r; // nrvo 
 }
 
-template <typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& arg) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::ori(const SDR<SDR_t>& arg) {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -521,8 +536,8 @@ SDR<SDR_t>& SDR<SDR_t>::ori(const SDR<SDR_t>& arg) {
     return *this;
 }
 
-template <typename SDR_t>
-typename SDR<SDR_t>::size_type SDR<SDR_t>::ors(const SDR<SDR_t>& arg) const {
+template<typename SDR_t, typename container_t>
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ors(const SDR<SDR_t>& arg) const {
     size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
@@ -530,8 +545,8 @@ typename SDR<SDR_t>::size_type SDR<SDR_t>::ors(const SDR<SDR_t>& arg) const {
     return r;
 }
 
-template <typename SDR_t>
-SDR<SDR_t> SDR<SDR_t>::xorb(const SDR<SDR_t>& arg) const {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t> SDR<SDR_t, container_t>::xorb(const SDR<SDR_t>& arg) const {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -539,8 +554,8 @@ SDR<SDR_t> SDR<SDR_t>::xorb(const SDR<SDR_t>& arg) const {
     return r; // nrvo
 }
 
-template <typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::xori(const SDR<SDR_t>& arg) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::xori(const SDR<SDR_t>& arg) {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -549,8 +564,8 @@ SDR<SDR_t>& SDR<SDR_t>::xori(const SDR<SDR_t>& arg) {
     return *this;
 }
 
-template <typename SDR_t>
-typename SDR<SDR_t>::size_type SDR<SDR_t>::xors(const SDR<SDR_t>& arg) const {
+template<typename SDR_t, typename container_t>
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::xors(const SDR<SDR_t>& arg) const {
     size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
@@ -558,9 +573,9 @@ typename SDR<SDR_t>::size_type SDR<SDR_t>::xors(const SDR<SDR_t>& arg) const {
     return r;
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-SDR<SDR_t>& SDR<SDR_t>::rmi(const SDR<arg_t>& arg) {
+SDR<SDR_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t>& arg) {
     auto arg_pos = arg.crbegin();
     auto arg_end = arg.crend();
     auto this_pos = v.rbegin();
@@ -599,9 +614,9 @@ SDR<SDR_t>& SDR<SDR_t>::rmi(const SDR<arg_t>& arg) {
     return *this;
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-void SDR<SDR_t>::rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<arg_t>* const arg, bool size_only) {
+void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<arg_t>* const arg, bool size_only) {
     assert(size_only || (r.sdr != me && r.sdr != (const SDR<SDR_t>*)arg));
     SDR<SDR_t> ret;
     auto arg_pos = arg->cbegin();
@@ -656,9 +671,9 @@ void SDR<SDR_t>::rmop(SDROPResult r, const SDR<SDR_t>* const me, const SDR<arg_t
     }
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-SDR<SDR_t> SDR<SDR_t>::rmb(const SDR<arg_t>& arg) const {
+SDR<SDR_t> SDR<SDR_t, container_t>::rmb(const SDR<arg_t>& arg) const {
     SDR r;
     SDROPResult rop;
     rop.sdr = &r;
@@ -666,9 +681,9 @@ SDR<SDR_t> SDR<SDR_t>::rmb(const SDR<arg_t>& arg) const {
     return r;
 }
 
-template <typename SDR_t>
+template<typename SDR_t, typename container_t>
 template<typename arg_t>
-typename SDR<SDR_t>::size_type SDR<SDR_t>::rms(const SDR<arg_t>& arg) const {
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::rms(const SDR<arg_t>& arg) const {
     size_type r = 0;
     SDROPResult rop;
     rop.length = &r;
@@ -676,8 +691,8 @@ typename SDR<SDR_t>::size_type SDR<SDR_t>::rms(const SDR<arg_t>& arg) const {
     return r;
 }
 
-template <typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::set(SDR<SDR_t> arg, bool value) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::set(SDR<SDR_t> arg, bool value) {
     if (value) {
         return ori(arg);
     } else {
@@ -685,8 +700,8 @@ SDR<SDR_t>& SDR<SDR_t>::set(SDR<SDR_t> arg, bool value) {
     }
 }
 
-template <typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::shift(int amount) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::shift(int amount) {
     for (auto& elem : v) {
         #ifdef NDEBUG
         elem += amount;
@@ -697,16 +712,16 @@ SDR<SDR_t>& SDR<SDR_t>::shift(int amount) {
     return *this;
 }
 
-template <typename SDR_t>
-SDR<SDR_t>& SDR<SDR_t>::join(const SDR<SDR_t>& arg) {
+template<typename SDR_t, typename container_t>
+SDR<SDR_t>& SDR<SDR_t, container_t>::join(const SDR<SDR_t>& arg) {
     assert(size() == 0 || arg.size() == 0 || *v.crbegin() < *arg.v.cbegin());
     v.reserve(v.size() + arg.v.size());
     for (auto e : arg.v) { push_back(e); }
     return *this;
 }
 
-template <typename SDR_t>
-void SDR<SDR_t>::separate(SDR<SDR_t>& a, SDR<SDR_t>& b) {
+template<typename SDR_t, typename container_t>
+void SDR<SDR_t, container_t>::separate(SDR<SDR_t>& a, SDR<SDR_t>& b) {
     assert(&a != &b);
     auto a_pos = a.v.rbegin();
     auto a_end = a.v.rend();
@@ -753,10 +768,10 @@ void SDR<SDR_t>::separate(SDR<SDR_t>& a, SDR<SDR_t>& b) {
     b.v.shrink_to_fit();
 }
 
-template<typename SDR_t>
+template<typename SDR_t, typename container_t>
 std::ostream& operator<<(std::ostream& os, const SDR<SDR_t>& sdr) {
-    if constexpr(SDR<SDR_t>::print_type) {
-        static constexpr typename SDR<SDR_t>::FormatText beginning;
+    if constexpr(SDR<SDR_t, container_t>::print_type) {
+        static constexpr typename SDR<SDR_t, container_t>::FormatText beginning;
         os << beginning.arr;
     } else {
         os << '[';
