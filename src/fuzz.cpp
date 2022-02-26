@@ -189,20 +189,12 @@ int main(int argc, char** argv) {
                     std::cerr << "rmi failed! " << i << " " << j << "\n";
                     exit(1);
                 }
-
+                
                 if (a.rms(b) != rm_result.size()) {
                     std::cerr << "rms failed! " << i << " " << j << "\n";
                     exit(1);
                 }
-            }
-            {
-                SDR<> a_cp(a);
-                SDR<> b_cp(b);
-                SDR<>::separate(a_cp, b_cp);
-                if (!validate_separate(a, b, a_cp, b_cp)) {
-                    std::cerr << "separate failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
+
             }
         }
     }
