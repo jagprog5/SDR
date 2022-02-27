@@ -13,12 +13,18 @@ BOOST_AUTO_TEST_CASE(andop_range_simple) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 5, 20}.andb(2, 7)), (SDR<>{2, 3, 5}));
 }
 
-// BOOST_AUTO_TEST_CASE(andop_positions_simple) {
-//   auto s = SDR<>{1, 2, 3, 99};
-//   BOOST_REQUIRE((s.andp(SDR<>{2, 99})) ==
-//                 (std::vector<SDR<>::index_type*>{std::advanced(s, 1),
-//                                                  std::advanced(s, 3)}));
-// }
+BOOST_AUTO_TEST_CASE(andm_simple) {
+  using SDR_t = SDR<>::index_type;
+  std::function<void(SDR_t&)> visitor = [](SDR_t& elem) {
+    elem += 1;
+  };
+
+  auto a = SDR<>{1, 2, 3, 4};
+  auto b = SDR<>{2, 3, 4, 100};
+  a.andm(b, visitor);
+  BOOST_REQUIRE_EQUAL(a,
+                      (SDR<>{1, 3, 4, 5}));
+}
 
 BOOST_AUTO_TEST_CASE(andop_inplace_simple) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} &= SDR<>{0, 1, 2, 99, 100}),
