@@ -244,8 +244,9 @@ class SDR {
 
         // if r_pos is NULL, this indicates normal operation, and that the output is appended to r.
         // if r_pos is not NULL, this indicates that the operation is placing the result in one of it's operands, and r_pos indicates the overwrite position
+        // this function happens to be used only in andop and orop. Select an ideal allocation strategy for andop by setting and_op param to true, else false.
         template <typename CIT, typename AIT, typename BIT>
-        static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only = false);
+        static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only = false, bool and_op = false);
         // and operation. computes A & B, and places the result in r (or alternatively uses the visitor).
         template <typename arg_t, typename c_arg_t>
         static void andop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<arg_t, c_arg_t>* const b, bool size_only = false, bool use_visitor = false);
@@ -420,7 +421,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::set(SDR_t index, bool value) {
 
 template<typename SDR_t, typename container_t>
 template <typename CIT, typename AIT, typename BIT>
-void SDR<SDR_t, container_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, [[maybe_unused]] AIT a_pos, [[maybe_unused]] AIT a_end, [[maybe_unused]] BIT b_pos, [[maybe_unused]] BIT b_end, SDR_t elem, bool size_only) {
+void SDR<SDR_t, container_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, [[maybe_unused]] AIT a_pos, [[maybe_unused]] AIT a_end, [[maybe_unused]] BIT b_pos, [[maybe_unused]] BIT b_end, SDR_t elem, bool size_only, bool and_op) {
     // TODO this could be unified as a visitor.
     if (size_only) {
         ++*r.length;
@@ -431,12 +432,18 @@ void SDR<SDR_t, container_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, [[m
         } else {
             auto &rsdr = r.sdr->v;
             if constexpr(usesVector) {
-                // allocate for half the max possible remaining elements
+                // allocate based on the remaining elements / 2
                 if (rsdr.capacity() == rsdr.size()) {
                     size_type a_left = distance(a_pos, a_end);
                     size_type b_left = distance(b_pos, b_end);
-                    size_type max_remaining = a_left < b_left ? a_left : b_left;
-                    size_type cap_increase = max_remaining / 2 + 1;
+                    size_type cap_increase;
+                    if (and_op) {
+                        size_type max_remaining = a_left < b_left ? a_left : b_left;
+                        cap_increase = max_remaining / 2;
+                    } else {
+                        size_type both_remaining = a_left + b_left;
+                        cap_increase = both_remaining / 2;
+                    }
                     rsdr.reserve(rsdr.capacity() + cap_increase);
                 }
             }
@@ -471,7 +478,7 @@ void SDR<SDR_t, container_t>::andop(SDROPResult r, const SDR<SDR_t, container_t>
             if (use_visitor) {
                 (*r.visitor)(*const_cast<SDR_t*>(&*a_pos));
             } else {
-                sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_elem, size_only);
+                sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_elem, size_only, true);
             }
             ++b_pos;
             if (b_pos == b_end) goto end;
@@ -491,7 +498,7 @@ void SDR<SDR_t, container_t>::andop(SDROPResult r, const SDR<SDR_t, container_t>
                 if (use_visitor) {
                     (*r.visitor)(*const_cast<SDR_t*>(&*a_pos));
                 } else {
-                    sdrop_add_to_output(r, r_pos, b_pos, b_end, a_pos, a_end, a_elem, size_only);
+                    sdrop_add_to_output(r, r_pos, b_pos, b_end, a_pos, a_end, a_elem, size_only, true);
                 }
                 ++a_pos;
                 if (a_pos == a_end) goto end;
@@ -632,14 +639,14 @@ void SDR<SDR_t, container_t>::orop(SDROPResult r, const SDR<SDR_t, container_t>*
     #endif
     while (a_valid || b_valid) {
         if ((a_valid && !b_valid) || (a_valid && b_valid && a_val < b_val)) {
-            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only);
+            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only, false);
             if (a_pos != a_end) a_val = *a_pos++; else a_valid = false; // a
         } else if ((!a_valid && b_valid) || (a_valid && b_valid && a_val > b_val)) {
-            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, b_val, size_only);
+            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, b_val, size_only, false);
             if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
         } else {
             if (!exclusive) {
-                sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only);
+                sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only, false);
             }
             if (a_pos != a_end) a_val = *a_pos++; else a_valid = false; // a
             if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
@@ -845,6 +852,11 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
                 if (size_only) {
                     ++*r.length;
                 } else {
+                    if constexpr(usesVector) {
+                        if (r.sdr->v.capacity() == r.sdr->v.size()) {
+                            r.sdr->v.reserve(r.sdr->v.capacity() + distance(this_pos, this_end) / 2);
+                        }
+                    }
                     r.sdr->v.insert(r.sdr->v.end(), this_elem);
                 }
             }
@@ -865,6 +877,11 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
                     if (size_only) {
                         ++*r.length;
                     } else {
+                        if constexpr(usesVector) {
+                            if (r.sdr->v.capacity() == r.sdr->v.size()) {
+                                r.sdr->v.reserve(r.sdr->v.capacity() + distance(this_pos, this_end) / 2);
+                            }
+                        }
                         r.sdr->v.insert(r.sdr->v.end(), this_elem);
                     }
                     ++this_pos;
@@ -877,7 +894,7 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
     }
     dump_remaining_this:
     if (size_only) {
-        if constexpr(usesVector) {
+        if constexpr (usesVector) {
             *r.length += this_end - this_pos;
         } else {
             while (this_pos != this_end) {
@@ -890,8 +907,16 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
             if (use_visitor) {
                 (*r.visitor)(*const_cast<SDR_t*>(&*this_pos++));
             } else {
+                if constexpr(usesVector) {
+                    if (r.sdr->v.capacity() == r.sdr->v.size()) {
+                        r.sdr->v.reserve(r.sdr->v.capacity() + distance(this_pos, this_end) / 2);
+                    }
+                }
                 r.sdr->v.insert(r.sdr->v.end(), *this_pos++);
             }
+        }
+        if constexpr (usesVector) {
+            r.sdr->v.shrink_to_fit();
         }
     }
 }
