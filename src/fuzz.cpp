@@ -1,5 +1,8 @@
 #include "SparseDistributedRepresentation.hpp"
 #include <cstring>
+#include <chrono>
+
+using namespace std::chrono;
 
 SDR<> get_sdr(int val) {
     SDR<> ret;
@@ -8,7 +11,7 @@ SDR<> get_sdr(int val) {
             ret.push_back(i);
         }
     }
-    return ret; 
+    return ret;
 }
 
 #define REQUIRE_TRUE(x) if (!(x)) return false;
@@ -113,6 +116,20 @@ int main(int argc, char** argv) {
     }
     assert(fuzz_amount >= 100);
 
+    duration<int64_t, std::nano> and_time(0);
+    duration<int64_t, std::nano> andi_time(0);
+    duration<int64_t, std::nano> ands_time(0);
+    duration<int64_t, std::nano> or_time(0);
+    duration<int64_t, std::nano> ori_time(0);
+    duration<int64_t, std::nano> ors_time(0);
+    duration<int64_t, std::nano> xor_time(0);
+    duration<int64_t, std::nano> xori_time(0);
+    duration<int64_t, std::nano> xors_time(0);
+    duration<int64_t, std::nano> rm_time(0);
+    duration<int64_t, std::nano> rmi_time(0);
+    duration<int64_t, std::nano> rms_time(0);
+
+
     for (int i = 0; i < fuzz_amount; ++i) {
         if (i % (fuzz_amount / 100) == 0)
             std::cout << "\r" << (float)(i) / fuzz_amount * 100 << "%" << std::flush;
@@ -120,77 +137,117 @@ int main(int argc, char** argv) {
         for (int j = 0; j < fuzz_amount; ++j) {
             SDR<> b = get_sdr(j);
             {
+                auto start = high_resolution_clock::now();
                 SDR<> and_result = a.andb(b);
+                auto stop = high_resolution_clock::now();
                 if (!validate_andop(a, b, and_result)) {
                     std::cerr << "andb failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                and_time += stop - start;
                 
                 SDR<> a_cp(a);
+                auto start_i = high_resolution_clock::now();
                 SDR<> andi_result = a_cp.andi(b);
+                auto stop_i = high_resolution_clock::now();
                 if (a_cp != and_result) {
                     std::cerr << "andi failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                andi_time += stop_i - start_i;
 
-                if (a.ands(b) != and_result.size()) {
+                auto start_s = high_resolution_clock::now();
+                auto size = a.ands(b);
+                auto stop_s = high_resolution_clock::now();
+                if (size != and_result.size()) {
                     std::cerr << "ands failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                ands_time += stop_s - start_s;
             }
             {
+                auto start = high_resolution_clock::now();
                 SDR<> or_result = a.orb(b);
+                auto stop = high_resolution_clock::now();
                 if (!validate_orop(a, b, or_result)) {
                     std::cerr << "orb failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                or_time += stop - start;
                 
                 SDR<> a_cp(a);
+                auto start_i = high_resolution_clock::now();
                 SDR<> ori_result = a_cp.ori(b);
+                auto stop_i = high_resolution_clock::now();
                 if (a_cp != or_result) {
                     std::cerr << "ori failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                ori_time += stop_i - start_i;
 
-                if (a.ors(b) != or_result.size()) {
+                auto start_s = high_resolution_clock::now();
+                auto size = a.ors(b);
+                auto stop_s = high_resolution_clock::now();
+                if (size != or_result.size()) {
                     std::cerr << "ors failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                ors_time += stop_s - start_s;
             }
             {
+                auto start = high_resolution_clock::now();
                 SDR<> xor_result = a.xorb(b);
+                auto stop = high_resolution_clock::now();
                 if (!validate_xorop(a, b, xor_result)) {
                     std::cerr << "xorb failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                xor_time += stop - start;
                 
                 SDR<> a_cp(a);
+                auto start_i = high_resolution_clock::now();
                 SDR<> xori_result = a_cp.xori(b);
+                auto stop_i = high_resolution_clock::now();
                 if (a_cp != xor_result) {
                     std::cerr << "xori failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                xori_time += stop_i - start_i;
 
-                if (a.xors(b) != xor_result.size()) {
+                auto start_s = high_resolution_clock::now();
+                auto size = a.xors(b);
+                auto stop_s = high_resolution_clock::now();
+                if (size != xor_result.size()) {
                     std::cerr << "xors failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                xors_time += stop_s - start_s;
             }
             {
+                auto start = high_resolution_clock::now();
                 SDR<> rm_result = a.rmb(b);
+                auto stop = high_resolution_clock::now();
                 if (!validate_rmop(a, b, rm_result)) {
                     std::cerr << "rmb failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                rm_time += stop - start;
                 
                 SDR<> a_cp(a);
+                auto start_i = high_resolution_clock::now();
                 SDR<> rmi_result = a_cp.rmi(b);
+                auto stop_i = high_resolution_clock::now();
                 if (a_cp != rm_result) {
                     std::cerr << "rmi failed! " << i << " " << j << "\n";
                     exit(1);
                 }
+                rmi_time = stop_i - start_i;
                 
-                if (a.rms(b) != rm_result.size()) {
+                auto start_s = high_resolution_clock::now();
+                auto size = a.rms(b);
+                auto stop_s = high_resolution_clock::now();
+                rms_time = stop_s - start_s;
+                if (size != rm_result.size()) {
                     std::cerr << "rms failed! " << i << " " << j << "\n";
                     exit(1);
                 }
@@ -199,4 +256,16 @@ int main(int argc, char** argv) {
         }
     }
     std::cout << "\rDone!\n";
+    std::cout << "and_time: " << and_time.count() << std::endl;
+    std::cout << "andi_time: " << andi_time.count() << std::endl;
+    std::cout << "ands_time: " << ands_time.count() << std::endl;
+    std::cout << "or_time: " << or_time.count() << std::endl;
+    std::cout << "ori_time: " << ori_time.count() << std::endl;
+    std::cout << "ors_time: " << ors_time.count() << std::endl;
+    std::cout << "xor_time: " << xor_time.count() << std::endl;
+    std::cout << "xori_time: " << xori_time.count() << std::endl;
+    std::cout << "xors_time: " << xors_time.count() << std::endl;
+    std::cout << "rm_time: " << rm_time.count() << std::endl;
+    std::cout << "rmi_time: " << rmi_time.count() << std::endl;
+    std::cout << "rms_time: " << rms_time.count() << std::endl;
 }
