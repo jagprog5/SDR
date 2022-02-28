@@ -26,6 +26,19 @@ BOOST_AUTO_TEST_CASE(andm_simple) {
                       (SDR<>{1, 3, 4, 5}));
 }
 
+BOOST_AUTO_TEST_CASE(rmm_simple) {
+  using SDR_t = SDR<>::index_type;
+  std::function<void(SDR_t&)> visitor = [](SDR_t& elem) {
+    elem += 1;
+  };
+
+  auto a = SDR<>{1, 3, 4};
+  auto b = SDR<>{3, 4, 100};
+  a.rmm(b, visitor);
+  BOOST_REQUIRE_EQUAL(a,
+                      (SDR<>{2, 3, 4}));
+}
+
 BOOST_AUTO_TEST_CASE(andop_inplace_simple) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} &= SDR<>{0, 1, 2, 99, 100}),
                       (SDR<>{1, 2, 99}));

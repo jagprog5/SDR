@@ -136,6 +136,15 @@ class SDR {
         // Returns the number of elements in this that are not in arg.
         template<typename arg_t, typename c_arg_t>
         size_type rms(const SDR<arg_t, c_arg_t>& arg) const;
+
+        /**
+         * rm modify. Perform an operation on all elements based on a query.
+         * each element in this which is NOT found in the query is called as the argument to the visitor.
+         * ensure that the visitor does not modify elements in a way that would put the sdr in an invalid state,
+         * e.g. elements are no longer ascending in a vector based sdr.
+         */
+        template<typename arg_t, typename c_arg_t>
+        void rmm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor);
         
         // Sets bit in this, then returns this.
         SDR<SDR_t, container_t>& set(SDR_t index, bool value);
@@ -227,8 +236,6 @@ class SDR {
 
         void assert_ascending();
 
-        using visitor_t = std::function<void(SDR_t&)>;
-
         union SDROPResult {
             SDR<SDR_t, container_t>* sdr;
             size_type* length;
@@ -244,9 +251,9 @@ class SDR {
         static void andop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<arg_t, c_arg_t>* const b, bool size_only = false, bool use_visitor = false);
         // or operation. places the result in r.
         static void orop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<SDR_t, container_t>* const b, bool size_only = false, bool exclusive = false);
-        // rm operation. places the result in r.
+        // rm operation. places the result in r (or alternatively uses the visitor).
         template <typename arg_t, typename c_arg_t>
-        static void rmop(SDROPResult r, const SDR<SDR_t, container_t>* const me, const SDR<arg_t, c_arg_t>* const arg, bool size_only = false);
+        static void rmop(SDROPResult r, const SDR<SDR_t, container_t>* const me, const SDR<arg_t, c_arg_t>* const arg, bool size_only = false, bool use_visitor = false);
 
         struct FormatText {
             char arr[3 + (int)ceil(log10(sizeof(SDR_t) * 8 + 1))] = {0};
@@ -600,7 +607,6 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t 
 template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 void SDR<SDR_t, container_t>::andm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor) {
-    assert(visitor);
     SDROPResult rop;
     rop.visitor = &visitor;
     andop(rop, this, &query, false, true);
@@ -806,8 +812,8 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
 
 template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
-void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>* const me, const SDR<arg_t, c_arg_t>* const arg, bool size_only) {
-    assert(size_only || (r.sdr != me && r.sdr != (const SDR<SDR_t, container_t>*)arg));
+void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>* const me, const SDR<arg_t, c_arg_t>* const arg, bool size_only, bool use_visitor) {
+    assert(size_only || use_visitor || (r.sdr != me && r.sdr != (const SDR<SDR_t, container_t>*)arg));
     SDR<SDR_t, container_t> ret;
     auto arg_pos = arg->cbegin();
     auto arg_end = arg->cend();
@@ -815,12 +821,6 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
     auto this_end = me->cend();
     arg_t arg_elem;
     SDR_t this_elem;
-
-    auto get_next_this = [&this_elem, &this_pos, &this_end]() -> bool {
-        if (this_pos == this_end) return false;
-        this_elem = *this_pos++;
-        return true;
-    };
 
     auto get_next_arg = [&this_elem, &arg_elem, &arg_pos, &arg_end]() -> bool {
         if constexpr (!small_args) {
@@ -833,25 +833,45 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
 
     if (arg_pos == arg_end) goto dump_remaining_this;
     arg_elem = *arg_pos++;
-    if (!get_next_this()) return;
+
+    if (this_pos == this_end) return;
+    this_elem = *this_pos;
 
     while (true) {
         if (this_elem < arg_elem) {
-            if (size_only)
-                ++*r.length;
-            else
-                r.sdr->v.insert(r.sdr->v.end(), this_elem);
-            if (!get_next_this()) return;
+            if (use_visitor) {
+                (*r.visitor)(*const_cast<SDR_t*>(&*this_pos));
+            } else {
+                if (size_only) {
+                    ++*r.length;
+                } else {
+                    r.sdr->v.insert(r.sdr->v.end(), this_elem);
+                }
+            }
+            ++this_pos;
+
+            if (this_pos == this_end) return;
+            this_elem = *this_pos;
         } else if (this_elem == arg_elem) {
+            ++this_pos;
             if (!get_next_arg()) goto dump_remaining_this;
-            if (!get_next_this()) return;
+            if (this_pos == this_end) return;
+            this_elem = *this_pos;
         } else {
             if (!get_next_arg()) {
-                if (size_only)
-                    ++*r.length;
-                else
-                    r.sdr->v.insert(r.sdr->v.end(), this_elem);
-                goto dump_remaining_this;
+                if (use_visitor) {
+                    (*r.visitor)(*const_cast<SDR_t*>(&*this_pos));
+                } else {
+                    if (size_only) {
+                        ++*r.length;
+                    } else {
+                        r.sdr->v.insert(r.sdr->v.end(), this_elem);
+                    }
+                    ++this_pos;
+                    goto dump_remaining_this;
+                }
+                ++this_pos;
+                if (this_pos == this_end) return;
             }
         }
     }
@@ -867,7 +887,11 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
         }
     } else {
         while (this_pos != this_end) {
-            r.sdr->v.insert(r.sdr->v.end(), *this_pos++);
+            if (use_visitor) {
+                (*r.visitor)(*const_cast<SDR_t*>(&*this_pos++));
+            } else {
+                r.sdr->v.insert(r.sdr->v.end(), *this_pos++);
+            }
         }
     }
 }
@@ -890,6 +914,14 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::rms(const S
     rop.length = &r;
     rmop(rop, this, &arg, true);
     return r;
+}
+
+template<typename SDR_t, typename container_t>
+template<typename arg_t, typename c_arg_t>
+void SDR<SDR_t, container_t>::rmm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor) {
+    SDROPResult rop;
+    rop.visitor = &visitor;
+    rmop(rop, this, &query, false, true);
 }
 
 template<typename SDR_t, typename container_t>
