@@ -255,17 +255,17 @@ int main(int argc, char** argv) {
             }
         }
     }
-    std::cout << "\rDone!\n";
-    std::cout << "and_time: " << and_time.count() << std::endl;
-    std::cout << "andi_time: " << andi_time.count() << std::endl;
-    std::cout << "ands_time: " << ands_time.count() << std::endl;
-    std::cout << "or_time: " << or_time.count() << std::endl;
-    std::cout << "ori_time: " << ori_time.count() << std::endl;
-    std::cout << "ors_time: " << ors_time.count() << std::endl;
-    std::cout << "xor_time: " << xor_time.count() << std::endl;
-    std::cout << "xori_time: " << xori_time.count() << std::endl;
-    std::cout << "xors_time: " << xors_time.count() << std::endl;
-    std::cout << "rm_time: " << rm_time.count() << std::endl;
-    std::cout << "rmi_time: " << rmi_time.count() << std::endl;
-    std::cout << "rms_time: " << rms_time.count() << std::endl;
+    std::cout << "\r=======time (ns)======\n";
+    std::cout << "and: " << and_time.count() << std::endl;
+    std::cout << "andi: " << andi_time.count() << std::endl;
+    std::cout << "ands: " << ands_time.count() << std::endl;
+    std::cout << "or: " << or_time.count() << std::endl;
+    std::cout << "ori: " << ori_time.count() << std::endl;
+    std::cout << "ors: " << ors_time.count() << std::endl;
+    std::cout << "xor: " << xor_time.count() << std::endl;
+    std::cout << "xori: " << xori_time.count() << std::endl;
+    std::cout << "xors: " << xors_time.count() << std::endl;
+    std::cout << "rm: " << rm_time.count() << std::endl;
+    std::cout << "rmi: " << rmi_time.count() << std::endl;
+    std::cout << "rms: " << rms_time.count() << std::endl;
 }

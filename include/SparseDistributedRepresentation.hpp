@@ -99,31 +99,55 @@ class SDR {
         size_type ands(arg_t start_inclusive, arg_t stop_exclusive) const;
         
         /**
-         * and modify. Perform an operation on all elements based on a query.
-         * each element in this which is found in the query is called as the argument to the visitor.
+         * and visitor. Perform an operation on all elements based on a query.
+         * each element in this which is found in the query is called as the argument to the visitor as visitor(SDR_t&).
          * ensure that the visitor does not modify elements in a way that would put the sdr in an invalid state,
          * e.g. elements are no longer ascending in a vector based sdr.
          */
-        template<typename arg_t, typename c_arg_t>
-        void andm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor);
+        template<typename arg_t, typename c_arg_t, typename Visitor>
+        void andv(const SDR<arg_t, c_arg_t>& query, Visitor visitor);
         
-        // or bits. 
-        SDR<SDR_t, container_t> orb(const SDR<SDR_t, container_t>& arg) const;
+        // or bits.
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t> orb(const SDR<arg_t, c_arg_t>& arg) const;
 
         // or inplace. turn on all bits in arg. Returns this.
-        SDR<SDR_t, container_t>& ori(const SDR<SDR_t, container_t>& arg);
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t>& ori(const SDR<arg_t, c_arg_t>& arg);
 
         // or size. returns the number of bits in this or arg.
-        size_type ors(const SDR<SDR_t, container_t>& arg) const;
+        template<typename arg_t, typename c_arg_t>
+        size_type ors(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // xor bits. 
-        SDR<SDR_t, container_t> xorb(const SDR<SDR_t, container_t>& arg) const;
+        // xor bits.
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t> xorb(const SDR<arg_t, c_arg_t>& arg) const;
 
         // xor inplace. computes this xor arg, and places the result in this. Returns this.
-        SDR<SDR_t, container_t>& xori(const SDR<SDR_t, container_t>& arg);
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t>& xori(const SDR<arg_t, c_arg_t>& arg);
 
         // xor size, aka hamming distance. returns the number of bits in this xor arg.
-        size_type xors(const SDR<SDR_t, container_t>& arg) const;
+        template<typename arg_t, typename c_arg_t>
+        size_type xors(const SDR<arg_t, c_arg_t>& arg) const;
+
+        /**
+         * xor visitor. Perform an operation on all elements based on a query.
+         * each element in this which is found in the query is called as the argument to the visitor as visitora(SDR_t&) or visitorb(arg_t&).
+         * ensure that the visitor does not modify elements in a way that would put the sdr in an invalid state,
+         * e.g. elements are no longer ascending in a vector based sdr.
+         */
+        template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB>
+        void xorv(const SDR<arg_t, c_arg_t>& query, VisitorA visitora, VisitorB visitorb);
+
+        /**
+         * xor modify. Perform an operation on all elements based on a query.
+         * each element in this which xor in found in the query is called as the argument to the visitor.
+         * ensure that the visitor does not modify elements in a way that would put the sdr in an invalid state,
+         * e.g. elements are no longer ascending in a vector based sdr.
+         */
+        // template<typename arg_t, typename c_arg_t>
+        // void xorm(SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor_this, , std::function<void(arg_t&)>& visitor_query);
 
         // Returns a copy of this which lacks any bit from arg.
         template<typename arg_t, typename c_arg_t>
@@ -138,13 +162,13 @@ class SDR {
         size_type rms(const SDR<arg_t, c_arg_t>& arg) const;
 
         /**
-         * rm modify. Perform an operation on all elements based on a query.
+         * rm visitor. Perform an operation on all elements based on a query.
          * each element in this which is NOT found in the query is called as the argument to the visitor.
          * ensure that the visitor does not modify elements in a way that would put the sdr in an invalid state,
          * e.g. elements are no longer ascending in a vector based sdr.
          */
-        template<typename arg_t, typename c_arg_t>
-        void rmm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor);
+        template<typename arg_t, typename c_arg_t, typename Visitor>
+        void rmv(const SDR<arg_t, c_arg_t>& query, Visitor visitor);
         
         // Sets bit in this, then returns this.
         SDR<SDR_t, container_t>& set(SDR_t index, bool value);
@@ -247,14 +271,19 @@ class SDR {
         // this function happens to be used only in andop and orop. Select an ideal allocation strategy for andop by setting and_op param to true, else false.
         template <typename CIT, typename AIT, typename BIT>
         static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only = false, bool and_op = false);
-        // and operation. computes A & B, and places the result in r (or alternatively uses the visitor).
-        template <typename arg_t, typename c_arg_t>
-        static void andop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<arg_t, c_arg_t>* const b, bool size_only = false, bool use_visitor = false);
-        // or operation. places the result in r.
-        static void orop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<SDR_t, container_t>* const b, bool size_only = false, bool exclusive = false);
-        // rm operation. places the result in r (or alternatively uses the visitor).
-        template <typename arg_t, typename c_arg_t>
-        static void rmop(SDROPResult r, const SDR<SDR_t, container_t>* const me, const SDR<arg_t, c_arg_t>* const arg, bool size_only = false, bool use_visitor = false);
+
+        // and operation. computes A & B. each selected element is called in the visitor as visitor(SDR_t&)
+        template <typename arg_t, typename c_arg_t, typename Visitor>
+        static void andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, Visitor visitor);
+
+        // or operation. each selected element from a is called to visitor a as visitora(SDR_t&), and from b is visitorb(arg_t&)
+        template <typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, bool exclusive>
+        static void orop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, VisitorA visitora, VisitorB visitorb);
+
+        // rm operation. each selected element is called in visitor(SDR_t&)
+        // the trailing elements start position is called in DumpEnd(const_iterator)
+        template <typename arg_t, typename c_arg_t, typename Visitor, typename DumpEnd>
+        static void rmop(const SDR<SDR_t, container_t>& me, const SDR<arg_t, c_arg_t>& arg, Visitor visitor, DumpEnd dumpEnd);
 
         struct FormatText {
             char arr[3 + (int)ceil(log10(sizeof(SDR_t) * 8 + 1))] = {0};
@@ -404,6 +433,54 @@ bool SDR<SDR_t, container_t>::andb(arg_t val) const {
 }
 
 template<typename SDR_t, typename container_t>
+template<typename arg_t>
+SDR<SDR_t, container_t> SDR<SDR_t, container_t>::andb(arg_t start_inclusive, arg_t stop_exclusive) const {
+    assert(start_inclusive <= stop_exclusive);
+    SDR sdr;
+    decltype(lower_bound(cbegin(), cend(), start_inclusive)) start_it;
+    if constexpr(!usesSet) {
+        start_it = lower_bound(cbegin(), cend(), start_inclusive);
+    } else {
+        start_it = v.lower_bound(start_inclusive);
+    }
+    decltype(start_it) end_it;
+    if constexpr(!usesSet) {
+        end_it = lower_bound(start_it, cend(), stop_exclusive);
+    } else {
+        end_it = v.lower_bound(stop_exclusive);
+    }
+    if constexpr(usesVector) {
+        sdr.v.reserve(distance(start_it, end_it));
+    }
+    for (auto it = start_it; it != end_it; ++it) {
+        sdr.v.insert(sdr.v.end(), *it);
+    }
+    return sdr; // nrvo
+}
+
+template<typename SDR_t, typename container_t>
+template<typename arg_t>
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t start_inclusive, arg_t stop_exclusive) const {
+    SDR sdr;
+    if (usesSet) {
+        auto pos = v.lower_bound(start_inclusive);
+        size_type count = 0;
+        while (pos != v.cend()) {
+            if (*pos == stop_exclusive) {
+                return count;
+            }
+            ++count;
+            ++pos;
+        }
+        return count;
+    } else {
+        auto pos = lower_bound(cbegin(), cend(), start_inclusive);
+        auto end_it = lower_bound(pos, cend(), stop_exclusive);
+        return (size_type)(pos - end_it);
+    }
+}
+
+template<typename SDR_t, typename container_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::set(SDR_t index, bool value) {
     decltype(lower_bound(cbegin(), cend(), value)) it;
     if constexpr(!usesSet) {
@@ -453,70 +530,49 @@ void SDR<SDR_t, container_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, [[m
 }
 
 template<typename SDR_t, typename container_t>
-template<typename arg_t, typename c_arg_t>
-void SDR<SDR_t, container_t>::andop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<arg_t, c_arg_t>* const b, bool size_only, bool use_visitor) {
-    assert(size_only || use_visitor || r.sdr != (const SDR<SDR_t, container_t>*)b);
-    bool is_inplace = !size_only && r.sdr == a;
-    assert(!(is_inplace && usesSet));
-    auto a_pos = a->cbegin();
-    auto a_end = a->cend();
-    auto b_pos = b->cbegin();
-    auto b_end = b->cend();
+template <typename arg_t, typename c_arg_t, typename Visitor>
+void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, Visitor visitor) {
+    auto a_pos = a.cbegin();
+    auto a_end = a.cend();
+    auto b_pos = b.cbegin();
+    auto b_end = b.cend();
     SDR_t a_elem;
-    [[maybe_unused]]arg_t b_elem;
-    auto r_pos = is_inplace ? r.sdr->v.begin() : (decltype(r.sdr->v.begin()))NULL;
-    if (a_pos == a_end) goto end;
+    [[maybe_unused]] arg_t b_elem;
+
+    if (a_pos == a_end) return;
     while (true) {
         a_elem = *a_pos;
         if constexpr(isSet<c_arg_t>::value) {
-            b_pos = b->v.lower_bound(a_elem);
+            b_pos = b.v.lower_bound(a_elem);
         } else {
             b_pos = lower_bound(b_pos, b_end, a_elem);
         }
-        if (b_pos == b_end) goto end;
+        if (b_pos == b_end) return;
         if (*b_pos == a_elem) {
-            if (use_visitor) {
-                (*r.visitor)(*const_cast<SDR_t*>(&*a_pos));
-            } else {
-                sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_elem, size_only, true);
-            }
+            visitor(*const_cast<SDR_t*>(&*a_pos));
             ++b_pos;
-            if (b_pos == b_end) goto end;
+            if (b_pos == b_end) return;
         }
         ++a_pos;
         // ============= a and b swapped ===^=V================
         if constexpr (!small_args) {
             b_elem = *b_pos;
             if constexpr(usesSet) {
-                a_pos = a->v.lower_bound((SDR_t)b_elem);
+                a_pos = a.v.lower_bound((SDR_t)b_elem);
             } else {
                 a_pos = lower_bound(a_pos, a_end, b_elem);
             }
-            if (a_pos == a_end) goto end;
+            if (a_pos == a_end) return;
             a_elem = *a_pos;
             if (a_elem == b_elem) {
-                if (use_visitor) {
-                    (*r.visitor)(*const_cast<SDR_t*>(&*a_pos));
-                } else {
-                    sdrop_add_to_output(r, r_pos, b_pos, b_end, a_pos, a_end, a_elem, size_only, true);
-                }
+                visitor(*const_cast<SDR_t*>(&*a_pos));
                 ++a_pos;
-                if (a_pos == a_end) goto end;
+                if (a_pos == a_end) return;
             }
             ++b_pos;
         } else {
-            if (a_pos == a_end) goto end;
+            if (a_pos == a_end) return;
         }
-    }
-    end:
-    if (is_inplace) {
-        // this will never be false
-        if constexpr (usesVector || usesList) {
-            r.sdr->v.resize(distance(r.sdr->v.begin(), r_pos));
-        }
-    }
-    if constexpr (usesVector) {
-        if (!size_only) r.sdr->v.shrink_to_fit();
     }
 }
 
@@ -524,51 +580,32 @@ template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t> SDR<SDR_t, container_t>::andb(const SDR<arg_t, c_arg_t>& arg) const {
     SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    andop(rop, this, &arg, false);
+    auto visitor = [&](SDR_t& elem) {
+        r.push_back(elem);
+    };
+    andop(*this, arg, visitor);
     return r; // nrvo 
-}
-
-template<typename SDR_t, typename container_t>
-template<typename arg_t>
-SDR<SDR_t, container_t> SDR<SDR_t, container_t>::andb(arg_t start_inclusive, arg_t stop_exclusive) const {
-    assert(start_inclusive <= stop_exclusive);
-    SDR sdr;
-    decltype(lower_bound(cbegin(), cend(), start_inclusive)) start_it;
-    if constexpr(!usesSet) {
-        start_it = lower_bound(cbegin(), cend(), start_inclusive);
-    } else {
-        start_it = v.lower_bound(start_inclusive);
-    }
-    decltype(start_it) end_it;
-    if constexpr(!usesSet) {
-        end_it = lower_bound(start_it, cend(), stop_exclusive);
-    } else {
-        end_it = v.lower_bound(stop_exclusive);
-    }
-    if constexpr(usesVector) {
-        sdr.v.reserve(distance(start_it, end_it));
-    }
-    for (auto it = start_it; it != end_it; ++it) {
-        sdr.v.insert(sdr.v.end(), *it);
-    }
-    return sdr; // nrvo
 }
 
 template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::andi(const SDR<arg_t, c_arg_t>& arg) {
     if constexpr (usesSet) {
-        SDR r;
-        SDROPResult rop;
-        rop.sdr = &r;
-        andop(rop, this, &arg, false);
-        swap(r.v, v);
+        SDR r = andb(arg);
+        swap(r.v, this->v);
     } else {
-        SDROPResult rop;
-        rop.sdr = this;
-        andop(rop, this, &arg, false);
+        [[maybe_unused]] size_type i = 0;
+        auto pos = this->v.begin();
+        auto visitor = [&]([[maybe_unused]] SDR_t& elem) {
+            *pos++ = elem;
+            if constexpr(usesList) { ++i; };
+        };
+        andop(*this, arg, visitor);
+        if constexpr(usesList) {
+            this->v.resize(i);
+        } else {
+            this->v.resize(pos - this->v.begin());
+        }
     }
     return *this;
 }
@@ -583,133 +620,125 @@ template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    SDROPResult rop;
-    rop.length = &r;
-    andop(rop, this, &arg, true);
-    return r;
+    auto visitor = [&]([[maybe_unused]] SDR_t& elem) {
+        ++r;
+    };
+    andop(*this, arg, visitor);
+    return r; // nrvo 
 }
 
 template<typename SDR_t, typename container_t>
-template<typename arg_t>
-typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t start_inclusive, arg_t stop_exclusive) const {
-    SDR sdr;
-    if (usesSet) {
-        auto pos = v.lower_bound(start_inclusive);
-        size_type count = 0;
-        while (pos != v.cend()) {
-            if (*pos == stop_exclusive) {
-                return count;
-            }
-            ++count;
-            ++pos;
-        }
-        return count;
-    } else {
-        auto pos = lower_bound(cbegin(), cend(), start_inclusive);
-        auto end_it = lower_bound(pos, cend(), stop_exclusive);
-        return (size_type)(pos - end_it);
-    }
+template<typename arg_t, typename c_arg_t, typename Visitor>
+void SDR<SDR_t, container_t>::andv(const SDR<arg_t, c_arg_t>& query, Visitor visitor) {
+    andop(*this, query, visitor);
 }
 
 template<typename SDR_t, typename container_t>
-template<typename arg_t, typename c_arg_t>
-void SDR<SDR_t, container_t>::andm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor) {
-    SDROPResult rop;
-    rop.visitor = &visitor;
-    andop(rop, this, &query, false, true);
-}
-
-template<typename SDR_t, typename container_t>
-void SDR<SDR_t, container_t>::orop(SDROPResult r, const SDR<SDR_t, container_t>* const a, const SDR<SDR_t, container_t>* const b, bool size_only, bool exclusive) {
-    assert(size_only || (r.sdr != a && r.sdr != b));
-    auto a_pos = a->cbegin();
-    auto a_end = a->cend();
+template <typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, bool exclusive>
+void SDR<SDR_t, container_t>::orop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, VisitorA visitora, VisitorB visitorb) {
+    auto a_pos = a.cbegin();
+    auto a_end = a.cend();
     bool a_valid = true;
     SDR_t a_val;
-    auto b_pos = b->cbegin();
-    auto b_end = b->cend();
+    auto b_pos = b.cbegin();
+    auto b_end = b.cend();
     bool b_valid = true;
-    SDR_t b_val;
-    auto r_pos = (decltype(v.begin()))NULL;
-    if (a_pos != a_end) a_val = *a_pos++; else a_valid = false; // get from a, or update a_valid if no more elements
-    if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
+    arg_t b_val;
+
+    if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // get from a, or update a_valid if no more elements
+    if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
     #pragma GCC diagnostic push
     #if !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     #endif
     while (a_valid || b_valid) {
         if ((a_valid && !b_valid) || (a_valid && b_valid && a_val < b_val)) {
-            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only, false);
-            if (a_pos != a_end) a_val = *a_pos++; else a_valid = false; // a
+            visitora(*const_cast<SDR_t*>(&*a_pos));
+            ++a_pos;
+            if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // a
         } else if ((!a_valid && b_valid) || (a_valid && b_valid && a_val > b_val)) {
-            sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, b_val, size_only, false);
-            if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
+            visitorb(*const_cast<SDR_t*>(&*b_pos));
+            ++b_pos;
+            if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
         } else {
-            if (!exclusive) {
-                sdrop_add_to_output(r, r_pos, a_pos, a_end, b_pos, b_end, a_val, size_only, false);
+            if constexpr(!exclusive) {
+                visitora(*const_cast<SDR_t*>(&*a_pos));
             }
-            if (a_pos != a_end) a_val = *a_pos++; else a_valid = false; // a
-            if (b_pos != b_end) b_val = *b_pos++; else b_valid = false; // b
+            ++a_pos;
+            ++b_pos;
+            if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // a
+            if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
         }
     }
     #pragma GCC diagnostic pop
-    if constexpr(usesVector) if (!size_only) r.sdr->v.shrink_to_fit();
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t> SDR<SDR_t, container_t>::orb(const SDR<SDR_t, container_t>& arg) const {
+template<typename arg_t, typename c_arg_t>
+SDR<SDR_t, container_t> SDR<SDR_t, container_t>::orb(const SDR<arg_t, c_arg_t>& arg) const {
     SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    orop(rop, this, &arg, false, false);
+    auto visitor = [&](SDR_t& elem) {
+        r.push_back(elem);
+    };
+    orop<arg_t, c_arg_t, decltype(visitor), decltype(visitor), false>(*this, arg, visitor, visitor);
+    if constexpr(usesVector) r.v.shrink_to_fit();
     return r; // nrvo 
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::ori(const SDR<SDR_t, container_t>& arg) {
-    SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    orop(rop, this, &arg, false, false);
-    swap(r.v, v);
+template<typename arg_t, typename c_arg_t>
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::ori(const SDR<arg_t, c_arg_t>& arg) {
+    SDR r = orb(arg);
+    swap(r.v, this->v);
     return *this;
 }
 
 template<typename SDR_t, typename container_t>
-typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ors(const SDR<SDR_t, container_t>& arg) const {
+template<typename arg_t, typename c_arg_t>
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ors(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    SDROPResult rop;
-    rop.length = &r;
-    orop(rop, this, &arg, true, false);
+    auto visitor = [&]([[maybe_unused]] SDR_t& elem) {
+        ++r;
+    };
+    orop<arg_t, c_arg_t, decltype(visitor), decltype(visitor), false>(*this, arg, visitor, visitor);
     return r;
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t> SDR<SDR_t, container_t>::xorb(const SDR<SDR_t, container_t>& arg) const {
+template<typename arg_t, typename c_arg_t>
+SDR<SDR_t, container_t> SDR<SDR_t, container_t>::xorb(const SDR<arg_t, c_arg_t>& arg) const {
     SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    orop(rop, this, &arg, false, true);
-    return r; // nrvo
+    auto visitor = [&](SDR_t& elem) {
+        r.push_back(elem);
+    };
+    orop<arg_t, c_arg_t, decltype(visitor), decltype(visitor), true>(*this, arg, visitor, visitor);
+    if constexpr(usesVector) r.v.shrink_to_fit();
+    return r; // nrvo 
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::xori(const SDR<SDR_t, container_t>& arg) {
-    SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    orop(rop, this, &arg, false, true);
-    swap(r.v, v);
+template<typename arg_t, typename c_arg_t>
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::xori(const SDR<arg_t, c_arg_t>& arg) {
+    SDR r = xorb(arg);
+    swap(r.v, this->v);
     return *this;
 }
 
 template<typename SDR_t, typename container_t>
-typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::xors(const SDR<SDR_t, container_t>& arg) const {
+template<typename arg_t, typename c_arg_t>
+typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::xors(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    SDROPResult rop;
-    rop.length = &r;
-    orop(rop, this, &arg, true, true);
+    auto visitor = [&]([[maybe_unused]] SDR_t& elem) {
+        ++r;
+    };
+    orop<arg_t, c_arg_t, decltype(visitor), decltype(visitor), true>(*this, arg, visitor, visitor);
     return r;
+}
+
+template<typename SDR_t, typename container_t>
+template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB>
+void SDR<SDR_t, container_t>::xorv(const SDR<arg_t, c_arg_t>& query, VisitorA visitora, VisitorB visitorb) {
+    orop<arg_t, c_arg_t, VisitorA, VisitorB, true>(*this, query, visitora, visitorb);
 }
 
 template<typename SDR_t, typename container_t>
@@ -717,11 +746,8 @@ template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>& arg) {
     if constexpr(usesSet) {
         // revert back to normal remove, with a swap 
-        SDR replacement;
-        SDROPResult rop;
-        rop.sdr = &replacement;
-        rmop(rop, this, &arg, false);
-        swap(replacement.v, v);
+        SDR r = this->rmb(arg);
+        swap(r.v, this->v);
     } else {
         auto const_type_helper = [arg]() {
             if constexpr(usesVector) {
@@ -818,18 +844,18 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
 }
 
 template<typename SDR_t, typename container_t>
-template<typename arg_t, typename c_arg_t>
-void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>* const me, const SDR<arg_t, c_arg_t>* const arg, bool size_only, bool use_visitor) {
-    assert(size_only || use_visitor || (r.sdr != me && r.sdr != (const SDR<SDR_t, container_t>*)arg));
+template <typename arg_t, typename c_arg_t, typename Visitor, typename DumpEnd>
+void SDR<SDR_t, container_t>::rmop(const SDR<SDR_t, container_t>& me, const SDR<arg_t, c_arg_t>& arg, Visitor visitor, DumpEnd dump_end) {
+    // this function can't place the result in the operands! see rmi instead
     SDR<SDR_t, container_t> ret;
-    auto arg_pos = arg->cbegin();
-    auto arg_end = arg->cend();
-    auto this_pos = me->cbegin();
-    auto this_end = me->cend();
+    auto arg_pos = arg.cbegin();
+    auto arg_end = arg.cend();
+    auto this_pos = me.cbegin();
+    auto this_end = me.cend();
     arg_t arg_elem;
     SDR_t this_elem;
 
-    auto get_next_arg = [&this_elem, &arg_elem, &arg_pos, &arg_end]() -> bool {
+    auto get_next_arg = [&]() -> bool {
         if constexpr (!small_args) {
             arg_pos = std::lower_bound(arg_pos, arg_end, this_elem);
         }
@@ -846,22 +872,8 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
 
     while (true) {
         if (this_elem < arg_elem) {
-            if (use_visitor) {
-                (*r.visitor)(*const_cast<SDR_t*>(&*this_pos));
-            } else {
-                if (size_only) {
-                    ++*r.length;
-                } else {
-                    if constexpr(usesVector) {
-                        if (r.sdr->v.capacity() == r.sdr->v.size()) {
-                            r.sdr->v.reserve(r.sdr->v.capacity() + distance(this_pos, this_end) / 2);
-                        }
-                    }
-                    r.sdr->v.insert(r.sdr->v.end(), this_elem);
-                }
-            }
+            visitor(*const_cast<SDR_t*>(&*this_pos));
             ++this_pos;
-
             if (this_pos == this_end) return;
             this_elem = *this_pos;
         } else if (this_elem == arg_elem) {
@@ -871,63 +883,32 @@ void SDR<SDR_t, container_t>::rmop(SDROPResult r, const SDR<SDR_t, container_t>*
             this_elem = *this_pos;
         } else {
             if (!get_next_arg()) {
-                if (use_visitor) {
-                    (*r.visitor)(*const_cast<SDR_t*>(&*this_pos));
-                } else {
-                    if (size_only) {
-                        ++*r.length;
-                    } else {
-                        if constexpr(usesVector) {
-                            if (r.sdr->v.capacity() == r.sdr->v.size()) {
-                                r.sdr->v.reserve(r.sdr->v.capacity() + distance(this_pos, this_end) / 2);
-                            }
-                        }
-                        r.sdr->v.insert(r.sdr->v.end(), this_elem);
-                    }
-                    ++this_pos;
-                    goto dump_remaining_this;
-                }
+                visitor(*const_cast<SDR_t*>(&*this_pos));
                 ++this_pos;
                 if (this_pos == this_end) return;
             }
         }
     }
     dump_remaining_this:
-    if (size_only) {
-        if constexpr (usesVector) {
-            *r.length += this_end - this_pos;
-        } else {
-            while (this_pos != this_end) {
-                ++*r.length;
-                ++this_pos;
-            }
-        }
-    } else {
-        while (this_pos != this_end) {
-            if (use_visitor) {
-                (*r.visitor)(*const_cast<SDR_t*>(&*this_pos++));
-            } else {
-                if constexpr(usesVector) {
-                    if (r.sdr->v.capacity() == r.sdr->v.size()) {
-                        r.sdr->v.reserve(r.sdr->v.capacity() + distance(this_pos, this_end) / 2);
-                    }
-                }
-                r.sdr->v.insert(r.sdr->v.end(), *this_pos++);
-            }
-        }
-        if constexpr (usesVector) {
-            r.sdr->v.shrink_to_fit();
-        }
-    }
+    dump_end(this_pos);
 }
 
 template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t> SDR<SDR_t, container_t>::rmb(const SDR<arg_t, c_arg_t>& arg) const {
     SDR r;
-    SDROPResult rop;
-    rop.sdr = &r;
-    rmop(rop, this, &arg, false);
+    auto visitor = [&](SDR_t& elem) {
+        r.push_back(elem);
+    };
+    auto dump_end = [&](const_iterator pos) {
+        while (pos != this->cend()) {
+            visitor(*const_cast<SDR_t*>(&*pos++));
+        }
+        if constexpr (usesVector) {
+            r.v.shrink_to_fit();
+        }
+    };
+    rmop(*this, arg, visitor, dump_end);
     return r;
 }
 
@@ -935,18 +916,31 @@ template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::rms(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    SDROPResult rop;
-    rop.length = &r;
-    rmop(rop, this, &arg, true);
-    return r;
+    auto visitor = [&]([[maybe_unused]] SDR_t& elem) {
+        ++r;
+    };
+    auto dump_end = [&](const_iterator pos) {
+        if constexpr (usesVector) {
+            r += this->cend() - pos;
+        } else {
+            while (pos++ != this->cend()) {
+                ++r;
+            }
+        }
+    };
+    rmop(*this, arg, visitor, dump_end);
+    return r; // nrvo
 }
 
 template<typename SDR_t, typename container_t>
-template<typename arg_t, typename c_arg_t>
-void SDR<SDR_t, container_t>::rmm(const SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor) {
-    SDROPResult rop;
-    rop.visitor = &visitor;
-    rmop(rop, this, &query, false, true);
+template<typename arg_t, typename c_arg_t, typename Visitor>
+void SDR<SDR_t, container_t>::rmv(const SDR<arg_t, c_arg_t>& query, Visitor visitor) {
+    auto dump_end = [&](const_iterator pos) {
+        while (pos != this->cend()) {
+            visitor(*const_cast<SDR_t*>(&*pos++));
+        }
+    };
+    rmop(*this, query, visitor, dump_end);
 }
 
 template<typename SDR_t, typename container_t>
