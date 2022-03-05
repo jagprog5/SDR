@@ -140,15 +140,6 @@ class SDR {
         template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB>
         void xorv(const SDR<arg_t, c_arg_t>& query, VisitorA visitora, VisitorB visitorb);
 
-        /**
-         * xor modify. Perform an operation on all elements based on a query.
-         * each element in this which xor in found in the query is called as the argument to the visitor.
-         * ensure that the visitor does not modify elements in a way that would put the sdr in an invalid state,
-         * e.g. elements are no longer ascending in a vector based sdr.
-         */
-        // template<typename arg_t, typename c_arg_t>
-        // void xorm(SDR<arg_t, c_arg_t>& query, std::function<void(SDR_t&)>& visitor_this, , std::function<void(arg_t&)>& visitor_query);
-
         // Returns a copy of this which lacks any bit from arg.
         template<typename arg_t, typename c_arg_t>
         SDR<SDR_t, container_t> rmb(const SDR<arg_t, c_arg_t>& arg) const;
