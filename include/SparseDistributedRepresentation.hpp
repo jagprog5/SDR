@@ -865,8 +865,9 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::rms(const S
         if constexpr (usesVector) {
             r += this->cend() - pos;
         } else {
-            while (pos++ != this->cend()) {
+            while (pos != this->cend()) {
                 ++r;
+                ++pos;
             }
         }
     };
