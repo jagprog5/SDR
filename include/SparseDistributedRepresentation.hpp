@@ -5,12 +5,10 @@
 #include <initializer_list>
 #include <algorithm>
 #include <random>
-#include <functional>
 #include <list>
 #include <vector>
 #include <set>
 #include <iostream>
-#include <chrono>
 
 namespace {
 
@@ -251,18 +249,6 @@ class SDR {
 
         void assert_ascending();
 
-        union SDROPResult {
-            SDR<SDR_t, container_t>* sdr;
-            size_type* length;
-            std::function<void(SDR_t&)>* visitor;
-        };
-
-        // if r_pos is NULL, this indicates normal operation, and that the output is appended to r.
-        // if r_pos is not NULL, this indicates that the operation is placing the result in one of it's operands, and r_pos indicates the overwrite position
-        // this function happens to be used only in andop and orop. Select an ideal allocation strategy for andop by setting and_op param to true, else false.
-        template <typename CIT, typename AIT, typename BIT>
-        static void sdrop_add_to_output(SDROPResult r, CIT& r_pos, AIT a_pos, AIT a_end, BIT b_pos, BIT b_end, SDR_t elem, bool size_only = false, bool and_op = false);
-
         // and operation. computes A & B. each selected element is called in the visitor as visitor(SDR_t&)
         template <typename arg_t, typename c_arg_t, typename Visitor>
         static void andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, Visitor visitor);
@@ -488,39 +474,6 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::set(SDR_t index, bool value) {
 }
 
 template<typename SDR_t, typename container_t>
-template <typename CIT, typename AIT, typename BIT>
-void SDR<SDR_t, container_t>::sdrop_add_to_output(SDROPResult r, CIT& r_pos, [[maybe_unused]] AIT a_pos, [[maybe_unused]] AIT a_end, [[maybe_unused]] BIT b_pos, [[maybe_unused]] BIT b_end, SDR_t elem, bool size_only, bool and_op) {
-    // TODO this could be unified as a visitor.
-    if (size_only) {
-        ++*r.length;
-    } else {
-        if (r_pos != (decltype(r.sdr->v.begin()))NULL) {
-            // inplace will never happen if container_t is a set. Just getting the compiler to cooperate
-            if constexpr(!usesSet) *r_pos++ = elem;
-        } else {
-            auto &rsdr = r.sdr->v;
-            if constexpr(usesVector) {
-                // allocate based on the remaining elements / 2
-                if (rsdr.capacity() == rsdr.size()) {
-                    size_type a_left = distance(a_pos, a_end);
-                    size_type b_left = distance(b_pos, b_end);
-                    size_type cap_increase;
-                    if (and_op) {
-                        size_type max_remaining = a_left < b_left ? a_left : b_left;
-                        cap_increase = max_remaining / 2;
-                    } else {
-                        size_type both_remaining = a_left + b_left;
-                        cap_increase = both_remaining / 2;
-                    }
-                    rsdr.reserve(rsdr.capacity() + cap_increase);
-                }
-            }
-            rsdr.insert(rsdr.end(), elem);
-        }
-    }
-}
-
-template<typename SDR_t, typename container_t>
 template <typename arg_t, typename c_arg_t, typename Visitor>
 void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, Visitor visitor) {
     auto a_pos = a.cbegin();
@@ -639,9 +592,7 @@ void SDR<SDR_t, container_t>::orop(const SDR<SDR_t, container_t>& a, const SDR<a
     if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // get from a, or update a_valid if no more elements
     if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
     #pragma GCC diagnostic push
-    #if !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-    #endif
     while (a_valid || b_valid) {
         if ((a_valid && !b_valid) || (a_valid && b_valid && a_val < b_val)) {
             visitora(*const_cast<SDR_t*>(&*a_pos));
