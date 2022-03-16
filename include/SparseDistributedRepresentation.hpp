@@ -44,10 +44,33 @@ class SDR {
         using const_iterator = typename container_t::const_iterator;
         using iterator = typename container_t::iterator;
 
+        // rule of 5
         SDR() {}
-        SDR(container_t&& v);
-        SDR<SDR_t, container_t>& operator=(container_t&& v);
-        SDR(std::initializer_list<SDR_t> list);
+        SDR(const SDR& sdr): v(sdr.v) {}
+        SDR& operator=(const SDR& sdr) { this->v = sdr.v; return *this; }
+        SDR(SDR&& sdr): v(std::move(sdr.v)) {}
+        SDR& operator=(SDR&& sdr) { this->v = std::move(sdr.v); return *this; }
+
+        // constructors from underlying container
+        SDR(const container_t& v): v(v) { assert_ascending(); }
+
+        SDR& operator=(const container_t& v) {
+            this->v = v;
+            assert_ascending();
+            return *this;
+        }
+
+        SDR(container_t&& v): v(v) { assert_ascending(); }
+
+        SDR& operator=(container_t&& v) {
+            this->v = v;
+            assert_ascending();
+            return *this;
+        }
+
+        container_t&& data() { return std::move(v); }
+
+        SDR(std::initializer_list<SDR_t> list) : v(list) { assert_ascending(); };
 
         // Encode a float as an SDR.
         // @param input the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
@@ -308,22 +331,6 @@ void SDR<SDR_t, container_t>::assert_ascending() {
             }   
         #endif
     }
-}
-
-template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::operator=(container_t&& v) {
-    this->v = v;
-    return *this;
-}
-
-template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>::SDR(container_t&& v): v(v) {
-    assert_ascending();
-}
-
-template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>::SDR(std::initializer_list<SDR_t> list): v(list) {
-    assert_ascending();
 }
 
 template<typename SDR_t, typename container_t>
