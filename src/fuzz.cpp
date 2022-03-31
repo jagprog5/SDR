@@ -6,6 +6,9 @@ using namespace std::chrono;
 
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
+// only do a speed test, don't check for correctness
+static constexpr bool disable_validation = false;
+
 template<typename SDRA, typename SDRB>
 bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // for every element in a, if it is also in b, then it must be in the result
@@ -162,7 +165,7 @@ void series(unsigned int fuzz_amount) {
         SDRA and_result = a.andb(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_andop(a, b, and_result);
+        return disable_validation || validate_andop(a, b, and_result);
     };
     time_op<SDRA, SDRB>("andb", andb, fuzz_amount);
 
@@ -172,7 +175,7 @@ void series(unsigned int fuzz_amount) {
         a_cp.andi(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_andop(a, b, a_cp);
+        return disable_validation || validate_andop(a, b, a_cp);
     };
     time_op<SDRA, SDRB>("andi", andi, fuzz_amount);
 
@@ -190,7 +193,7 @@ void series(unsigned int fuzz_amount) {
         SDRA or_result = a.orb(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_orop(a, b, or_result);
+        return disable_validation || validate_orop(a, b, or_result);
     };
     time_op<SDRA, SDRB>(" orb", orb, fuzz_amount);
 
@@ -200,7 +203,7 @@ void series(unsigned int fuzz_amount) {
         a_cp.ori(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_orop(a, b, a_cp);
+        return disable_validation || validate_orop(a, b, a_cp);
     };
     time_op<SDRA, SDRB>(" ori", ori, fuzz_amount);
 
@@ -218,7 +221,7 @@ void series(unsigned int fuzz_amount) {
         SDRA xor_result = a.xorb(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_xorop(a, b, xor_result);
+        return disable_validation || validate_xorop(a, b, xor_result);
     };
     time_op<SDRA, SDRB>("xorb", xorb, fuzz_amount);
 
@@ -228,7 +231,7 @@ void series(unsigned int fuzz_amount) {
         a_cp.xori(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_xorop(a, b, a_cp);
+        return disable_validation || validate_xorop(a, b, a_cp);
     };
     time_op<SDRA, SDRB>("xori", xori, fuzz_amount);
 
@@ -246,7 +249,7 @@ void series(unsigned int fuzz_amount) {
         SDRA rm_result = a.rmb(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_rmop(a, b, rm_result);
+        return disable_validation || validate_rmop(a, b, rm_result);
     };
     time_op<SDRA, SDRB>(" rmb", rmb, fuzz_amount);
 
@@ -256,7 +259,7 @@ void series(unsigned int fuzz_amount) {
         a_cp.rmi(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return validate_rmop(a, b, a_cp);
+        return disable_validation || validate_rmop(a, b, a_cp);
     };
     time_op<SDRA, SDRB>(" rmi", rmi, fuzz_amount);
 
