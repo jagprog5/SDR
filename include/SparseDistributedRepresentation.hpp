@@ -30,6 +30,18 @@ struct isSet : std::false_type {};
 
 template <typename T, typename C, typename A>
 struct isSet<std::set<T, C, A>> : std::true_type {};
+
+template <typename container_t, bool enable_member>
+struct MaybeSize;
+
+template <typename container_t>
+struct MaybeSize<container_t, true> {
+    typename container_t::size_type size;
+};
+
+template <typename container_t>
+struct MaybeSize<container_t, false> {
+};
 }
 
 /*
@@ -374,20 +386,8 @@ class SDR {
             }
         };
 
-        template <bool enable_member>
-        struct MaybeSize;
-
-        template <>
-        struct MaybeSize<true> {
-            typename container_t::size_type size;
-        };
-
-        template <>
-        struct MaybeSize<false> {
-        };
-
         // augmenting the forward_list with a size
-        MaybeSize<usesForwardList> maybe_size;
+        MaybeSize<container_t, usesForwardList> maybe_size;
 
         // used in the output stream op
         static constexpr bool print_type = false;
@@ -798,9 +798,12 @@ void SDR<SDR_t, container_t>::orop(const SDR<SDR_t, container_t>& a, const SDR<a
     if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // get from a, or update a_valid if no more elements
     if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
     #pragma GCC diagnostic push
-    #if !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
+    #ifdef __GNUC__
+    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    #elif !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     #endif
+    
     while (a_valid || b_valid) {
         if ((a_valid && !b_valid) || (a_valid && b_valid && a_val < b_val)) {
             visitora(*const_cast<SDR_t*>(&*a_pos));
