@@ -135,10 +135,4 @@ BOOST_AUTO_TEST_CASE(test_comparison) {
   BOOST_REQUIRE_GT((SDR<>{4}), (SDR<>{0, 1, 2}));
 }
 
-BOOST_AUTO_TEST_CASE(test_different_container) {
-  BOOST_REQUIRE_EQUAL((SDR<int, std::set<int>>{1, 2, 3} & SDR<int, std::vector<int>>{2, 3, 4}), (SDR<int, std::set<int>>{2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<int, std::vector<int>>{1, 2, 3} & SDR<int, std::set<int>>{2, 3, 4}), (SDR<int, std::vector<int>>{2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<int, std::set<int>>{1, 2, 3} & SDR<int, std::list<int>>{2, 3, 4}), (SDR<int, std::set<int>>{2, 3}));
-}
-
 BOOST_AUTO_TEST_SUITE_END()

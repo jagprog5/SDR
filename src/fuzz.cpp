@@ -4,91 +4,93 @@
 
 using namespace std::chrono;
 
-SDR<> get_sdr(int val) {
-    SDR<> ret;
-    for (long unsigned i = 0; i < sizeof(decltype(val)) * 8; ++i) {
-        if ((1 << i) & val) {
-            ret.push_back(i);
-        }
-    }
-    return ret;
-}
-
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
-bool validate_andop(const SDR<>& a, const SDR<>& b, const SDR<>& r) {
-    SDR<>::const_iterator it;
+template<typename SDRA, typename SDRB>
+bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // for every element in a, if it is also in b, then it must be in the result
-    for(it = a.cbegin(); it != a.cend(); ++it) {
+    for(auto it = a.cbegin(); it != a.cend(); ++it) {
         auto a_elem = *it;
         bool a_elem_in_b = std::find(b.cbegin(), b.cend(), a_elem) != b.cend();
         if (a_elem_in_b) REQUIRE_TRUE(r & a_elem);
     }
     // for every element in b, if it is also in a, then it must be in the result
-    for(it = b.cbegin(); it != b.cend(); ++it) {
+    for(auto it = b.cbegin(); it != b.cend(); ++it) {
         auto b_elem = *it;
         bool b_elem_in_a = std::find(a.cbegin(), a.cend(), b_elem) != a.cend();
         if (b_elem_in_a) REQUIRE_TRUE(r & b_elem);
     }
     // the result can't contain any elements not in a or not in b
-    for(it = r.cbegin(); it != r.cend(); ++it) {
+    typename SDRA::size_type i = 0;
+    for(auto it = r.cbegin(); it != r.cend(); ++it) {
+        ++i;
         auto r_elem = *it;
         bool in_a = std::find(a.cbegin(), a.cend(), r_elem) != a.cend();
         bool in_b = std::find(b.cbegin(), b.cend(), r_elem) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
+    // ensure the size is correct
+    REQUIRE_TRUE(i == r.size());
     return true;
 }
 
-bool validate_orop(const SDR<>& a, const SDR<>& b, const SDR<>& r) {
-    SDR<>::const_iterator it;
+template<typename SDRA, typename SDRB>
+bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // every element in a must be in result
-    for(it = a.cbegin(); it != a.cend(); ++it) {
+    for(auto it = a.cbegin(); it != a.cend(); ++it) {
         REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), *it) != r.cend());
     }
     // every element in b must be in result
-    for(it = b.cbegin(); it != b.cend(); ++it) {
+    for(auto it = b.cbegin(); it != b.cend(); ++it) {
         REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), *it) != r.cend());
     }
     // the result can't contain any elements not in a or not in b
-    for(it = r.cbegin(); it != r.cend(); ++it) {
+    typename SDRA::size_type i = 0;
+    for(auto it = r.cbegin(); it != r.cend(); ++it) {
+        ++i;
         auto r_elem = *it;
         bool in_a = std::find(a.cbegin(), a.cend(), r_elem) != a.cend();
         bool in_b = std::find(b.cbegin(), b.cend(), r_elem) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
+    // ensure the size is correct
+    REQUIRE_TRUE(i == r.size());
     return true;
 }
 
-bool validate_xorop(const SDR<>& a, const SDR<>& b, const SDR<>& r) {
-    SDR<>::const_iterator it;
+template<typename SDRA, typename SDRB>
+bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // for every element in a, if it is not in b, then it must be in the result
-    for(it = a.cbegin(); it != a.cend(); ++it) {
+    for(auto it = a.cbegin(); it != a.cend(); ++it) {
         auto a_elem = *it;
         bool a_elem_in_b = std::find(b.cbegin(), b.cend(), a_elem) != b.cend();
         if (!a_elem_in_b) REQUIRE_TRUE(r & a_elem);
     }
     // for every element in b, if it is not in a, then it must be in the result
-    for(it = b.cbegin(); it != b.cend(); ++it) {
+    for(auto it = b.cbegin(); it != b.cend(); ++it) {
         auto b_elem = *it;
         bool b_elem_in_a = std::find(a.cbegin(), a.cend(), b_elem) != a.cend();
         if (!b_elem_in_a) REQUIRE_TRUE(r & b_elem);
     }
     // the result can't contain any elements not in a or not in b
-    for(it = r.cbegin(); it != r.cend(); ++it) {
+    typename SDRA::size_type i = 0;
+    for(auto it = r.cbegin(); it != r.cend(); ++it) {
+        ++i;
         auto r_elem = *it;
         bool in_a = std::find(a.cbegin(), a.cend(), r_elem) != a.cend();
         bool in_b = std::find(b.cbegin(), b.cend(), r_elem) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
+    // ensure the size is correct
+    REQUIRE_TRUE(i == r.size());
     return true;
 }
 
-bool validate_rmop(const SDR<>& a, const SDR<>& b, const SDR<>& r) {
-    SDR<>::const_iterator it;
+template<typename SDRA, typename SDRB>
+bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // for every elements in a, if it is not in b, then it must be in the result
-    unsigned long i = 0;
-    for(it = a.cbegin(); it != a.cend(); ++it) {
+    typename SDRA::size_type i = 0;
+    for(auto it = a.cbegin(); it != a.cend(); ++it) {
         auto a_elem = *it;
         bool a_elem_in_b = std::find(b.cbegin(), b.cend(), a_elem) != b.cend();
         if (!a_elem_in_b) REQUIRE_TRUE(r & a_elem);
@@ -99,9 +101,176 @@ bool validate_rmop(const SDR<>& a, const SDR<>& b, const SDR<>& r) {
     return true;
 }
 
-bool validate_separate(const SDR<>& a_before, const SDR<>& b_before, const SDR<>& a, const SDR<>& b) {
-    return a == a_before - b_before && b == b_before - a_before;
+// generate a unique SDR based on a number
+template<typename SDR>
+SDR get_sdr(unsigned int val) {
+    SDR ret;
+    [[maybe_unused]] typename SDR::iterator it;
+    if constexpr(SDR::usesForwardList) {
+        it = ret.before_begin();
+    }
+    for (long unsigned i = 0; i < sizeof(decltype(val)) * 8; ++i) {
+        if ((1 << i) & val) {
+            if constexpr(SDR::usesForwardList) {
+                it = ret.insert_end(it, i);
+            } else {
+                ret.push_back(i);
+            }
+        }
+    }
+    return ret;
 }
+
+template<typename SDR>
+std::string get_template_name() {
+    if constexpr(SDR::usesVector) {
+        return "vec";
+    } else if constexpr(SDR::usesSet) {
+        return "set";
+    } else if constexpr(SDR::usesForwardList) {
+        return "lst";
+    } else {
+        return "?";
+    }
+}
+
+// name: some sort of identifier
+// f: the function to time and test. should return false if it failed
+template<typename SDRA, typename SDRB, typename funct>
+void time_op(std::string name, funct f, unsigned int fuzz_amount) {
+    duration<int64_t, std::nano> duration(0);
+    for (unsigned int i = 0; i < fuzz_amount; ++i) {
+        for (unsigned int j = 0; j < fuzz_amount; ++j) {
+            SDRA sdra = get_sdr<SDRA>(i);
+            SDRB sdrb = get_sdr<SDRB>(j);
+            bool result = f(sdra, sdrb, duration);
+            if (!result) {
+                std::string on_fail = "fail: " + name + " (" + std::to_string(i) + "," + std::to_string(j) + ")";
+                std::cout << on_fail << std::endl;
+                exit(1);
+            }
+        }
+    }
+    std::cout << name << "<" << get_template_name<SDRA>() << ',' << get_template_name<SDRB>() << ">: " << duration.count() / 1000000 << "ms" << std::endl;
+}
+
+
+template<typename SDRA, typename SDRB>
+void series(unsigned int fuzz_amount) {
+    auto andb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        SDRA and_result = a.andb(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_andop(a, b, and_result);
+    };
+    time_op<SDRA, SDRB>("andb", andb, fuzz_amount);
+
+    auto andi = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        SDRA a_cp(a);
+        auto start = high_resolution_clock::now();
+        a_cp.andi(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_andop(a, b, a_cp);
+    };
+    time_op<SDRA, SDRB>("andi", andi, fuzz_amount);
+
+    auto ands = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        auto s = a.ands(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return s == a.andb(b).size();
+    };
+    time_op<SDRA, SDRB>("ands", ands, fuzz_amount);
+
+    auto orb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        SDRA or_result = a.orb(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_orop(a, b, or_result);
+    };
+    time_op<SDRA, SDRB>(" orb", orb, fuzz_amount);
+
+    auto ori = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        SDRA a_cp(a);
+        auto start = high_resolution_clock::now();
+        a_cp.ori(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_orop(a, b, a_cp);
+    };
+    time_op<SDRA, SDRB>(" ori", ori, fuzz_amount);
+
+    auto ors = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        auto s = a.ors(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return s == a.orb(b).size();
+    };
+    time_op<SDRA, SDRB>(" ors", ors, fuzz_amount);
+
+    auto xorb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        SDRA xor_result = a.xorb(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_xorop(a, b, xor_result);
+    };
+    time_op<SDRA, SDRB>("xorb", xorb, fuzz_amount);
+
+    auto xori = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        SDRA a_cp(a);
+        auto start = high_resolution_clock::now();
+        a_cp.xori(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_xorop(a, b, a_cp);
+    };
+    time_op<SDRA, SDRB>("xori", xori, fuzz_amount);
+
+    auto xors = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        auto s = a.xors(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return s == a.xorb(b).size();
+    };
+    time_op<SDRA, SDRB>("xors", xors, fuzz_amount);
+
+    auto rmb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        SDRA rm_result = a.rmb(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_rmop(a, b, rm_result);
+    };
+    time_op<SDRA, SDRB>(" rmb", rmb, fuzz_amount);
+
+    auto rmi = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        SDRA a_cp(a);
+        auto start = high_resolution_clock::now();
+        a_cp.rmi(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return validate_rmop(a, b, a_cp);
+    };
+    time_op<SDRA, SDRB>(" rmi", rmi, fuzz_amount);
+
+    auto rms = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+        auto start = high_resolution_clock::now();
+        auto s = a.rms(b);
+        auto stop = high_resolution_clock::now();
+        total_time += stop - start;
+        return s == a.rmb(b).size();
+    };
+    time_op<SDRA, SDRB>(" rms", rms, fuzz_amount);    
+}
+
+
 
 int main(int argc, char** argv) {
     int fuzz_amount;
@@ -112,160 +281,18 @@ int main(int argc, char** argv) {
         }
         fuzz_amount = std::atoi(argv[1]);
     } else {
-        fuzz_amount = 10000;
+        fuzz_amount = 1000;
     }
-    assert(fuzz_amount >= 100);
 
-    duration<int64_t, std::nano> and_time(0);
-    duration<int64_t, std::nano> andi_time(0);
-    duration<int64_t, std::nano> ands_time(0);
-    duration<int64_t, std::nano> or_time(0);
-    duration<int64_t, std::nano> ori_time(0);
-    duration<int64_t, std::nano> ors_time(0);
-    duration<int64_t, std::nano> xor_time(0);
-    duration<int64_t, std::nano> xori_time(0);
-    duration<int64_t, std::nano> xors_time(0);
-    duration<int64_t, std::nano> rm_time(0);
-    duration<int64_t, std::nano> rmi_time(0);
-    duration<int64_t, std::nano> rms_time(0);
+    series<SDR<int, std::vector<int>>, SDR<int, std::vector<int>>>(fuzz_amount);
+    series<SDR<int, std::vector<int>>, SDR<int, std::set<int>>>(fuzz_amount);
+    series<SDR<int, std::vector<int>>, SDR<int, std::forward_list<int>>>(fuzz_amount);
 
+    series<SDR<int, std::set<int>>, SDR<int, std::vector<int>>>(fuzz_amount);
+    series<SDR<int, std::set<int>>, SDR<int, std::set<int>>>(fuzz_amount);
+    series<SDR<int, std::set<int>>, SDR<int, std::forward_list<int>>>(fuzz_amount);
 
-    for (int i = 0; i < fuzz_amount; ++i) {
-        if (i % (fuzz_amount / 100) == 0)
-            std::cout << "\r" << (float)(i) / fuzz_amount * 100 << "%" << std::flush;
-        SDR<> a = get_sdr(i);
-        for (int j = 0; j < fuzz_amount; ++j) {
-            SDR<> b = get_sdr(j);
-            {
-                auto start = high_resolution_clock::now();
-                SDR<> and_result = a.andb(b);
-                auto stop = high_resolution_clock::now();
-                if (!validate_andop(a, b, and_result)) {
-                    std::cerr << "andb failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                and_time += stop - start;
-                
-                SDR<> a_cp(a);
-                auto start_i = high_resolution_clock::now();
-                SDR<> andi_result = a_cp.andi(b);
-                auto stop_i = high_resolution_clock::now();
-                if (a_cp != and_result) {
-                    std::cerr << "andi failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                andi_time += stop_i - start_i;
-
-                auto start_s = high_resolution_clock::now();
-                auto size = a.ands(b);
-                auto stop_s = high_resolution_clock::now();
-                if (size != and_result.size()) {
-                    std::cerr << "ands failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                ands_time += stop_s - start_s;
-            }
-            {
-                auto start = high_resolution_clock::now();
-                SDR<> or_result = a.orb(b);
-                auto stop = high_resolution_clock::now();
-                if (!validate_orop(a, b, or_result)) {
-                    std::cerr << "orb failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                or_time += stop - start;
-                
-                SDR<> a_cp(a);
-                auto start_i = high_resolution_clock::now();
-                SDR<> ori_result = a_cp.ori(b);
-                auto stop_i = high_resolution_clock::now();
-                if (a_cp != or_result) {
-                    std::cerr << "ori failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                ori_time += stop_i - start_i;
-
-                auto start_s = high_resolution_clock::now();
-                auto size = a.ors(b);
-                auto stop_s = high_resolution_clock::now();
-                if (size != or_result.size()) {
-                    std::cerr << "ors failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                ors_time += stop_s - start_s;
-            }
-            {
-                auto start = high_resolution_clock::now();
-                SDR<> xor_result = a.xorb(b);
-                auto stop = high_resolution_clock::now();
-                if (!validate_xorop(a, b, xor_result)) {
-                    std::cerr << "xorb failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                xor_time += stop - start;
-                
-                SDR<> a_cp(a);
-                auto start_i = high_resolution_clock::now();
-                SDR<> xori_result = a_cp.xori(b);
-                auto stop_i = high_resolution_clock::now();
-                if (a_cp != xor_result) {
-                    std::cerr << "xori failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                xori_time += stop_i - start_i;
-
-                auto start_s = high_resolution_clock::now();
-                auto size = a.xors(b);
-                auto stop_s = high_resolution_clock::now();
-                if (size != xor_result.size()) {
-                    std::cerr << "xors failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                xors_time += stop_s - start_s;
-            }
-            {
-                auto start = high_resolution_clock::now();
-                SDR<> rm_result = a.rmb(b);
-                auto stop = high_resolution_clock::now();
-                if (!validate_rmop(a, b, rm_result)) {
-                    std::cerr << "rmb failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                rm_time += stop - start;
-                
-                SDR<> a_cp(a);
-                auto start_i = high_resolution_clock::now();
-                SDR<> rmi_result = a_cp.rmi(b);
-                auto stop_i = high_resolution_clock::now();
-                if (a_cp != rm_result) {
-                    std::cerr << "rmi failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-                rmi_time = stop_i - start_i;
-                
-                auto start_s = high_resolution_clock::now();
-                auto size = a.rms(b);
-                auto stop_s = high_resolution_clock::now();
-                rms_time = stop_s - start_s;
-                if (size != rm_result.size()) {
-                    std::cerr << "rms failed! " << i << " " << j << "\n";
-                    exit(1);
-                }
-
-            }
-        }
-    }
-    std::cout << "\r=======time (ns)======\n";
-    std::cout << "and: " << and_time.count() << std::endl;
-    std::cout << "andi: " << andi_time.count() << std::endl;
-    std::cout << "ands: " << ands_time.count() << std::endl;
-    std::cout << "or: " << or_time.count() << std::endl;
-    std::cout << "ori: " << ori_time.count() << std::endl;
-    std::cout << "ors: " << ors_time.count() << std::endl;
-    std::cout << "xor: " << xor_time.count() << std::endl;
-    std::cout << "xori: " << xori_time.count() << std::endl;
-    std::cout << "xors: " << xors_time.count() << std::endl;
-    std::cout << "rm: " << rm_time.count() << std::endl;
-    std::cout << "rmi: " << rmi_time.count() << std::endl;
-    std::cout << "rms: " << rms_time.count() << std::endl;
+    series<SDR<int, std::forward_list<int>>, SDR<int, std::vector<int>>>(fuzz_amount);
+    series<SDR<int, std::forward_list<int>>, SDR<int, std::set<int>>>(fuzz_amount);
+    series<SDR<int, std::forward_list<int>>, SDR<int, std::forward_list<int>>>(fuzz_amount);
 }
