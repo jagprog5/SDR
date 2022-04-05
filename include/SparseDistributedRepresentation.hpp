@@ -42,6 +42,11 @@ struct MaybeSize<container_t, true> {
 template <typename container_t>
 struct MaybeSize<container_t, false> {
 };
+
+inline auto& get_twister() {
+    static std::mt19937 twister(time(NULL) * getpid() * 33);
+    return twister;
+}
 }
 
 /*
@@ -237,13 +242,15 @@ class SDR {
         bool set(SDR_t index, bool value);
 
         // Sets bits in this, then returns this.
-        SDR<SDR_t, container_t>& set(SDR<SDR_t, container_t> arg, bool value);
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t>& set(SDR<arg_t, c_arg_t> arg, bool value);
 
         // Returns this, shifted by amount.
         SDR<SDR_t, container_t>& shift(int amount);
 
         // concatenate an SDR to an SDR. Every indice in arg must be greater than every indice in this. Returns this.
-        SDR<SDR_t, container_t>& join(const SDR<SDR_t, container_t>& arg);
+        template<typename arg_t, typename c_arg_t>
+        SDR<SDR_t, container_t>& append(const SDR<arg_t, c_arg_t>& arg);
 
         auto cbegin() const { return v.cbegin(); }
         auto cend() const { return v.cend(); }
@@ -272,6 +279,17 @@ class SDR {
         template<typename T = container_t>
         typename std::enable_if<isForwardList<T>::value, typename T::iterator>::type before_begin() {
             return v.before_begin();
+        }
+
+
+        template<typename T = container_t>
+        typename std::enable_if<isForwardList<T>::value, typename T::iterator>::type before_end() {
+            auto it = v.before_begin();
+            while (true) {
+                auto next = std::next(it);
+                if (next == v.end()) return it;
+                it = next;
+            }
         }
 
         // Append to a forward_list based sdr.
@@ -317,7 +335,7 @@ class SDR {
         template<typename other>
         auto operator*(const other& o) const { return SDR(*this).sample_portion(o); }
         template<typename other>
-        auto operator*=(const other& o) { return sample_potion(o); }
+        auto operator*=(const other& o) { return sample_portion(o); }
         template<typename other>
         auto operator<<(const other& o) const { return SDR(*this).shift(o); }
         template<typename other>
@@ -335,18 +353,6 @@ class SDR {
         auto operator>=(const SDR<SDR_t, container_t>& other) const { return !(*this < other); }
         auto operator>(const SDR<SDR_t, container_t>& other) const { return other < *this; }
         auto operator<=(const SDR<SDR_t, container_t>& other) const { return !(*this > other); }
-
-        // static ref to mersenne twister with result type SDR_t
-        static auto& get_twister() {
-            // same as mt19937
-            static std::mersenne_twister_engine<SDR_t,32,624,397,31,0x9908b0df,11,0xffffffff,7,0x9d2c5680,15,0xefc60000,18,1812433253> twister(time(NULL) * getpid());
-            return twister;
-        }
-
-        static uint_fast32_t random_int() {
-            static std::mt19937 twister(time(NULL) * getpid() * 33);
-            return get_twister()();
-        }
 
         static constexpr bool usesVector = isVector<container_t>::value;
         static constexpr bool usesForwardList = isForwardList<container_t>::value;
@@ -420,47 +426,58 @@ void SDR<SDR_t, container_t>::assert_ascending() {
 template<typename SDR_t, typename container_t>
 SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length && period >= 0 && input >= 0);
-    if constexpr(usesVector) v.reserve(size);
+    if constexpr(usesVector) v.resize(size);
 
     float progress = input / period;
     progress -= (int)progress;
-    SDR_t start_index = std::round(progress * underlying_array_length);
+    size_type start_index = std::round(progress * underlying_array_length);
 
     if (start_index + size > underlying_array_length) {
         // if elements would go off the end of the array, wrap them back to the start
 
         // the number of elements that wrap off the end
-        SDR_t wrapped_elements = start_index + size - underlying_array_length;
+        size_type wrapped_elements = start_index + size - underlying_array_length;
         
         // the number of elements that don't wrap off the end
-        SDR_t non_wrapped_elements = size - wrapped_elements;
+        size_type non_wrapped_elements = size - wrapped_elements;
 
         if constexpr(usesForwardList) {
             auto insert_it = before_begin();
-            for (SDR_t i = 0; i < (SDR_t)wrapped_elements; ++i) {
-                insert_it = v.insert_after(insert_it, i);
+            for (size_type i = 0; i < wrapped_elements; ++i) {
+                insert_it = v.insert_after(insert_it, SDR_t(i));
             }
-            for (SDR_t i = 0; i < (SDR_t)non_wrapped_elements; ++i) {
-                insert_it = v.insert_after(insert_it, start_index + i);
+            for (size_type i = 0; i < non_wrapped_elements; ++i) {
+                insert_it = v.insert_after(insert_it, SDR_t(start_index + i));
+            }
+        } else if constexpr(usesSet) {
+            for (size_type i = 0; i < wrapped_elements; ++i) {
+                v.insert(v.end(), SDR_t(i));
+            }
+            for (size_type i = 0; i < non_wrapped_elements; ++i) {
+                v.insert(v.end(), SDR_t(start_index + i));
             }
         } else {
-            for (SDR_t i = 0; i < (SDR_t)wrapped_elements; ++i) {
-                v.insert(v.end(), i);
+            for (size_type i = 0; i < wrapped_elements; ++i) {
+                v[i] = SDR_t(i);
             }
-            for (SDR_t i = 0; i < (SDR_t)non_wrapped_elements; ++i) {
-                v.insert(v.end(), start_index + i);
+            for (size_type i = 0; i < non_wrapped_elements; ++i) {
+                v[i + non_wrapped_elements] = SDR_t(i);
             }
         }
     } else {
         // no elements are wrapped from the end
         if constexpr(usesForwardList) {
             auto insert_it = before_begin();
-            for (SDR_t i = 0; i < (SDR_t)size; ++i) {
-                insert_it = v.insert_after(insert_it, start_index + i);
+            for (size_type i = 0; i < size; ++i) {
+                insert_it = v.insert_after(insert_it, SDR_t(start_index + i));
+            }
+        } else if constexpr(usesSet) {
+            for (size_type i = 0; i < size; ++i) {
+                v.insert(v.end(), SDR_t(start_index + i));
             }
         } else {
-            for (SDR_t i = 0; i < (SDR_t)size; ++i) {
-                v.insert(v.end(), start_index + i);
+            for (size_type i = 0; i < size; ++i) {
+                v[i] = SDR_t(start_index + i);
             }
         }
     }
@@ -473,16 +490,20 @@ template<typename SDR_t, typename container_t>
 SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length);
     assert(input >= 0);
-    if constexpr(usesVector) v.reserve(size);
-    SDR_t start_index = std::round((underlying_array_length - size) * input);
+    if constexpr(usesVector) v.resize(size);
+    size_type start_index = std::round((underlying_array_length - size) * input);
     if constexpr(usesForwardList) {
         auto insert_it = before_begin();
-        for (SDR_t i = 0; i < (SDR_t)size; ++i) {
+        for (size_type i = 0; i < size; ++i) {
             insert_it = v.insert_after(insert_it, start_index + i);
         }
+    } else if constexpr(usesSet) {
+        for (size_type i = 0; i < size; ++i) {
+            v.insert(v.end(), SDR_t(start_index + i));
+        }
     } else {
-        for (SDR_t i = 0; i < (SDR_t)size; ++i) {
-            v.insert(v.end(), start_index + i);
+        for (size_type i = 0; i < size; ++i) {
+            v[i] = SDR_t(start_index + i);
         }
     }
     if constexpr(usesForwardList) {
@@ -493,7 +514,7 @@ SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_a
 template<typename SDR_t, typename container_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
     assert(amount >= 0 && amount <= 1);
-    SDR_t check_val = amount * (get_twister().max() / 2);
+    auto check_val = amount * (get_twister().max() / 2);
     if constexpr(usesVector) {
         auto to_offset = v.begin();
         auto from_offset = v.cbegin();
@@ -504,7 +525,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
             }
             from_offset++;
         }
-        v.resize(distance(cbegin() - from_offset));
+        v.resize(from_offset - v.cbegin());
     } else if constexpr(usesSet) {
         for (auto pos = v.begin(); pos != v.end(); ++pos) {
             if ((get_twister()() / 2) < check_val) {
@@ -512,16 +533,17 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
             }
         }
     } else if constexpr(usesForwardList) {
-        typename container_t::size_t remove_count = 0;
+        typename container_t::size_type remove_count = 0;
         auto pos = v.before_begin();
         while (true) {
             auto next = std::next(pos);
             if (next == v.end()) break;
             if ((get_twister()() / 2) < check_val) {
-                v.erase_after(pos);
+                v.erase_after(pos); // this seg faults. also, make it use the random int mersenne instead
                 ++remove_count;
+            } else {
+                pos = next;
             }
-            pos = next;
         }
         maybe_size.size -= remove_count;
     }
@@ -567,16 +589,21 @@ SDR<SDR_t, container_t> SDR<SDR_t, container_t>::andb(arg_t start_inclusive, arg
         end_it = v.lower_bound(stop_exclusive);
     }
     if constexpr(usesVector) {
-        sdr.v.reserve(distance(start_it, end_it));
+        sdr.v.resize(end_it - start_it);
     }
     if constexpr (usesForwardList) {
         auto insert_it = sdr.v.before_begin();
         for (auto it = start_it; it != end_it; ++it) {
             insert_it = sdr.v.insert_after(insert_it, *it);
         }
-    } else {
+    } else if constexpr(usesSet) {
         for (auto it = start_it; it != end_it; ++it) {
             sdr.v.insert(sdr.v.end(), *it);
+        }
+    } else {
+        auto insert_it = sdr.v.begin();
+        for (auto it = start_it; it != end_it; ++it) {
+            *insert_it++ = *it;
         }
     }
     return sdr; // nrvo
@@ -798,10 +825,10 @@ void SDR<SDR_t, container_t>::orop(const SDR<SDR_t, container_t>& a, const SDR<a
     if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // get from a, or update a_valid if no more elements
     if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
     #pragma GCC diagnostic push
-    #ifdef __GNUC__
-    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-    #elif !defined(__has_warning) || __has_warning("-Wmaybe-uninitialized")
-    #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    #if defined(__has_warning)
+        #if __has_warning("-Wmaybe-uninitialized")
+            #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+        #endif
     #endif
     
     while (a_valid || b_valid) {
@@ -810,7 +837,7 @@ void SDR<SDR_t, container_t>::orop(const SDR<SDR_t, container_t>& a, const SDR<a
             ++a_pos;
             if (a_pos != a_end) a_val = *a_pos; else a_valid = false; // a
         } else if ((!a_valid && b_valid) || (a_valid && b_valid && a_val > b_val)) {
-            visitorb(*const_cast<SDR_t*>(&*b_pos));
+            visitorb(*const_cast<arg_t*>(&*b_pos));
             ++b_pos;
             if (b_pos != b_end) b_val = *b_pos; else b_valid = false; // b
         } else {
@@ -1126,7 +1153,8 @@ void SDR<SDR_t, container_t>::rmv(const SDR<arg_t, c_arg_t>& query, Visitor visi
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::set(SDR<SDR_t, container_t> arg, bool value) {
+template<typename arg_t, typename c_arg_t>
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::set(SDR<arg_t, c_arg_t> arg, bool value) {
     if (value) {
         return ori(arg);
     } else {
@@ -1147,10 +1175,25 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::shift(int amount) {
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::join(const SDR<SDR_t, container_t>& arg) {
-    assert(empty() || arg.empty() || *v.crbegin() < *arg.v.cbegin());
-    v.reserve(v.size() + arg.v.size());
-    for (auto e : arg.v) { push_back(e); }
+template<typename arg_t, typename c_arg_t>
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::append(const SDR<arg_t, c_arg_t>& arg) {
+    if constexpr(!usesForwardList) {
+        assert(empty() || arg.empty() || *v.crbegin() < *arg.v.cbegin());
+    }
+    if constexpr(usesForwardList) {
+        auto it = before_end();
+        assert(empty() || arg.empty() || *it < *arg.v.cbegin());
+        for (auto e : arg.v) { it = insert_end(it, e); }
+    } else if constexpr(usesSet) {
+        for (auto e : arg.v) { push_back(e); }
+    } else {
+        auto old_size = this->v.size();
+        this->v.resize(this->v.size() + arg.v.size());
+        auto insert_it = this->v.begin() + old_size;
+        for (auto it = arg.v.begin(); it != arg.v.end(); ++it) {
+            *insert_it++ = *it;
+        }
+    }
     return *this;
 }
 

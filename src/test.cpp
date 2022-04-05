@@ -4,16 +4,35 @@
 
 BOOST_AUTO_TEST_SUITE(sdr)
 
-BOOST_AUTO_TEST_CASE(andop_simple) {
+BOOST_AUTO_TEST_CASE(andop) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} & SDR<>{2, 3, 4}), (SDR<>{2, 3}));
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} && SDR<>{2, 3, 4}), 2);
 }
 
-BOOST_AUTO_TEST_CASE(andop_range_simple) {
+BOOST_AUTO_TEST_CASE(andop_range) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 5, 20}.andb(2, 7)), (SDR<>{2, 3, 5}));
 }
 
-BOOST_AUTO_TEST_CASE(rmm_simple) {
+BOOST_AUTO_TEST_CASE(append) {
+  SDR<> a{1, 2, 3};
+  SDR<> b{4, 5, 6};
+  a.append(b);
+  BOOST_REQUIRE_EQUAL(a, (SDR<>{1, 2, 3, 4, 5, 6}));
+}
+
+BOOST_AUTO_TEST_CASE(sample_portion) {
+  SDR<> a{1, 2, 3};
+  a *= 0.5;
+  BOOST_REQUIRE(a.size() <= 3);
+  auto it = a.cbegin();
+
+  while (it != a.cend()) {
+    BOOST_REQUIRE(*it > 0 && *it < 4);
+    ++it;
+  }
+}
+
+BOOST_AUTO_TEST_CASE(rmm) {
   using SDR_t = SDR<>::index_type;
   std::function<void(SDR_t&)> visitor = [](SDR_t& elem) {
     elem += 1;
@@ -26,32 +45,32 @@ BOOST_AUTO_TEST_CASE(rmm_simple) {
                       (SDR<>{2, 3, 4}));
 }
 
-BOOST_AUTO_TEST_CASE(andop_inplace_simple) {
+BOOST_AUTO_TEST_CASE(andop_inplace) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} &= SDR<>{0, 1, 2, 99, 100}),
                       (SDR<>{1, 2, 99}));
 }
 
-BOOST_AUTO_TEST_CASE(orop_simple) {
+BOOST_AUTO_TEST_CASE(orop) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} | SDR<>{2, 3, 4}), (SDR<>{1, 2, 3, 4}));
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} || SDR<>{2, 3, 4}), 4);
 }
 
-BOOST_AUTO_TEST_CASE(orop_inplace_simple) {
+BOOST_AUTO_TEST_CASE(orop_inplace) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} |= SDR<>{0, 1, 2, 99, 100}),
                       (SDR<>{0, 1, 2, 3, 99, 100}));
 }
 
-BOOST_AUTO_TEST_CASE(xorop_simple) {
+BOOST_AUTO_TEST_CASE(xorop) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} ^ SDR<>{2, 3, 4}), (SDR<>{1, 4}));
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} / SDR<>{2, 3, 4}), 2);
 }
 
-BOOST_AUTO_TEST_CASE(xorop_inplace_simple) {
+BOOST_AUTO_TEST_CASE(xorop_inplace) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} ^= SDR<>{0, 1, 2, 99, 100}),
                       (SDR<>{0, 3, 100}));
 }
 
-BOOST_AUTO_TEST_CASE(rm_simple) {
+BOOST_AUTO_TEST_CASE(rm) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} - SDR<>{0, 1, 2, 99, 100}),
                       (SDR<>{3}));
 }
