@@ -47,14 +47,16 @@ inline auto& get_twister() {
     static std::mt19937 twister(time(NULL) * getpid() * 33);
     return twister;
 }
-}
+} // namespace
+
+namespace SparseDistributedRepresentation {
 
 /*
  * Based off the ideas explained in this series:
  * https://youtu.be/ZDgCdWTuIzc
  * Numenta: SDR Capacity & Comparison (Episode 2)
  */
-template<typename SDR_t = unsigned int, typename container_t = std::vector<SDR_t>>
+template<typename SDR_t = int, typename container_t = std::vector<SDR_t>>
 class SDR {
     private:
         // used in ctors
@@ -1213,3 +1215,5 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDR_t, container_t>& sdr) {
     os << ']';
     return os;
 }
+
+} // namespace SparseDistributedRepresentation

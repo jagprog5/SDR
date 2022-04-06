@@ -2,6 +2,8 @@
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation.hpp"
 
+using namespace SparseDistributedRepresentation;
+
 BOOST_AUTO_TEST_SUITE(sdr)
 
 BOOST_AUTO_TEST_CASE(andop) {

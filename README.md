@@ -9,6 +9,8 @@ Fuzzing / benchmarks and unit tests can be built with the cmake flag `-DBUILD_TE
 ```cpp
 #include "SparseDistributedRepresentation.hpp"
 
+using namespace SparseDistributedRepresentation;
+
 int main() {
     SDR a{1, 2, 3};
     SDR b{2, 3, 4};

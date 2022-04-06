@@ -2,6 +2,7 @@
 #include <cstring>
 #include <chrono>
 
+using namespace SparseDistributedRepresentation;
 using namespace std::chrono;
 
 #define REQUIRE_TRUE(x) if (!(x)) return false;
