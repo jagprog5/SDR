@@ -34,19 +34,6 @@ BOOST_AUTO_TEST_CASE(sample_portion) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(rmm) {
-  using SDR_t = SDR<>::index_type;
-  std::function<void(SDR_t&)> visitor = [](SDR_t& elem) {
-    elem += 1;
-  };
-
-  auto a = SDR<>{1, 3, 4};
-  auto b = SDR<>{3, 4, 100};
-  a.rmv(b, visitor);
-  BOOST_REQUIRE_EQUAL(a,
-                      (SDR<>{2, 3, 4}));
-}
-
 BOOST_AUTO_TEST_CASE(andop_inplace) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} &= SDR<>{0, 1, 2, 99, 100}),
                       (SDR<>{1, 2, 99}));
@@ -102,51 +89,6 @@ BOOST_AUTO_TEST_CASE(test_encode_periodic) {
   SDR<> a(rand_input_0, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
   SDR<> b(rand_input_1, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
   BOOST_REQUIRE_EQUAL(a, b);
-}
-
-struct LoadedType {
-  int index;
-  int data;
-  friend std::ostream& operator<<(std::ostream&, const LoadedType&);
-  constexpr bool operator<(const LoadedType& l) const {
-    return index < l.index;
-  }
-  constexpr bool operator==(const LoadedType& l) const {
-    return index == l.index;
-  }
-  constexpr bool operator==(decltype(index) l) const { return index == l; }
-  constexpr bool operator<(decltype(index) l) const { return index < l; }
-
-  constexpr operator decltype(index)() const { return index; }
-
-  constexpr LoadedType(decltype(index) index, int data)
-      : index(index), data(data) {}
-  constexpr LoadedType(decltype(index) index) : index(index), data(0) {}
-  constexpr LoadedType() : index(0), data(0) {}
-};
-
-std::ostream& operator<<(std::ostream& os, const LoadedType& l) {
-  os << l.index;
-  return os;
-}
-
-BOOST_AUTO_TEST_CASE(test_loaded_types) {
-  SDR<LoadedType, std::set<LoadedType>> loaded;
-  loaded.push_back(LoadedType{0, 2});
-  loaded.push_back(LoadedType{1, 1});
-  loaded.push_back(LoadedType{2, 0});
-  SDR<decltype(LoadedType::index)> selection{0};
-
-  SDR<LoadedType, std::set<LoadedType>> and_result = loaded.andb(selection);
-  BOOST_REQUIRE_EQUAL(and_result.cbegin()->data, 2);
-
-  SDR<LoadedType, std::set<LoadedType>> rm_result = loaded.rmb(selection);
-  BOOST_REQUIRE_EQUAL(rm_result.cbegin()->data, 1);
-  BOOST_REQUIRE_EQUAL((++rm_result.cbegin())->data, 0);
-
-  SDR<LoadedType, std::set<LoadedType>> rmi_result = loaded.rmi(selection);
-  BOOST_REQUIRE_EQUAL(rmi_result.cbegin()->data, 1);
-  BOOST_REQUIRE_EQUAL((++rmi_result.cbegin())->data, 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_comparison) {
