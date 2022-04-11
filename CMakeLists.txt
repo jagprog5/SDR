@@ -15,7 +15,7 @@ if(BUILD_TESTING)
   # unit tests
   set(BOOST_MIN_VERSION "1.63.0")
   add_executable(test_sdr src/test.cpp)
-  target_compile_options(fuzz_sdr PRIVATE -Wall -Wextra -Wpedantic -Ofast)
+  target_compile_options(test_sdr PRIVATE -Wall -Wextra -Wpedantic -Ofast)
   find_package(Boost REQUIRED COMPONENTS unit_test_framework)
   target_link_libraries(test_sdr PRIVATE ${PROJECT_NAME}_lib ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
   

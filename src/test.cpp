@@ -93,9 +93,38 @@ BOOST_AUTO_TEST_CASE(test_encode_periodic) {
 
 BOOST_AUTO_TEST_CASE(test_comparison) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
+  BOOST_REQUIRE_LE((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
+  BOOST_REQUIRE_GE((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
   BOOST_REQUIRE_NE((SDR<>{0, 2, 3}), (SDR<>{1, 2, 3}));
   BOOST_REQUIRE_LT((SDR<>{0, 2, 3}), (SDR<>{1, 2, 3}));
   BOOST_REQUIRE_GT((SDR<>{4}), (SDR<>{0, 1, 2}));
+}
+
+BOOST_AUTO_TEST_CASE(test_ret_type) {
+  {
+    SDR<> a {1, 2, 3};
+    SDR<> b {2, 3, 4};
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_and = a.andb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_and, a.andb(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_or = a.orb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_or, a.orb(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_xor = a.xorb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_xor, a.xorb(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_rm = a.rmb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_rm, a.rmb(b));
+  }
+  {
+    SDR<> a {1, 2, 3};
+    SDR<> b {2, 3, 4};
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_and = a.andb<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_and, a.andb(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_or = a.orb<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_or, a.orb(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_xor = a.xorb<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_xor, a.xorb(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_rm = a.rmb<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_rm, a.rmb(b));
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
