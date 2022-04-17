@@ -25,7 +25,7 @@ class SDR {
         void initFLSize() {
             if constexpr(usesForwardList) {
                 this->maybe_size.size = 0;
-                auto it = this->v.cbefore_begin();
+                auto it = this->v.cbegin();
                 while (it != this->v.cend()) {
                     ++it;
                     ++this->maybe_size.size;
@@ -55,10 +55,10 @@ class SDR {
             return *this;
         }
 
-        SDR(SDR&& sdr): v(std::move(sdr.v)) {}
+        SDR(SDR&& sdr): v(sdr.v) {}
 
         SDR& operator=(SDR&& sdr) {
-            this->v = std::move(sdr.v);
+            this->v = sdr.v;
             return *this;
         }
 
