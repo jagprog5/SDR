@@ -87,7 +87,7 @@ class SDR {
             return *this;
         }
 
-        container_t&& get_raw() { return std::move(v); }
+        explicit operator container_t&&() { return std::move(v); }
 
         SDR(std::initializer_list<SDR_t> list) : v(list) {
             assert_ascending();
@@ -234,46 +234,37 @@ class SDR {
         typename T::const_reverse_iterator crend() const { return v.crend(); }
 
         template<typename T = container_t>
-        typename std::enable_if<!isForwardList<T>::value, void>::type push_back(SDR_t i) {
+        typename std::enable_if<!isForwardList<T>::value, void>::type push_back(const SDR_t& i) {
             assert(v.empty() || *v.crbegin() < i);
             v.insert(v.end(), i);
         }
 
         template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, typename T::iterator>::type before_begin() {
-            return v.before_begin();
+        typename std::enable_if<!isForwardList<T>::value, void>::type push_back(SDR_t&& i) {
+            assert(v.empty() || *v.crbegin() < i);
+            v.insert(v.end(), i);
         }
 
-        template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, typename T::iterator>::type before_end() {
-            auto it = v.before_begin();
-            while (true) {
-                auto next = std::next(it);
-                if (next == v.end()) return it;
-                it = next;
-            }
-        }
 
         template<typename T = container_t>
         typename std::enable_if<isForwardList<T>::value, void>::type pop_front()  {
+            assert(!v.empty());
             v.pop_front();
+            --maybe_size.size;
         }
 
         template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, void>::type push_front(SDR_t i)  {
+        typename std::enable_if<isForwardList<T>::value, void>::type push_front(const SDR_t& i)  {
             assert(v.empty() || *v.cbegin() > i);
+            ++maybe_size.size;
             v.push_front(i);
         }
 
-        // Append to a forward_list based sdr.
-        // @param position points to before the end.
-        // @param i is the element to append
-        // @return the next position before the end.
         template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, typename T::iterator>::type insert_end(typename T::iterator position, SDR_t i)  {
-            assert(std::next(position) == v.cend() || *position < i);
+        typename std::enable_if<isForwardList<T>::value, void>::type push_front(SDR_t&& i)  {
+            assert(v.empty() || *v.cbegin() > i);
             ++maybe_size.size;
-            return v.insert_after(position, i);
+            v.push_front(i);
         }
 
         template<typename SDR_t_inner, typename container_t_inner>
@@ -447,7 +438,7 @@ SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_typ
         size_type non_wrapped_elements = size - wrapped_elements;
 
         if constexpr(usesForwardList) {
-            auto insert_it = before_begin();
+            auto insert_it = v.before_begin();
             for (size_type i = 0; i < wrapped_elements; ++i) {
                 insert_it = v.insert_after(insert_it, SDR_t(i));
             }
@@ -472,7 +463,7 @@ SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_typ
     } else {
         // no elements are wrapped from the end
         if constexpr(usesForwardList) {
-            auto insert_it = before_begin();
+            auto insert_it = v.before_begin();
             for (size_type i = 0; i < size; ++i) {
                 insert_it = v.insert_after(insert_it, SDR_t(start_index + i));
             }
@@ -498,7 +489,7 @@ SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_a
     if constexpr(usesVector) v.resize(size);
     size_type start_index = std::round((underlying_array_length - size) * input);
     if constexpr(usesForwardList) {
-        auto insert_it = before_begin();
+        auto insert_it = v.before_begin();
         for (size_type i = 0; i < size; ++i) {
             insert_it = v.insert_after(insert_it, start_index + i);
         }
@@ -1314,7 +1305,13 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::append(const SDR<arg_t, c_arg_
         assert(empty() || arg.empty() || *v.crbegin() < *arg.v.cbegin());
     }
     if constexpr(usesForwardList) {
-        auto it = before_end();
+        auto it = v.before_begin();
+        while (true) {
+            auto next = std::next(it);
+            if (next == v.end()) return it;
+            it = next;
+        }
+        // 'it' is before end
         assert(empty() || arg.empty() || *it < *arg.v.cbegin());
         for (auto e : arg.v) { it = insert_end(it, e); }
     } else if constexpr(usesSet) {

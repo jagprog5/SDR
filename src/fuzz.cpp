@@ -129,13 +129,27 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
 // generate a unique SDR based on a number
 // if the specialization uses SDRFloatData, then generate some random data as well
 template<typename SDR>
-SDR get_sdr(unsigned int val) {
+SDR get_sdr(int val) {
     SDR ret;
-    [[maybe_unused]] typename SDR::iterator it;
+    long start;
     if constexpr(SDR::usesForwardList) {
-        it = ret.before_begin();
+        start = sizeof(decltype(val)) * 8 - 1;
+    } else {
+        start = 0;
     }
-    for (long unsigned i = 0; i < sizeof(decltype(val)) * 8; ++i) {
+    long stop; // exclusive
+    if constexpr(SDR::usesForwardList) {
+        stop = -1;
+    } else {
+        stop = sizeof(decltype(val)) * 8;
+    }
+    long change;
+    if constexpr(SDR::usesForwardList) {
+        change = -1;
+    } else {
+        change = 1;
+    }
+    for (long i = start; i != stop; i += change) {
         if ((1 << i) & val) {
             typename SDR::element_type::data_type data;
             if constexpr(std::is_same<typename SDR::element_type::data_type, SDRFloatData>::value) {
@@ -143,7 +157,7 @@ SDR get_sdr(unsigned int val) {
             }
             typename SDR::element_type elem(i, data);
             if constexpr(SDR::usesForwardList) {
-                it = ret.insert_end(it, elem);
+                ret.push_front(elem);
             } else {
                 ret.push_back(elem);
             }
@@ -168,10 +182,10 @@ std::string get_template_name() {
 // name: some sort of identifier
 // f: the function to time and test. should return false if it failed
 template<typename SDRA, typename SDRB, typename funct>
-void time_op(std::string name, funct f, unsigned int fuzz_amount) {
+void time_op(std::string name, funct f, int fuzz_amount) {
     duration<int64_t, std::nano> duration(0);
-    for (unsigned int i = 0; i < fuzz_amount; ++i) {
-        for (unsigned int j = 0; j < fuzz_amount; ++j) {
+    for (int i = 0; i < fuzz_amount; ++i) {
+        for (int j = 0; j < fuzz_amount; ++j) {
             SDRA sdra = get_sdr<SDRA>(i);
             SDRB sdrb = get_sdr<SDRB>(j);
             bool result = f(sdra, sdrb, duration);
@@ -187,7 +201,7 @@ void time_op(std::string name, funct f, unsigned int fuzz_amount) {
 
 
 template<typename SDRA, typename SDRB>
-void series(unsigned int fuzz_amount) {
+void series(int fuzz_amount) {
     auto andb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         SDRA and_result = a.andb(b);
