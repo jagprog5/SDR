@@ -22,21 +22,18 @@ template<typename SDR_t = SDR_t<>, typename container_t = std::vector<SDR_t>>
 class SDR {
     private:
         // used in ctors
-        void initFLSize() {
-            if constexpr(usesForwardList) {
-                this->maybe_size.size = 0;
-                auto it = this->v.cbegin();
-                while (it != this->v.cend()) {
-                    ++it;
-                    ++this->maybe_size.size;
-                }
-            }
-        }
+        void initMaybeSize();
+    
     public:
         using element_type = SDR_t;
+        using container_type = container_t;
         using size_type = typename container_t::size_type;
         using iterator = typename container_t::iterator;
         using const_iterator = typename container_t::const_iterator;
+
+        inline static constexpr bool usesVector = isVector<container_t>::value;
+        inline static constexpr bool usesForwardList = isForwardList<container_t>::value;
+        inline static constexpr bool usesSet = !usesVector && !usesForwardList;
 
         SDR() {
             if constexpr(usesForwardList)
@@ -65,25 +62,25 @@ class SDR {
         // constructors from underlying container
         SDR(const container_t& v): v(v) {
             assert_ascending();
-            initFLSize();
+            initMaybeSize();
         }
 
         SDR& operator=(const container_t& v) {
             this->v = v;
             assert_ascending();
-            initFLSize();
+            initMaybeSize();
             return *this;
         }
 
         SDR(container_t&& v): v(v) {
             assert_ascending();
-            initFLSize();
+            initMaybeSize();
         }
 
         SDR& operator=(container_t&& v) {
             this->v = v;
             assert_ascending();
-            initFLSize();
+            initMaybeSize();
             return *this;
         }
 
@@ -341,11 +338,6 @@ class SDR {
         template<typename arg_t, typename c_arg_t>
         auto operator<=(const SDR<arg_t, c_arg_t>& other) const { return !(*this > other); }
 
-        static constexpr bool usesVector = isVector<container_t>::value;
-        static constexpr bool usesForwardList = isForwardList<container_t>::value;
-        static constexpr bool usesSet = isSet<container_t>::value;
-        static_assert(usesVector || usesForwardList || usesSet);
-
     private:
         container_t v;
 
@@ -388,19 +380,30 @@ class SDR {
             }
         };
 
-        // augmenting the forward_list with a size
-        MaybeSize<container_t, usesForwardList> maybe_size;
+        MaybeSize<container_t> maybe_size;
 
         // used in the output stream op
-        static constexpr bool print_type = false;
+        inline static constexpr bool print_type = false;
 
         // set this to true if it is expected that arguments will be small compared to the object being called on
         // e.g. large.andb(small)
-        static constexpr bool small_args = false;
+        inline static constexpr bool small_args = false;
 
         template<typename friend_SDR_t, typename friend_container_t>
         friend class SDR;
 };
+
+template<typename SDR_t, typename container_t>
+void SDR<SDR_t, container_t>::initMaybeSize() {
+    if constexpr(usesForwardList) {
+        this->maybe_size.size = 0;
+        auto it = this->v.cbegin();
+        while (it != this->v.cend()) {
+            ++it;
+            ++this->maybe_size.size;
+        }
+    }
+}
 
 template<typename SDR_t, typename container_t>
 void SDR<SDR_t, container_t>::assert_ascending() {
@@ -595,16 +598,16 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::andb(arg_t start_inclusive, arg_t s
         for (auto it = start_it; it != end_it; ++it) {
             insert_it = sdr.v.insert_after(insert_it, (ret_t)*it);
         }
-    } else if constexpr(isSet<c_ret_t>::value) {
-        for (auto it = start_it; it != end_it; ++it) {
-            sdr.v.insert(sdr.v.end(), (ret_t)*it);
-        }
-    } else {
+    } else if constexpr(isVector<c_ret_t>::value) {
         auto insert_it = sdr.v.begin();
         for (auto it = start_it; it != end_it; ++it) {
             *insert_it++ = (ret_t)*it;
         }
-    }
+    }  else {
+        for (auto it = start_it; it != end_it; ++it) {
+            sdr.v.insert(sdr.v.end(), (ret_t)*it);
+        }
+    } 
     return sdr; // nrvo
 }
 
@@ -699,7 +702,7 @@ void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<
     if (a_pos == a_end) return;
     while (true) {
         a_elem = *a_pos;
-        if constexpr(isSet<c_arg_t>::value) {
+        if constexpr(!isVector<c_arg_t>::value && !isForwardList<c_arg_t>::value) {
             b_pos = b.v.lower_bound(a_elem.id);
         } else {
             b_pos = lower_bound(b_pos, b_end, a_elem);

@@ -8,6 +8,36 @@
 
 namespace SparseDistributedRepresentation {
 
+// if the underlying container does not have a size, then declare a size member, and inherit true_type
+template <typename container_t, typename = void>
+struct MaybeSize {
+    typename container_t::size_type size;
+};
+
+template <typename container_t>
+struct MaybeSize<container_t, decltype((void)container_t().size(), void())> {
+};
+
+// the below template is specific to stl containers only.
+// in an effort to keep things generic, the presence or lack of certain members is checked for instead
+
+// template <typename T>
+// struct isForwardList : std::false_type {};
+
+// template <typename T, typename A>
+// struct isForwardList<std::forward_list<T, A>> : std::true_type {};
+
+template <typename T, typename = void>
+struct isForwardList : std::true_type {};
+
+template <typename T>
+struct isForwardList<T, decltype((void)T().size(), void())> : std::false_type {};
+
+template <typename T>
+struct isVector {
+    inline static constexpr auto value = std::is_same_v<typename std::iterator_traits<typename T::iterator>::iterator_category, std::random_access_iterator_tag>;
+};
+
 struct SDRFloatData;
 
 struct EmptyStruct {
@@ -19,7 +49,7 @@ struct EmptyStruct {
             #pragma GCC diagnostic ignored "-Wzero-length-array"
         #endif
     #endif
-    // if this member wasn't here, the struct size would be 1, instead of 0. wtf
+    // if this member wasn't here, the struct size would be 1, instead of 0
     char unused[0];
     #pragma GCC diagnostic pop
 
@@ -33,7 +63,7 @@ struct EmptyStruct {
         return false;
     }
 
-    constexpr operator SDRFloatData() const;
+    explicit constexpr operator SDRFloatData() const;
 
     template<typename arg_t>
     constexpr EmptyStruct andb([[maybe_unused]] const arg_t& o) const {
@@ -62,7 +92,7 @@ struct SDRFloatData {
     float value;
 
     template <typename T, typename = void>
-    struct has_value : std::false_type{};
+    struct has_value : std::false_type {};
 
     template <typename T>
     struct has_value<T, decltype((void)T::value, void())> : std::true_type {};
@@ -75,7 +105,7 @@ struct SDRFloatData {
         return relevant();
     }
 
-    constexpr operator EmptyStruct() const { return EmptyStruct(); }
+    explicit constexpr operator EmptyStruct() const { return EmptyStruct(); }
 
     template<typename arg_t>
     constexpr SDRFloatData andb(const arg_t& o) const {
@@ -133,36 +163,6 @@ constexpr EmptyStruct::operator SDRFloatData() const {
     }
     return os;
 }
-
-template <typename T>
-struct isVector : std::false_type {};
-
-template <typename T, typename A>
-struct isVector<std::vector<T, A>> : std::true_type {};
-
-template <typename T>
-struct isForwardList : std::false_type {};
-
-template <typename T, typename A>
-struct isForwardList<std::forward_list<T, A>> : std::true_type {};
-
-template <typename T>
-struct isSet : std::false_type {};
-
-template <typename T, typename C, typename A>
-struct isSet<std::set<T, C, A>> : std::true_type {};
-
-template <typename container_t, bool enable_member>
-struct MaybeSize;
-
-template <typename container_t>
-struct MaybeSize<container_t, true> {
-    typename container_t::size_type size;
-};
-
-template <typename container_t>
-struct MaybeSize<container_t, false> {
-};
 
 template<typename id_t = int,
          typename data_t = EmptyStruct>
