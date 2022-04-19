@@ -34,9 +34,7 @@ template <typename T>
 struct isForwardList<T, decltype((void)T().size(), void())> : std::false_type {};
 
 template <typename T>
-struct isVector {
-    inline static constexpr auto value = std::is_same_v<typename std::iterator_traits<typename T::iterator>::iterator_category, std::random_access_iterator_tag>;
-};
+struct isVector : std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category> {};
 
 struct SDRFloatData;
 
