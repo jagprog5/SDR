@@ -1,6 +1,7 @@
 #include "SparseDistributedRepresentation.hpp"
 #include <cstring>
 #include <chrono>
+#include <random>
 
 using namespace SparseDistributedRepresentation;
 using namespace std::chrono;
@@ -126,6 +127,8 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     return true;
 }
 
+inline std::mt19937 twister(time(NULL) * getpid());
+
 // generate a unique SDR based on a number
 // if the specialization uses SDRFloatData, then generate some random data as well
 template<typename SDR>
@@ -151,11 +154,11 @@ SDR get_sdr(int val) {
     }
     for (long i = start; i != stop; i += change) {
         if ((1 << i) & val) {
-            typename SDR::element_type::data_type data;
-            if constexpr(std::is_same<typename SDR::element_type::data_type, SDRFloatData>::value) {
+            typename SDR::value_type::data_type data;
+            if constexpr(std::is_same<typename SDR::value_type::data_type, SDRFloatData>::value) {
                 data.value = (float)twister() / (float)twister.max();
             }
-            typename SDR::element_type elem(i, data);
+            typename SDR::value_type elem(i, data);
             if constexpr(SDR::usesForwardList) {
                 ret.push_front(elem);
             } else {

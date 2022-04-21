@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE sparse_distribued_representation_test_module
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation.hpp"
+#include <random>
 
 using namespace SparseDistributedRepresentation;
 
@@ -23,8 +24,9 @@ BOOST_AUTO_TEST_CASE(append) {
 }
 
 BOOST_AUTO_TEST_CASE(sample_portion) {
-  SDR<> a{1, 2, 3};
-  a *= 0.5;
+  SDR<> a{1, 2, 3}; // todo
+  std::mt19937 twister(time(NULL) * getpid());
+  a.sample_portion(0.5, twister);
   BOOST_REQUIRE(a.size() <= 3);
   auto it = a.cbegin();
 

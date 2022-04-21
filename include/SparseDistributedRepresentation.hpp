@@ -4,14 +4,11 @@
 #include <unistd.h>
 #include <assert.h>
 #include <initializer_list>
+#include <cmath>
 #include <algorithm>
-#include <random>
 #include <functional>
-#include <optional>
 
 namespace SparseDistributedRepresentation {
-
-inline std::mt19937 twister(time(NULL) * getpid());
 
 /*
  * Inspired from ideas explained in this series:
@@ -20,12 +17,15 @@ inline std::mt19937 twister(time(NULL) * getpid());
  */
 template<typename SDR_t = SDR_t<>, typename container_t = std::vector<SDR_t>>
 class SDR {
+    static_assert("Use SparseDistributedRepresentation::SDR_t<a_type_here> instead"
+        && !std::is_fundamental<SDR_t>::value);
+    
     private:
         // used in ctors
         void initMaybeSize();
     
     public:
-        using element_type = SDR_t;
+        using value_type = SDR_t;
         using container_type = container_t;
         using size_type = typename container_t::size_type;
         using iterator = typename container_t::iterator;
@@ -106,7 +106,8 @@ class SDR {
         SDR(float input, float period, size_type size, size_type underlying_array_length);
 
         // Each bit has a chance of being turned off, specified by amount, where 0 always clears the sdr, and 1 nearly always leaves it unchanged.
-        SDR<SDR_t, container_t>& sample_portion(float amount);
+        template<typename RandomGenerator>
+        SDR<SDR_t, container_t>& sample_portion(float amount, RandomGenerator& g);
 
         // and bit. returns the state of a bit.
         template<typename arg_t>
@@ -293,10 +294,6 @@ class SDR {
         auto operator-(const other& o) const { return rmb(o); }
         template<typename other>
         auto operator-=(const other& o) { return rmi(o); }
-        template<typename other>
-        auto operator*(const other& o) { return SDR(*this).sample_portion(o); }
-        template<typename other>
-        auto operator*=(const other& o) { return sample_portion(o); }
         template<typename other>
         auto operator<<(const other& o) const { return SDR(*this).shift(o); }
         template<typename other>
@@ -511,15 +508,16 @@ SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_a
 }
 
 template<typename SDR_t, typename container_t>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
+template<typename RandomGenerator>
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount, RandomGenerator& g) {
     assert(amount >= 0 && amount <= 1);
-    auto check_val = amount * (float)twister.max();
+    auto check_val = amount * (float)g.max();
     if constexpr(usesVector) {
         auto to_offset = v.begin();
         auto from_offset = v.cbegin();
         auto end = v.end();
         while (from_offset != end) {
-            if (twister() < check_val) {
+            if (g() < check_val) {
                 *to_offset++ = *from_offset;
             }
             from_offset++;
@@ -528,7 +526,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
     } else if constexpr(usesSet) {
         auto pos = v.begin();
         while (pos != v.end()) {
-            if (twister() >= check_val) {
+            if (g() >= check_val) {
                 pos = v.erase(pos);
             } else {
                 ++pos;
@@ -540,7 +538,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount) {
         while (true) {
             auto next = std::next(pos);
             if (next == v.end()) break;
-            if (twister() >= check_val) {
+            if (g() >= check_val) {
                 v.erase_after(pos);
                 ++remove_count;
             } else {
