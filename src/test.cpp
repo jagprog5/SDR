@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation.hpp"
 #include <random>
+#include <unistd.h>
 
 using namespace SparseDistributedRepresentation;
 

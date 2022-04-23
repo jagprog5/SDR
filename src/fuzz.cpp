@@ -1,6 +1,7 @@
 #include "SparseDistributedRepresentation.hpp"
 #include <cstring>
 #include <chrono>
+#include <unistd.h>
 #include <random>
 
 using namespace SparseDistributedRepresentation;

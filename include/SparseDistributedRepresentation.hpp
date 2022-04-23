@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SDRDefinitions.hpp>
-#include <unistd.h>
 #include <assert.h>
 #include <initializer_list>
 #include <cmath>
@@ -1339,7 +1338,7 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDR_t, container_t>& sdr) {
     for (auto it = sdr.cbegin(), end = sdr.cend(); it != end; ++it) { 
         const auto i = *it;
         os << i;
-        if (next(it) != end) os << ",";
+        if (std::next(it) != end) os << ",";
     }
     os << ']';
     return os;
