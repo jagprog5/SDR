@@ -58,6 +58,10 @@ class SDR {
             return *this;
         }
 
+        // ctor from iters
+        template<typename Iterator>
+        SDR(Iterator begin, Iterator end);
+
         // constructors from underlying container
         SDR(const container_t& v): v(v) {
             assert_ascending();
@@ -214,6 +218,8 @@ class SDR {
 
         auto cbegin() const { return v.cbegin(); }
         auto cend() const { return v.cend(); }
+        auto begin() const { return v.cbegin(); }
+        auto end() const { return v.cend(); }
         auto empty() const { return v.empty(); }
 
         auto size() const {
@@ -415,6 +421,29 @@ void SDR<SDR_t, container_t>::assert_ascending() {
                 prev_elem = elem;
             }   
         #endif
+    }
+}
+
+template<typename SDR_t, typename container_t>
+template<typename Iterator>
+SDR<SDR_t, container_t>::SDR(Iterator begin, Iterator end) {
+    if constexpr(usesForwardList) {
+        this->maybe_size.size = 0;
+        auto insert_it = this->v.before_begin();
+        while (begin != end) {
+            insert_it = this->v.insert_after(insert_it, *begin++);
+            ++this->maybe_size.size;
+        }
+    } else if constexpr(usesVector && std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category>::value) {
+        auto count = end - begin;
+        this->v.resize(count);
+        for (decltype(count) i = 0; i < count; ++i) {
+            this->v[i] = *begin++; 
+        }
+    } else {
+        while (begin != end) {
+            v.insert(v.end(), *begin++);
+        }
     }
 }
 
