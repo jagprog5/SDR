@@ -8,7 +8,7 @@
 
 namespace SparseDistributedRepresentation {
 
-// if the underlying container does not have a size, then declare a size member, and inherit true_type
+// if the underlying container does not have a size, then declare a size member
 template <typename container_t, typename = void>
 struct MaybeSize {
     typename container_t::size_type size;
@@ -162,14 +162,15 @@ constexpr EmptyStruct::operator SDRFloatData() const {
     return os;
 }
 
+/*
+An SDR element type has an id, and (optionally) some data.
+When ops are computed, the relevant elements (identified by a matching id)
+and their data are combined in the result.
+*/
 template<typename id_t = int,
          typename data_t = EmptyStruct>
 struct SDR_t {
-    /*
-    An SDR element type has an id, and (optionally) some data.
-    When ops are computed, the relevant elements (identified by a matching id)
-    and their data are combined in the result.
-    */
+    static_assert(std::is_integral<id_t>::value);
 
     using id_type = id_t;
     using data_type = data_t;

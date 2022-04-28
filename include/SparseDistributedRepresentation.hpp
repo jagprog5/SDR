@@ -16,8 +16,7 @@ namespace SparseDistributedRepresentation {
  */
 template<typename SDR_t = SDR_t<>, typename container_t = std::vector<SDR_t>>
 class SDR {
-    static_assert("Use SparseDistributedRepresentation::SDR_t<a_type_here> instead"
-        && !std::is_fundamental<SDR_t>::value);
+    static_assert(!std::is_fundamental<SDR_t>::value, "Use SparseDistributedRepresentation::SDR_t<a_type_here> instead");
     
     private:
         // used in ctors
