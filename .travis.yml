@@ -18,3 +18,4 @@ before_script:
 script:
   - ./test_sdr
   - ./fuzz_sdr 20
+ 
