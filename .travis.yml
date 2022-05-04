@@ -1,0 +1,20 @@
+language: cpp
+dist: bionic
+
+compiler:
+  - clang
+  - gcc
+
+before_install:
+  - sudo apt-get update
+
+install:
+  - sudo apt-get install -y libboost-test-dev
+
+before_script:
+  - cmake . -DBUILD_TESTING=true
+  - cmake --build .
+
+script:
+  - ./test_sdr
+  - ./fuzz_sdr 20
