@@ -14,8 +14,8 @@ Fuzzing / benchmarks and unit tests can be built with the cmake flag `-DBUILD_TE
 using namespace SparseDistributedRepresentation;
 
 int main() {
-    SDR<> a{1, 2, 3};
-    SDR<> b{2, 3, 4};
+    SDR a{1, 2, 3};
+    SDR b{2, 3, 4};
     std::cout << (a & b) << std::endl; // prints: [2,3]
     return 0;
 }

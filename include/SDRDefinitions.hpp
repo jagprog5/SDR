@@ -38,7 +38,7 @@ struct isVector : std::is_base_of<std::random_access_iterator_tag, typename std:
 
 struct SDRFloatData;
 
-struct EmptyStruct {
+struct EmptyData {
     // this is the data_type for a default SDR_t which does not use the data functionality
 
     #pragma GCC diagnostic push
@@ -64,23 +64,23 @@ struct EmptyStruct {
     explicit constexpr operator SDRFloatData() const;
 
     template<typename arg_t>
-    constexpr EmptyStruct andb([[maybe_unused]] const arg_t& o) const {
-        return EmptyStruct();
+    constexpr EmptyData andb([[maybe_unused]] const arg_t& o) const {
+        return EmptyData();
     }
 
     template<typename arg_t>
-    constexpr EmptyStruct orb([[maybe_unused]] const arg_t& o) const {
-        return EmptyStruct();
+    constexpr EmptyData orb([[maybe_unused]] const arg_t& o) const {
+        return EmptyData();
     }
 
     template<typename arg_t>
-    constexpr EmptyStruct xorb([[maybe_unused]] const arg_t& o) const {
-        return EmptyStruct();
+    constexpr EmptyData xorb([[maybe_unused]] const arg_t& o) const {
+        return EmptyData();
     }
 
     template<typename arg_t>
-    constexpr EmptyStruct rmb([[maybe_unused]] const arg_t& o) const {
-        return EmptyStruct();
+    constexpr EmptyData rmb([[maybe_unused]] const arg_t& o) const {
+        return EmptyData();
     }
 };
 
@@ -103,7 +103,7 @@ struct SDRFloatData {
         return relevant();
     }
 
-    explicit constexpr operator EmptyStruct() const { return EmptyStruct(); }
+    explicit constexpr operator EmptyData() const { return EmptyData(); }
 
     template<typename arg_t>
     constexpr SDRFloatData andb(const arg_t& o) const {
@@ -143,11 +143,11 @@ struct SDRFloatData {
 
 };
 
-constexpr EmptyStruct::operator SDRFloatData() const {
+constexpr EmptyData::operator SDRFloatData() const {
     return SDRFloatData(1);
 }
 
-[[maybe_unused]] std::ostream& operator<<(std::ostream& os, const SDRFloatData& o) {
+std::ostream& operator<<(std::ostream& os, const SDRFloatData& o) {
     auto val = o.value;
     if (val > 1 || val < 0) {
         os << "!!!";
@@ -168,7 +168,7 @@ When ops are computed, the relevant elements (identified by a matching id)
 and their data are combined in the result.
 */
 template<typename id_t = int,
-         typename data_t = EmptyStruct>
+         typename data_t = EmptyData>
 struct SDR_t {
     static_assert(std::is_integral<id_t>::value);
 

@@ -9,23 +9,23 @@ using namespace SparseDistributedRepresentation;
 BOOST_AUTO_TEST_SUITE(sdr)
 
 BOOST_AUTO_TEST_CASE(andop) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} & SDR<>{2, 3, 4}), (SDR<>{2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} && SDR<>{2, 3, 4}), 2);
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} & SDR{2, 3, 4}), (SDR{2, 3}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} && SDR{2, 3, 4}), 2);
 }
 
 BOOST_AUTO_TEST_CASE(andop_range) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 5, 20}.andb(2, 7)), (SDR<>{2, 3, 5}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.andb(2, 7)), (SDR{2, 3, 5}));
 }
 
 BOOST_AUTO_TEST_CASE(append) {
-  SDR<> a{1, 2, 3};
-  SDR<> b{4, 5, 6};
+  SDR a{1, 2, 3};
+  SDR b{4, 5, 6};
   a.append(b);
-  BOOST_REQUIRE_EQUAL(a, (SDR<>{1, 2, 3, 4, 5, 6}));
+  BOOST_REQUIRE_EQUAL(a, (SDR{1, 2, 3, 4, 5, 6}));
 }
 
 BOOST_AUTO_TEST_CASE(sample_portion) {
-  SDR<> a{1, 2, 3}; // todo
+  SDR a{1, 2, 3};
   std::mt19937 twister(time(NULL) * getpid());
   a.sample_portion(0.5, twister);
   BOOST_REQUIRE(a.size() <= 3);
@@ -38,39 +38,39 @@ BOOST_AUTO_TEST_CASE(sample_portion) {
 }
 
 BOOST_AUTO_TEST_CASE(andop_inplace) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} &= SDR<>{0, 1, 2, 99, 100}),
-                      (SDR<>{1, 2, 99}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 99} &= SDR{0, 1, 2, 99, 100}),
+                      (SDR{1, 2, 99}));
 }
 
 BOOST_AUTO_TEST_CASE(orop) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} | SDR<>{2, 3, 4}), (SDR<>{1, 2, 3, 4}));
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} || SDR<>{2, 3, 4}), 4);
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} | SDR{2, 3, 4}), (SDR{1, 2, 3, 4}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} || SDR{2, 3, 4}), 4);
 }
 
 BOOST_AUTO_TEST_CASE(orop_inplace) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} |= SDR<>{0, 1, 2, 99, 100}),
-                      (SDR<>{0, 1, 2, 3, 99, 100}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 99} |= SDR{0, 1, 2, 99, 100}),
+                      (SDR{0, 1, 2, 3, 99, 100}));
 }
 
 BOOST_AUTO_TEST_CASE(xorop) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} ^ SDR<>{2, 3, 4}), (SDR<>{1, 4}));
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3}.xors(SDR<>{2, 3, 4})), 2);
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} ^ SDR{2, 3, 4}), (SDR{1, 4}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3}.xors(SDR{2, 3, 4})), 2);
 }
 
 BOOST_AUTO_TEST_CASE(xorop_inplace) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} ^= SDR<>{0, 1, 2, 99, 100}),
-                      (SDR<>{0, 3, 100}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 99} ^= SDR{0, 1, 2, 99, 100}),
+                      (SDR{0, 3, 100}));
 }
 
 BOOST_AUTO_TEST_CASE(rm) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3, 99} - SDR<>{0, 1, 2, 99, 100}),
-                      (SDR<>{3}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 99} - SDR{0, 1, 2, 99, 100}),
+                      (SDR{3}));
 }
 
 BOOST_AUTO_TEST_CASE(test_encode) {
-  BOOST_REQUIRE_EQUAL(SDR<>(0, 3, 100), (SDR<>{0, 1, 2}));
-  BOOST_REQUIRE_EQUAL(SDR<>(0.5, 3, 100), (SDR<>{49, 50, 51}));
-  BOOST_REQUIRE_EQUAL(SDR<>(1, 3, 100), (SDR<>{97, 98, 99}));
+  BOOST_REQUIRE_EQUAL(SDR(0, 3, 100), (SDR{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL(SDR(0.5, 3, 100), (SDR{49, 50, 51}));
+  BOOST_REQUIRE_EQUAL(SDR(1, 3, 100), (SDR{97, 98, 99}));
 }
 
 BOOST_AUTO_TEST_CASE(test_encode_periodic) {
@@ -89,24 +89,24 @@ BOOST_AUTO_TEST_CASE(test_encode_periodic) {
     rand_input_1 += 0.0001;
   }
 
-  SDR<> a(rand_input_0, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
-  SDR<> b(rand_input_1, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
+  SDR a(rand_input_0, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
+  SDR b(rand_input_1, rand_period, SPARSE_LENGTH, DENSE_LENGTH);
   BOOST_REQUIRE_EQUAL(a, b);
 }
 
 BOOST_AUTO_TEST_CASE(test_comparison) {
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
-  BOOST_REQUIRE_LE((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
-  BOOST_REQUIRE_GE((SDR<>{1, 2, 3}), (SDR<>{1, 2, 3}));
-  BOOST_REQUIRE_NE((SDR<>{0, 2, 3}), (SDR<>{1, 2, 3}));
-  BOOST_REQUIRE_LT((SDR<>{0, 2, 3}), (SDR<>{1, 2, 3}));
-  BOOST_REQUIRE_GT((SDR<>{4}), (SDR<>{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3}), (SDR{1, 2, 3}));
+  BOOST_REQUIRE_LE((SDR{1, 2, 3}), (SDR{1, 2, 3}));
+  BOOST_REQUIRE_GE((SDR{1, 2, 3}), (SDR{1, 2, 3}));
+  BOOST_REQUIRE_NE((SDR{0, 2, 3}), (SDR{1, 2, 3}));
+  BOOST_REQUIRE_LT((SDR{0, 2, 3}), (SDR{1, 2, 3}));
+  BOOST_REQUIRE_GT((SDR{4}), (SDR{0, 1, 2}));
 }
 
 BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
-    SDR<> a {1, 2, 3};
-    SDR<> b {2, 3, 4};
+    SDR a {1, 2, 3};
+    SDR b {2, 3, 4};
     SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_and = a.andb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.andb(b));
     SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_or = a.orb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
@@ -117,8 +117,8 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
     BOOST_REQUIRE_EQUAL(r_rm, a.rmb(b));
   }
   {
-    SDR<> a {1, 2, 3};
-    SDR<> b {2, 3, 4};
+    SDR a {1, 2, 3};
+    SDR b {2, 3, 4};
     SDR<SDR_t<long>, std::set<SDR_t<long>>> r_and = a.andb<SDR_t<long>, std::set<SDR_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.andb(b));
     SDR<SDR_t<long>, std::set<SDR_t<long>>> r_or = a.orb<SDR_t<long>, std::set<SDR_t<long>>>(b);

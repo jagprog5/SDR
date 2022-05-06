@@ -16,7 +16,7 @@ namespace SparseDistributedRepresentation {
  */
 template<typename SDR_t = SDR_t<>, typename container_t = std::vector<SDR_t>>
 class SDR {
-    static_assert(!std::is_fundamental<SDR_t>::value, "Use SparseDistributedRepresentation::SDR_t<a_type_here> instead");
+    static_assert(!std::is_fundamental<SDR_t>::value, "Instead of SDR<fundamental_type_here>, use SDR<SDR_t<fundamental_type_here>>");
     
     private:
         // used in ctors
@@ -88,11 +88,8 @@ class SDR {
 
         explicit operator container_t&&() { return std::move(v); }
 
-        SDR(std::initializer_list<SDR_t> list) : v(list) {
-            assert_ascending();
-            if constexpr(usesForwardList)
-                this->maybe_size.size = list.size();
-        };
+        template<typename T>
+        SDR(std::initializer_list<T> list);
 
         // Encode a float as an SDR.
         // @param input the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
@@ -445,6 +442,33 @@ SDR<SDR_t, container_t>::SDR(Iterator begin, Iterator end) {
             v.insert(v.end(), *begin++);
         }
     }
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T>
+SDR<SDR_t, container_t>::SDR(std::initializer_list<T> list) {
+    if constexpr(std::is_fundamental<T>::value) {
+        if constexpr(usesForwardList) {
+            auto pos = list.begin();
+            auto end = list.end();
+            this->maybe_size.size = 0;
+            auto insert_it = this->v.before_begin();
+            while (pos != end) {
+                insert_it = this->v.insert_after(insert_it, SDR_t(*pos++));
+                ++this->maybe_size.size;
+            }
+        } else {
+            for (auto& elem : list) {
+                this->v.insert(this->v.end(), SDR_t(elem));
+            }
+        }
+    } else {
+        this->v(list);
+        if constexpr(usesForwardList)
+            this->maybe_size.size = list.size();
+    }
+
+    assert_ascending();
 }
 
 template<typename SDR_t, typename container_t>
