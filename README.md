@@ -9,7 +9,7 @@ Fuzzing / benchmarks and unit tests can be built with the cmake flag `-DBUILD_TE
 ## Example
 
 ```cpp
-#include "SparseDistributedRepresentation.hpp"
+#include "SparseDistributedRepresentation/SDR.hpp"
 
 using namespace SparseDistributedRepresentation;
 

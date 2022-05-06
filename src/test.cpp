@@ -1,6 +1,6 @@
 #define BOOST_TEST_MODULE sparse_distribued_representation_test_module
 #include <boost/test/included/unit_test.hpp>
-#include "SparseDistributedRepresentation.hpp"
+#include "SparseDistributedRepresentation/SDR.hpp"
 #include <random>
 #include <unistd.h>
 

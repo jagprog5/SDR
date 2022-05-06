@@ -1,4 +1,5 @@
-#include "SparseDistributedRepresentation.hpp"
+#include "SparseDistributedRepresentation/SDR.hpp"
+#include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include <cstring>
 #include <chrono>
 #include <unistd.h>
@@ -131,7 +132,7 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
 inline std::mt19937 twister(time(NULL) * getpid());
 
 // generate a unique SDR based on a number
-// if the specialization uses SDRFloatData, then generate some random data as well
+// if the specialization uses UnitData, then generate some random data as well
 template<typename SDR>
 SDR get_sdr(int val) {
     SDR ret;
@@ -156,7 +157,7 @@ SDR get_sdr(int val) {
     for (long i = start; i != stop; i += change) {
         if ((1 << i) & val) {
             typename SDR::value_type::data_type data;
-            if constexpr(std::is_same<typename SDR::value_type::data_type, SDRFloatData>::value) {
+            if constexpr(std::is_same<typename SDR::value_type::data_type, UnitData>::value) {
                 data.value = (float)twister() / (float)twister.max();
             }
             typename SDR::value_type elem(i, data);
@@ -348,29 +349,29 @@ int main(int argc, char** argv) {
 
     std::cout << "======With float data elements======" << std::endl;
 
-    series<SDR<SDR_t<long, SDRFloatData>, std::vector<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::vector<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
-    series<SDR<SDR_t<long, SDRFloatData>, std::vector<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::set<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
-    series<SDR<SDR_t<long, SDRFloatData>, std::vector<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::forward_list<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::vector<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::vector<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::vector<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>>(fuzz_amount);
 
-    series<SDR<SDR_t<long, SDRFloatData>, std::set<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::vector<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
-    series<SDR<SDR_t<long, SDRFloatData>, std::set<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::set<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
-    series<SDR<SDR_t<long, SDRFloatData>, std::set<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::forward_list<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::set<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::set<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::set<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>>(fuzz_amount);
 
-    series<SDR<SDR_t<long, SDRFloatData>, std::forward_list<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::vector<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
-    series<SDR<SDR_t<long, SDRFloatData>, std::forward_list<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::set<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
-    series<SDR<SDR_t<long, SDRFloatData>, std::forward_list<SDR_t<long, SDRFloatData>>>, SDR<SDR_t<int, SDRFloatData>, std::forward_list<SDR_t<int, SDRFloatData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::forward_list<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::forward_list<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDR_t<long, UnitData>, std::forward_list<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>>(fuzz_amount);
 
     std::cout << "======Mixed with and without data======" << std::endl;
 
-    series<SDR<SDR_t<int, SDRFloatData>, std::vector<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
-    series<SDR<SDR_t<int, SDRFloatData>, std::vector<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
-    series<SDR<SDR_t<int, SDRFloatData>, std::vector<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
 
-    series<SDR<SDR_t<int, SDRFloatData>, std::set<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
-    series<SDR<SDR_t<int, SDRFloatData>, std::set<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
-    series<SDR<SDR_t<int, SDRFloatData>, std::set<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
 
-    series<SDR<SDR_t<int, SDRFloatData>, std::forward_list<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
-    series<SDR<SDR_t<int, SDRFloatData>, std::forward_list<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
-    series<SDR<SDR_t<int, SDRFloatData>, std::forward_list<SDR_t<int, SDRFloatData>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
+    series<SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
 }

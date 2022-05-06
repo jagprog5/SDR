@@ -1,11 +1,13 @@
 #pragma once
 
-#include <SDRDefinitions.hpp>
 #include <assert.h>
 #include <initializer_list>
 #include <cmath>
 #include <algorithm>
 #include <functional>
+
+#include "SparseDistributedRepresentation/Templates.hpp"
+#include "SparseDistributedRepresentation/SDR_t.hpp"
 
 namespace SparseDistributedRepresentation {
 
@@ -29,9 +31,9 @@ class SDR {
         using iterator = typename container_t::iterator;
         using const_iterator = typename container_t::const_iterator;
 
-        inline static constexpr bool usesVector = isVector<container_t>::value;
-        inline static constexpr bool usesForwardList = isForwardList<container_t>::value;
-        inline static constexpr bool usesSet = !usesVector && !usesForwardList;
+        static constexpr bool usesVector = isVector<container_t>::value;
+        static constexpr bool usesForwardList = isForwardList<container_t>::value;
+        static constexpr bool usesSet = !usesVector && !usesForwardList;
 
         SDR() {
             if constexpr(usesForwardList)
@@ -382,11 +384,11 @@ class SDR {
         MaybeSize<container_t> maybe_size;
 
         // used in the output stream op
-        inline static constexpr bool print_type = false;
+        static constexpr bool print_type = false;
 
         // set this to true if it is expected that arguments will be small compared to the object being called on
         // e.g. large.andb(small)
-        inline static constexpr bool small_args = false;
+        static constexpr bool small_args = false;
 
         template<typename friend_SDR_t, typename friend_container_t>
         friend class SDR;
