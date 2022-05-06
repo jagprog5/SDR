@@ -111,6 +111,13 @@ class SDR {
         template<typename RandomGenerator>
         SDR<SDR_t, container_t>& sample_portion(float amount, RandomGenerator& g);
 
+        /**
+         * visitor. Perform an operation on each element in this,
+         * The visitor arg is called as visitor(const SDR_t::id_type&, SDR_t::data_type&)
+         */
+        template<typename Visitor>
+        void visitor(Visitor visitor);
+
         // and bit. returns the state of a bit.
         template<typename arg_t>
         bool andb(arg_t val) const;
@@ -287,13 +294,7 @@ class SDR {
         template<typename other>
         auto operator^(const other& o) const { return xorb(o); }
         template<typename other>
-        auto operator/(const other& o) const { return xors(o); } // should be ^^
-        template<typename other>
         auto operator^=(const other& o) { return xori(o); }
-        template<typename other>
-        auto operator+(const other& o) const { return orb(o); }
-        template<typename other>
-        auto operator+=(const other& o) { return ori(o); }
         template<typename other>
         auto operator-(const other& o) const { return rmb(o); }
         template<typename other>
@@ -575,6 +576,14 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount, R
         maybe_size.size -= remove_count;
     }
     return *this;
+}
+
+template<typename SDR_t, typename container_t>
+template<typename Visitor>
+void SDR<SDR_t, container_t>::visitor(Visitor visitor) {
+    for (const auto& elem : this->v) {
+        visitor(elem.id, const_cast<typename SDR_t::data_type&>(elem.data));
+    }
 }
 
 template<typename SDR_t, typename container_t>

@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(orop_inplace) {
 
 BOOST_AUTO_TEST_CASE(xorop) {
   BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} ^ SDR<>{2, 3, 4}), (SDR<>{1, 4}));
-  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3} / SDR<>{2, 3, 4}), 2);
+  BOOST_REQUIRE_EQUAL((SDR<>{1, 2, 3}.xors(SDR<>{2, 3, 4})), 2);
 }
 
 BOOST_AUTO_TEST_CASE(xorop_inplace) {
