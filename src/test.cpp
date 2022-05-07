@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE sparse_distribued_representation_test_module
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation/SDR.hpp"
+#include "SparseDistributedRepresentation/DataTypes/FloatData.hpp"
 #include <random>
 #include <unistd.h>
 
@@ -127,6 +128,16 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
     BOOST_REQUIRE_EQUAL(r_xor, a.xorb(b));
     SDR<SDR_t<long>, std::set<SDR_t<long>>> r_rm = a.rmb<SDR_t<long>, std::set<SDR_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_rm, a.rmb(b));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(test_float_data) {
+  SDR<SDR_t<int, FloatData>>a{SDR_t<int, FloatData>(0, 3), SDR_t<int, FloatData>(1, 2), SDR_t<int, FloatData>(2, 1)};
+  SDR<SDR_t<int, FloatData>>b{SDR_t<int, FloatData>(0, 2), SDR_t<int, FloatData>(1, 2), SDR_t<int, FloatData>(2, 2)};
+  auto result = a - b;
+  float val = 1;
+  for (const auto& elem : result) {
+    BOOST_REQUIRE_EQUAL(elem.data.value, val--);
   }
 }
 

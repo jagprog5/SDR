@@ -21,7 +21,7 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
         if (b_pos != b.cend()) {
             // a element is in b
-            auto data = a_elem.data.andb(b_pos->data);
+            auto data = a_elem.data.andb(decltype(a_elem.data)(b_pos->data));
             if (data.relevant()) {
                 REQUIRE_TRUE(r & a_elem);
             }
@@ -33,7 +33,7 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
         if (a_pos != a.cend()) {
             // b element is in a
-            auto data = a_pos->data.andb(b_elem.data);
+            auto data = a_pos->data.andb(decltype(a_pos->data)(b_elem.data));
             if (data.relevant()) {
                 REQUIRE_TRUE(r & b_elem);
             }
@@ -83,7 +83,7 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
-        if (b_pos == b.cend() || a_elem.data.xorb(b_pos->data).rm_relevant()) {
+        if (b_pos == b.cend() || a_elem.data.xorb(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
             // a elem is not in b
             REQUIRE_TRUE(r & a_elem)
         }
@@ -92,7 +92,7 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
         auto b_elem = *b_pos;
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
-        if (a_pos == a.cend() || a_pos->data.xorb(b_elem.data).rm_relevant()) {
+        if (a_pos == a.cend() || a_pos->data.xorb(decltype(a_pos->data)(b_elem.data)).rm_relevant()) {
             // b elem is not in a
             REQUIRE_TRUE(r & b_elem);
         }
@@ -118,7 +118,7 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
-        if (b_pos == b.cend() || a_elem.data.rmb(b_pos->data).rm_relevant()) {
+        if (b_pos == b.cend() || a_elem.data.rmb(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
             // a elem is not in b
             REQUIRE_TRUE(r & a_elem);
             ++i;

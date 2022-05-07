@@ -1,19 +1,14 @@
 #pragma once
 
-#include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
-
 namespace SparseDistributedRepresentation {
 
 struct UnitData {
     constexpr UnitData() : value(1) {}
-    constexpr UnitData(float value) : value(value) {}
+    constexpr UnitData(float value) : value(value) {
+        assert(value >= 0 && value <= 1);
+    }
+
     float value;
-
-    template <typename T, typename = void>
-    struct has_value : std::false_type {};
-
-    template <typename T>
-    struct has_value<T, decltype((void)T::value, void())> : std::true_type {};
 
     constexpr bool relevant() {
         return value > 0.1;
@@ -26,40 +21,20 @@ struct UnitData {
     template<typename T>
     explicit constexpr operator T() const { return T(); }
 
-    template<typename arg_t>
-    constexpr UnitData andb(const arg_t& o) const {
-        if constexpr(has_value<arg_t>::value) {
-            return UnitData(this->value * o.value);
-        } else {
-            return UnitData(this->value);
-        }
+    constexpr UnitData andb(const UnitData& o) const {
+        return UnitData(this->value * o.value);
     }
 
-    template<typename arg_t>
-    constexpr UnitData orb(const arg_t& o) const {
-        if constexpr(has_value<arg_t>::value) {
-            return UnitData(this->value > o.value ? this->value : o.value);
-        } else {
-            return UnitData(1);
-        }
+    constexpr UnitData orb(const UnitData& o) const {
+        return UnitData(this->value > o.value ? this->value : o.value);
     }
 
-    template<typename arg_t>
-    constexpr UnitData xorb(const arg_t& o) const {
-        if constexpr(has_value<arg_t>::value) {
-            return UnitData(std::abs(this->value - o.value));
-        } else {
-            return UnitData(0);
-        }
+    constexpr UnitData xorb(const UnitData& o) const {
+        return UnitData(std::abs(this->value - o.value));
     }
 
-    template<typename arg_t>
-    constexpr UnitData rmb(const arg_t& o) const {
-        if constexpr(has_value<arg_t>::value) {
-            return UnitData(this->value * (1 - o.value));
-        } else {
-            return UnitData(0);
-        }
+    constexpr UnitData rmb(const UnitData& o) const {
+        return UnitData(this->value * (1 - o.value));
     }
 
 };

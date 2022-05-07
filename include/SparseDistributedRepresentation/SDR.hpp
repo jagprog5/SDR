@@ -285,6 +285,10 @@ class SDR {
         template<typename other>
         auto operator&=(const other& o) { return andi(o); }
         template<typename other>
+        auto operator*(const other& o) const { return andb(o); }
+        template<typename other>
+        auto operator*=(const other& o) { return andi(o); }
+        template<typename other>
         auto operator|(const other& o) const { return orb(o); }
         template<typename other>
         auto operator||(const other& o) const { return ors(o); }
@@ -294,6 +298,10 @@ class SDR {
         auto operator^(const other& o) const { return xorb(o); }
         template<typename other>
         auto operator^=(const other& o) { return xori(o); }
+        template<typename other>
+        auto operator+(const other& o) const { return orb(o); }
+        template<typename other>
+        auto operator+=(const other& o) { return ori(o); }
         template<typename other>
         auto operator-(const other& o) const { return rmb(o); }
         template<typename other>
@@ -465,7 +473,7 @@ SDR<SDR_t, container_t>::SDR(std::initializer_list<T> list) {
             }
         }
     } else {
-        this->v(list);
+        this->v = decltype(this->v)(list);
         if constexpr(usesForwardList)
             this->maybe_size.size = list.size();
     }
@@ -805,7 +813,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::andb(const SDR<arg_t, c_arg_t>& arg
     if constexpr(isForwardList<c_ret_t>::value) {
         it = r.v.before_begin();
         visitor = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.andb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.andb((typename SDR_t::data_type)arg_data);
             if (data.relevant()) {
                 ++r.maybe_size.size;
                 ret_t elem(this_id, data);
@@ -814,7 +822,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::andb(const SDR<arg_t, c_arg_t>& arg
         };
     } else {
         visitor = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.andb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.andb((typename SDR_t::data_type)arg_data);
             if (data.relevant()) {
                 ret_t elem(this_id, data);
                 r.push_back(elem);
@@ -834,7 +842,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::andi(const SDR<arg_t, c_arg_t>
     } else if constexpr(usesVector) {
         auto pos = this->v.begin();
         auto visitor = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename SDR_t::data_type data = this_data.andb(arg_data);
+            auto data = this_data.andb((typename SDR_t::data_type)arg_data);
             if (data.relevant()) {
                 SDR_t elem(this_id, data);
                 *pos++ = elem;
@@ -847,7 +855,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::andi(const SDR<arg_t, c_arg_t>
         auto lagger = this->v.before_begin();
         auto pos = this->v.begin();
         auto visitor = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename SDR_t::data_type data = this_data.andb(arg_data);
+            auto data = this_data.andb((typename SDR_t::data_type)arg_data);
             if (data.relevant()) {
                 SDR_t elem(this_id, data);
                 ++lagger;
@@ -875,8 +883,8 @@ template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    auto visitor = [&]([[maybe_unused]] const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-        typename SDR_t::data_type data = this_data.andb(arg_data);
+    auto visitor = [&](const typename SDR_t::id_type&, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
+        auto data = this_data.andb((typename SDR_t::data_type)arg_data);
         if (data.relevant()) {
             ++r;
         }
@@ -951,7 +959,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::orb(const SDR<arg_t, c_arg_t>& arg)
             ++r.maybe_size.size;
         };
         visitorc = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.orb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.orb((typename SDR_t::data_type)arg_data);
             // there is no relevance check here, since it is assumed that elements which already exist in an SDR are relevant,
             // and that orb can only produce relevant elements from relevant elements
             ret_t elem(this_id, data);
@@ -967,7 +975,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::orb(const SDR<arg_t, c_arg_t>& arg)
             r.push_back(ret_t((typename ret_t::id_type)id, (typename ret_t::data_type)data));
         };
         visitorc = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.orb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.orb((typename SDR_t::data_type)arg_data);
             ret_t elem(this_id, data);
             r.push_back(elem);
         };
@@ -1026,7 +1034,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::xorb(const SDR<arg_t, c_arg_t>& arg
             ++r.maybe_size.size;
         };
         visitorc = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename SDR_t::data_type data = this_data.xorb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.xorb((typename SDR_t::data_type)arg_data);
             if (data.rm_relevant()) {
                 it = r.v.insert_after(it, ret_t(this_id, data));
                 ++r.maybe_size.size;
@@ -1040,7 +1048,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::xorb(const SDR<arg_t, c_arg_t>& arg
             r.push_back(ret_t((typename ret_t::id_type)id, (typename ret_t::data_type)data));
         };
         visitorc = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.xorb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.xorb((typename SDR_t::data_type)arg_data);
             if (data.rm_relevant()) {
                 ret_t elem(this_id, data);
                 r.push_back(elem);
@@ -1074,7 +1082,7 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::xors(const 
         ++r;
     };
     auto visitorc = [&](const typename SDR_t::id_type&, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-        typename SDR_t::data_type data = this_data.xorb(arg_data);
+        auto data = this_data.xorb((typename SDR_t::data_type)arg_data);
         if (data.rm_relevant()) {
             ++r;
         }
@@ -1113,7 +1121,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
                 if (this_pos == this_end) goto end;
                 SDR_t this_elem = *this_pos;
                 if (this_elem == arg_elem) {
-                    auto data = this_elem.data.rmb(arg_elem.data);
+                    auto data = this_elem.data.rmb((typename SDR_t::data_type)arg_elem.data);
                     if (!data.rm_relevant()) {
                         this->v.erase((++this_pos).base());
                         if (this_end != this->v.rend()) {
@@ -1134,7 +1142,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
                     arg_pos = lower_bound(arg_pos, arg_end, this_elem.id, std::greater<arg_t>());
                     if (arg_pos == arg_end) goto end;
                     if (*arg_pos == this_elem) {
-                        auto data = this_elem.data.rmb(arg_pos->data);
+                        auto data = this_elem.data.rmb((typename SDR_t::data_type)arg_pos->data);
                         if (!data.rm_relevant()) {
                             this->v.erase((++this_pos).base());
                             if (this_end != this->v.rend()) {
@@ -1176,7 +1184,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
                 if (this_pos == this_end) break;
                 this_elem = *this_pos;
             } else if (this_elem == arg_elem) {
-                auto data = this_pos->data.rmb(arg_pos->data);
+                auto data = this_pos->data.rmb((typename SDR_t::data_type)arg_pos->data);
                 if (!data.rm_relevant()) {
                     ++this_pos;
                     // remove the element
@@ -1270,7 +1278,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::rmb(const SDR<arg_t, c_arg_t>& arg)
             it = r.v.insert_after(it, ret_t(id, data));
         };
         visitorb = [&](const typename SDR_t::id_type& id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.rmb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.rmb((typename SDR_t::data_type)arg_data);
             if (data.rm_relevant()) {
                 ++r.maybe_size.size;
                 it = r.v.insert_after(it, ret_t(id, data));
@@ -1281,7 +1289,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::rmb(const SDR<arg_t, c_arg_t>& arg)
             r.push_back(ret_t(id, data));
         };
         visitorb = [&](const typename SDR_t::id_type& id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-            typename ret_t::data_type data = this_data.rmb(arg_data);
+            auto data = (typename ret_t::data_type)this_data.rmb((typename SDR_t::data_type)arg_data);
             if (data.rm_relevant()) {
                 r.push_back(ret_t(id, data));
             }
@@ -1308,7 +1316,7 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::rms(const S
         ++r;
     };
     auto visitorb = [&]([[maybe_unused]] const typename SDR_t::id_type&, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
-        typename SDR_t::data_type data = this_data.rmb(arg_data);
+        auto data = this_data.rmb((typename SDR_t::data_type)arg_data);
         if (data.rm_relevant()) {
             ++r;
         }
