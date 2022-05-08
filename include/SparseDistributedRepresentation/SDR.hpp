@@ -29,7 +29,7 @@ class SDR {
 
         static constexpr bool usesVector = isVector<container_t>::value;
         static constexpr bool usesForwardList = isForwardList<container_t>::value;
-        static constexpr bool usesSet = !usesVector && !usesForwardList;
+        static constexpr bool usesSet = isSet<container_t>::value;
 
         // default ctor
         SDR() {
@@ -478,19 +478,19 @@ SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_typ
             for (size_type i = 0; i < non_wrapped_elements; ++i) {
                 insert_it = v.insert_after(insert_it, SDR_t(start_index + i));
             }
-        } else if constexpr(usesSet) {
-            for (size_type i = 0; i < wrapped_elements; ++i) {
-                v.insert(v.end(), SDR_t(i));
-            }
-            for (size_type i = 0; i < non_wrapped_elements; ++i) {
-                v.insert(v.end(), SDR_t(start_index + i));
-            }
-        } else {
+        } else if constexpr(usesVector) {
             for (size_type i = 0; i < wrapped_elements; ++i) {
                 v[i] = SDR_t(i);
             }
             for (size_type i = 0; i < non_wrapped_elements; ++i) {
                 v[i + non_wrapped_elements] = SDR_t(i);
+            }
+        } else {
+            for (size_type i = 0; i < wrapped_elements; ++i) {
+                v.insert(v.end(), SDR_t(i));
+            }
+            for (size_type i = 0; i < non_wrapped_elements; ++i) {
+                v.insert(v.end(), SDR_t(start_index + i));
             }
         }
     } else {
@@ -500,13 +500,13 @@ SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_typ
             for (size_type i = 0; i < size; ++i) {
                 insert_it = v.insert_after(insert_it, SDR_t(start_index + i));
             }
-        } else if constexpr(usesSet) {
+        } else if constexpr(usesVector) {
             for (size_type i = 0; i < size; ++i) {
-                v.insert(v.end(), SDR_t(start_index + i));
+                v[i] = SDR_t(start_index + i);
             }
         } else {
             for (size_type i = 0; i < size; ++i) {
-                v[i] = SDR_t(start_index + i);
+                v.insert(v.end(), SDR_t(start_index + i));
             }
         }
     }
@@ -526,13 +526,13 @@ SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_a
         for (size_type i = 0; i < size; ++i) {
             insert_it = v.insert_after(insert_it, start_index + i);
         }
-    } else if constexpr(usesSet) {
+    } else if constexpr(usesVector) {
         for (size_type i = 0; i < size; ++i) {
-            v.insert(v.end(), SDR_t(start_index + i));
+            v[i] = SDR_t(start_index + i);
         }
     } else {
         for (size_type i = 0; i < size; ++i) {
-            v[i] = SDR_t(start_index + i);
+            v.insert(v.end(), SDR_t(start_index + i));
         }
     }
     if constexpr(usesForwardList) {
@@ -545,27 +545,7 @@ template<typename RandomGenerator>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount, RandomGenerator& g) {
     assert(amount >= 0 && amount <= 1);
     auto check_val = amount * (float)g.max();
-    if constexpr(usesVector) {
-        auto to_offset = v.begin();
-        auto from_offset = v.cbegin();
-        auto end = v.end();
-        while (from_offset != end) {
-            if (g() < check_val) {
-                *to_offset++ = *from_offset;
-            }
-            from_offset++;
-        }
-        v.resize(to_offset - v.cbegin());
-    } else if constexpr(usesSet) {
-        auto pos = v.begin();
-        while (pos != v.end()) {
-            if (g() >= check_val) {
-                pos = v.erase(pos);
-            } else {
-                ++pos;
-            }
-        }
-    } else if constexpr(usesForwardList) {
+    if constexpr(usesForwardList) {
         typename container_t::size_type remove_count = 0;
         auto pos = v.before_begin();
         while (true) {
@@ -579,7 +559,27 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount, R
             }
         }
         maybe_size.size -= remove_count;
-    }
+    } else if constexpr(usesVector) {
+        auto to_offset = v.begin();
+        auto from_offset = v.cbegin();
+        auto end = v.end();
+        while (from_offset != end) {
+            if (g() < check_val) {
+                *to_offset++ = *from_offset;
+            }
+            from_offset++;
+        }
+        v.resize(to_offset - v.cbegin());
+    } else {
+        auto pos = v.begin();
+        while (pos != v.end()) {
+            if (g() >= check_val) {
+                pos = v.erase(pos);
+            } else {
+                ++pos;
+            }
+        }
+    } 
     return *this;
 }
 
@@ -612,10 +612,10 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::ande(arg_t start_inclusive, arg_t s
     assert(start_inclusive <= stop_exclusive);
     SDR<ret_t, c_ret_t> sdr;
     typename container_t::const_iterator start_it;
-    if constexpr(!usesSet) {
-        start_it = lower_bound(v.cbegin(), v.cend(), start_inclusive);
-    } else {
+    if constexpr(usesSet) {
         start_it = v.lower_bound(start_inclusive);
+    } else {
+        start_it = lower_bound(v.cbegin(), v.cend(), start_inclusive);
     }
     typename container_t::const_iterator end_it;
     if constexpr(usesForwardList) {
@@ -627,10 +627,10 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::ande(arg_t start_inclusive, arg_t s
             ++end_it;
             ++sdr.maybe_size.size;
         }
-    } else if constexpr(usesVector) {
-        end_it = lower_bound(start_it, v.cend(), stop_exclusive);
     } else if constexpr(usesSet) {
         end_it = v.lower_bound(stop_exclusive);
+    } else {
+        end_it = lower_bound(start_it, v.cend(), stop_exclusive);
     }
     if constexpr(isVector<c_ret_t>::value) {
         sdr.v.resize(end_it - start_it);
@@ -688,7 +688,7 @@ void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<
     if (a_pos == a_end) return;
     while (true) {
         a_elem = *a_pos;
-        if constexpr(!isVector<c_arg_t>::value && !isForwardList<c_arg_t>::value) {
+        if constexpr(isSet<c_arg_t>::value) {
             b_pos = b.v.lower_bound(a_elem.id);
         } else {
             b_pos = lower_bound(b_pos, b_end, a_elem);
@@ -754,10 +754,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::ande(const SDR<arg_t, c_arg_t>& arg
 template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::andi(const SDR<arg_t, c_arg_t>& arg) {
-    if constexpr (usesSet) {
-        SDR r = ande(arg);
-        this->v = std::move(r.v);
-    } else if constexpr(usesVector) {
+    if constexpr(usesVector) {
         auto pos = this->v.begin();
         auto visitor = [&](const typename SDR_t::id_type& this_id, typename SDR_t::data_type& this_data, typename arg_t::data_type& arg_data) {
             auto data = this_data.ande((typename SDR_t::data_type)arg_data);
@@ -786,7 +783,9 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::andi(const SDR<arg_t, c_arg_t>
             v.erase_after(lagger);
         }
         this->maybe_size.size = i;
-
+    } else {
+        SDR r = ande(arg);
+        this->v = std::move(r.v);
     }
     return *this;
 }
@@ -1012,13 +1011,15 @@ void SDR<SDR_t, container_t>::orv(const SDR<arg_t, c_arg_t>& query, VisitorA vis
 template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>& arg) {
-    if constexpr(usesSet) {
-        // revert back to normal remove, with a swap 
-        SDR r = this->rme(arg);
-        this->v = std::move(r.v);
-    } else if constexpr(usesVector) {
+    if constexpr(usesVector) {
         if constexpr(isForwardList<c_arg_t>::value) {
-            // this is vector based, and arg is forward_list based
+            // the vector rmi vector specialization iterates through both backwards,
+            // since it's faster to remove from the end of a vector
+            
+            // a forward list can't iterate backward, so instead this specialization
+            // reverts back to a normal remove and swap
+            
+            // this is lazy and can be improved
             SDR r = this->rme(arg);
             this->v = std::move(r.v);
         } else {
@@ -1120,6 +1121,10 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
         }
         skip:
             (void)0;
+    } else {
+        // revert back to normal remove, with a swap 
+        SDR r = this->rme(arg);
+        this->v = std::move(r.v);
     }
     return *this;
 }

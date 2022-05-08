@@ -180,7 +180,7 @@ std::string get_template_name() {
     } else if constexpr(SDR::usesForwardList) {
         return "lst";
     } else {
-        return "?";
+        return "???";
     }
 }
 
@@ -332,7 +332,7 @@ int main(int argc, char** argv) {
         fuzz_amount = 1000;
     }
 
-    // yes, this makes a stupidly large binary from all the template specializations.
+    // yes, this makes a large binary from all the template specializations.
     // but no. realistically, nobody will make nearly this many specializations
 
     series<SDR<SDR_t<>, std::vector<SDR_t<>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);

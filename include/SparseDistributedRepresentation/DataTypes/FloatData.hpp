@@ -16,9 +16,9 @@ struct FloatData {
         return relevant();
     }
 
-    // for compatability with other data types
+    // for compatibility with other data types
     template<typename T>
-    explicit constexpr operator T() const { return T(); }
+    explicit constexpr operator T() const { return T(value); }
 
     constexpr FloatData ande(const FloatData& o) const {
         return FloatData(this->value * o.value);

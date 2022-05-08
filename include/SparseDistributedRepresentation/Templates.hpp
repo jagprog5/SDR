@@ -2,6 +2,8 @@
 
 #include <type_traits>
 
+namespace SparseDistributedRepresentation {
+
 // ========== helper templates ===============
 
 // if the underlying container does not have a size, then declare a size member
@@ -31,3 +33,11 @@ struct isForwardList<T, decltype((void)T().size(), void())> : std::false_type {}
 
 template <typename T>
 struct isVector : std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category> {};
+
+template <typename T, typename = void>
+struct isSet : std::false_type {};
+
+template <typename T>
+struct isSet<T, decltype((void)T().lower_bound(typename T::value_type()), void())> : std::true_type {};
+
+} // namespace

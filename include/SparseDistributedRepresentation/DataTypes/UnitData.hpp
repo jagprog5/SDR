@@ -11,16 +11,16 @@ struct UnitData {
     float value;
 
     constexpr bool relevant() const {
-        return value > 0.1;
+        return value >= 0.1;
     }
 
     constexpr bool rm_relevant() const {       
         return relevant();
     }
 
-    // for compatability with other data types
+    // for compatibility with other data types
     template<typename T>
-    explicit constexpr operator T() const { return T(); }
+    explicit constexpr operator T() const { return T(value); }
 
     constexpr UnitData ande(const UnitData& o) const {
         return UnitData(this->value * o.value);
