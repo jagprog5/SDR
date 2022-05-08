@@ -8,28 +8,29 @@ struct FloatData {
 
     float value;
 
-    constexpr bool relevant() {
+    constexpr bool relevant() const {
         return true;
     }
 
-    constexpr bool rm_relevant() {       
+    constexpr bool rm_relevant() const {       
         return relevant();
     }
 
+    // for compatability with other data types
     template<typename T>
     explicit constexpr operator T() const { return T(); }
 
-    constexpr FloatData andb(const FloatData& o) const {
+    constexpr FloatData ande(const FloatData& o) const {
         return FloatData(this->value * o.value);
     }
 
-    constexpr FloatData orb(const FloatData& o) const {
+    constexpr FloatData ore(const FloatData& o) const {
         return FloatData(this->value + o.value);
     }
 
     // xor doesn't make sense in this context
 
-    constexpr FloatData rmb(const FloatData& o) const {
+    constexpr FloatData rme(const FloatData& o) const {
         return FloatData(this->value - o.value);
     }
 

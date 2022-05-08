@@ -15,7 +15,7 @@ BOOST_AUTO_TEST_CASE(andop) {
 }
 
 BOOST_AUTO_TEST_CASE(andop_range) {
-  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.andb(2, 7)), (SDR{2, 3, 5}));
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
 }
 
 BOOST_AUTO_TEST_CASE(append) {
@@ -108,26 +108,26 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_and = a.andb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_and, a.andb(b));
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_or = a.orb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_or, a.orb(b));
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_xor = a.xorb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_xor, a.xorb(b));
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_rm = a.rmb<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_rm, a.rmb(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_and = a.ande<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_or = a.ore<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_xor = a.xore<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
+    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_rm = a.rme<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_and = a.andb<SDR_t<long>, std::set<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_and, a.andb(b));
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_or = a.orb<SDR_t<long>, std::set<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_or, a.orb(b));
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_xor = a.xorb<SDR_t<long>, std::set<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_xor, a.xorb(b));
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_rm = a.rmb<SDR_t<long>, std::set<SDR_t<long>>>(b);
-    BOOST_REQUIRE_EQUAL(r_rm, a.rmb(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_and = a.ande<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_or = a.ore<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_xor = a.xore<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
+    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_rm = a.rme<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
 }
 

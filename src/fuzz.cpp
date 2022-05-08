@@ -21,7 +21,7 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
         if (b_pos != b.cend()) {
             // a element is in b
-            auto data = a_elem.data.andb(decltype(a_elem.data)(b_pos->data));
+            auto data = a_elem.data.ande(decltype(a_elem.data)(b_pos->data));
             if (data.relevant()) {
                 REQUIRE_TRUE(r & a_elem);
             }
@@ -33,7 +33,7 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
         if (a_pos != a.cend()) {
             // b element is in a
-            auto data = a_pos->data.andb(decltype(a_pos->data)(b_elem.data));
+            auto data = a_pos->data.ande(decltype(a_pos->data)(b_elem.data));
             if (data.relevant()) {
                 REQUIRE_TRUE(r & b_elem);
             }
@@ -83,7 +83,7 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
-        if (b_pos == b.cend() || a_elem.data.xorb(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
+        if (b_pos == b.cend() || a_elem.data.xore(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
             // a elem is not in b
             REQUIRE_TRUE(r & a_elem)
         }
@@ -92,7 +92,7 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
         auto b_elem = *b_pos;
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
-        if (a_pos == a.cend() || a_pos->data.xorb(decltype(a_pos->data)(b_elem.data)).rm_relevant()) {
+        if (a_pos == a.cend() || a_pos->data.xore(decltype(a_pos->data)(b_elem.data)).rm_relevant()) {
             // b elem is not in a
             REQUIRE_TRUE(r & b_elem);
         }
@@ -118,7 +118,7 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
-        if (b_pos == b.cend() || a_elem.data.rmb(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
+        if (b_pos == b.cend() || a_elem.data.rme(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
             // a elem is not in b
             REQUIRE_TRUE(r & a_elem);
             ++i;
@@ -207,14 +207,14 @@ void time_op(std::string name, funct f, int fuzz_amount) {
 
 template<typename SDRA, typename SDRB>
 void series(int fuzz_amount) {
-    auto andb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ande = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
-        SDRA and_result = a.andb(b);
+        SDRA and_result = a.ande(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
         return disable_validation || validate_andop(a, b, and_result);
     };
-    time_op<SDRA, SDRB>("andb", andb, fuzz_amount);
+    time_op<SDRA, SDRB>("ande", ande, fuzz_amount);
 
     auto andi = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         SDRA a_cp(a);
@@ -231,18 +231,18 @@ void series(int fuzz_amount) {
         auto s = a.ands(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return disable_validation || s == a.andb(b).size();
+        return disable_validation || s == a.ande(b).size();
     };
     time_op<SDRA, SDRB>("ands", ands, fuzz_amount);
 
-    auto orb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ore = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
-        SDRA or_result = a.orb(b);
+        SDRA or_result = a.ore(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
         return disable_validation || validate_orop(a, b, or_result);
     };
-    time_op<SDRA, SDRB>(" orb", orb, fuzz_amount);
+    time_op<SDRA, SDRB>(" ore", ore, fuzz_amount);
 
     auto ori = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         SDRA a_cp(a);
@@ -259,18 +259,18 @@ void series(int fuzz_amount) {
         auto s = a.ors(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return disable_validation || s == a.orb(b).size();
+        return disable_validation || s == a.ore(b).size();
     };
     time_op<SDRA, SDRB>(" ors", ors, fuzz_amount);
 
-    auto xorb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto xore = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
-        SDRA xor_result = a.xorb(b);
+        SDRA xor_result = a.xore(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
         return disable_validation || validate_xorop(a, b, xor_result);
     };
-    time_op<SDRA, SDRB>("xorb", xorb, fuzz_amount);
+    time_op<SDRA, SDRB>("xore", xore, fuzz_amount);
 
     auto xori = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         SDRA a_cp(a);
@@ -287,18 +287,18 @@ void series(int fuzz_amount) {
         auto s = a.xors(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return disable_validation || s == a.xorb(b).size();
+        return disable_validation || s == a.xore(b).size();
     };
     time_op<SDRA, SDRB>("xors", xors, fuzz_amount);
 
-    auto rmb = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto rme = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
-        SDRA rm_result = a.rmb(b);
+        SDRA rm_result = a.rme(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
         return disable_validation || validate_rmop(a, b, rm_result);
     };
-    time_op<SDRA, SDRB>(" rmb", rmb, fuzz_amount);
+    time_op<SDRA, SDRB>(" rme", rme, fuzz_amount);
 
     auto rmi = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
         SDRA a_cp(a);
@@ -315,7 +315,7 @@ void series(int fuzz_amount) {
         auto s = a.rms(b);
         auto stop = high_resolution_clock::now();
         total_time += stop - start;
-        return s == a.rmb(b).size();
+        return s == a.rme(b).size();
     };
     time_op<SDRA, SDRB>(" rms", rms, fuzz_amount);    
 }

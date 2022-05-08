@@ -10,30 +10,31 @@ struct UnitData {
 
     float value;
 
-    constexpr bool relevant() {
+    constexpr bool relevant() const {
         return value > 0.1;
     }
 
-    constexpr bool rm_relevant() {       
+    constexpr bool rm_relevant() const {       
         return relevant();
     }
 
+    // for compatability with other data types
     template<typename T>
     explicit constexpr operator T() const { return T(); }
 
-    constexpr UnitData andb(const UnitData& o) const {
+    constexpr UnitData ande(const UnitData& o) const {
         return UnitData(this->value * o.value);
     }
 
-    constexpr UnitData orb(const UnitData& o) const {
+    constexpr UnitData ore(const UnitData& o) const {
         return UnitData(this->value > o.value ? this->value : o.value);
     }
 
-    constexpr UnitData xorb(const UnitData& o) const {
+    constexpr UnitData xore(const UnitData& o) const {
         return UnitData(std::abs(this->value - o.value));
     }
 
-    constexpr UnitData rmb(const UnitData& o) const {
+    constexpr UnitData rme(const UnitData& o) const {
         return UnitData(this->value * (1 - o.value));
     }
 

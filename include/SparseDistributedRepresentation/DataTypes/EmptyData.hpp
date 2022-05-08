@@ -15,32 +15,33 @@ struct EmptyData {
     char unused[0];
     #pragma GCC diagnostic pop
 
-    constexpr bool relevant() {
+    constexpr bool relevant() const {
         // if any element is combined with this one, then it is in the result
         return true;
     }
 
-    constexpr bool rm_relevant() {       
+    constexpr bool rm_relevant() const {       
         // if any element is removed from this one, then it is not in the result 
         return false;
     }
 
+    // for compatability with other data types
     template<typename T>
     explicit constexpr operator T() const { return T(); }
 
-    constexpr EmptyData andb(const EmptyData&) const {
+    constexpr EmptyData ande(const EmptyData&) const {
         return EmptyData();
     }
 
-    constexpr EmptyData orb(const EmptyData&) const {
+    constexpr EmptyData ore(const EmptyData&) const {
         return EmptyData();
     }
 
-    constexpr EmptyData xorb(const EmptyData&) const {
+    constexpr EmptyData xore(const EmptyData&) const {
         return EmptyData();
     }
 
-    constexpr EmptyData rmb(const EmptyData&) const {
+    constexpr EmptyData rme(const EmptyData&) const {
         return EmptyData();
     }
 };
