@@ -2,7 +2,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 # Sparse Distributed Representation (SDR)
 
-This provides a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDgCdWTuIzc).
+This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDgCdWTuIzc).
 
 ## Build Tests and Fuzzing
 
@@ -32,11 +32,10 @@ int main() {
 
 ## Operations
 
-`[1, 2]` **AND** `[2, 3] = [2]`  
-`[1, 2]` **OR** `[2, 3] = [1, 2, 3]`  
-`[1, 2]` **XOR** `[2, 3] = [1, 3]`  
-`[1, 2]` **RM** `[2, 3] = [1]`
-
+**AND**(`[1, 2]`, `[2, 3]`) = `[2]`  
+**OR**&nbsp;&nbsp;&nbsp;(`[1, 2]`, `[2, 3]`) = `[1, 2, 3]`  
+**XOR**(`[1, 2]`, `[2, 3]`) = `[1, 3]`  
+**RM**&nbsp;&nbsp;&nbsp;(`[1, 2]`, `[2, 3]`) = `[1]` 
 
 Each op has three variations:
 
@@ -56,7 +55,7 @@ a.andi(b)           // `a` is modified and now contains [2]
 
 ## SDR_t
 
-`SDR`s contain `SDR_t` elements. An `SDR_t` consists of an `id` and (optionally) `data`. 
+`SDRs` contain `SDR_t` elements. An `SDR_t` consists of an `id` and (optionally) `data`. 
 
 The id is an integral type which is used to compare equality between elements.
 
