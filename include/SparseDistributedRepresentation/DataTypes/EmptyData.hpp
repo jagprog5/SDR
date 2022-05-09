@@ -5,11 +5,11 @@ namespace SparseDistributedRepresentation {
 struct EmptyData {
     // this is the data_type for a default SDR_t which does not use the data functionality
 
-    constexpr EmptyData() {}
+    constexpr EmptyData() : unused() {}
 
     // for compatibility with other data types
     template<typename T>
-    constexpr EmptyData(T) {}
+    constexpr EmptyData(T) : unused() {}
 
     #pragma GCC diagnostic push
     #if defined(__has_warning)
