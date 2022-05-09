@@ -1015,7 +1015,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
         // a forward list can't iterate backward
         constexpr bool forward = isForwardList<c_arg_t>::value;
 
-        auto get_arg_begin = [&arg, forward](){
+        auto get_arg_begin = [&arg](){
             if constexpr(forward) {
                 return arg.cbegin(); 
             } else {
@@ -1023,7 +1023,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
             }
         };
 
-        auto get_arg_end = [&arg, forward]() {
+        auto get_arg_end = [&arg]() {
             if constexpr(forward) {
                 return arg.cend();
             } else {
@@ -1031,7 +1031,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
             }
         };
 
-        auto get_this_begin = [this, forward]() {
+        auto get_this_begin = [this]() {
             if constexpr(forward) {
                 return this->v.begin();
             } else {
@@ -1039,7 +1039,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
             }
         };
 
-        auto get_this_end = [this, forward]() {
+        auto get_this_end = [this]() {
             if constexpr(forward) {
                 return this->v.end();
             } else {
