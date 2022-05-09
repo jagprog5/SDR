@@ -6,6 +6,8 @@ add_library(${PROJECT_NAME}_lib INTERFACE)
 
 target_include_directories(${PROJECT_NAME}_lib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+option(BUILD_TESTING "Build tests" OFF)
+
 if(BUILD_TESTING)
   # fuzzer
   add_executable(fuzz_sdr src/fuzz.cpp)

@@ -325,7 +325,7 @@ class SDR {
         // and operation. computes A & B.
         // each selected element match is called in the visitor
         // visitor(const SDR_t::id_type&, SDR_t::data_type&, arg_t::data_type&)
-        template <typename arg_t, typename c_arg_t, typename Visitor>
+        template<typename arg_t, typename c_arg_t, typename Visitor>
         static void andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, Visitor visitor);
 
         // or operation. computes A | B
@@ -333,7 +333,7 @@ class SDR {
         //      the element only exists in a: visitora(const SDR_t::id_type&, SDR_t::data_type&)
         //      the element only exists in b: visitorb(const arg_t::id_type&, arg_t::data_type&)
         //      the element exists in both: visitorc(const SDR_t::id_type&, SDR_t::data_type&, arg_t::data_type&)
-        template <typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename VisitorC>
+        template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename VisitorC>
         static void orop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, VisitorA visitora, VisitorB visitorb, VisitorC visitorc);
 
         // rm operation.
@@ -341,7 +341,7 @@ class SDR {
         //      the element only exists in "me": visitora(const SDR_t::id_type&, SDR_t::data_type&)
         //      the element exists in both: visitorb(const SDR_t::id_type&, SDR_t::data_type&, arg_t::data_type&)        
         // the trailing elements (not in the arg) start position is called in DumpEnd(const_iterator)
-        template <typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename DumpEnd>
+        template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename DumpEnd>
         static void rmop(const SDR<SDR_t, container_t>& me, const SDR<arg_t, c_arg_t>& arg, VisitorA visitora, VisitorB visitorb, DumpEnd dumpEnd);
 
         struct FormatText {
@@ -676,7 +676,7 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t 
 }
 
 template<typename SDR_t, typename container_t>
-template <typename arg_t, typename c_arg_t, typename Visitor>
+template<typename arg_t, typename c_arg_t, typename Visitor>
 void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, Visitor visitor) {
     auto a_pos = a.cbegin();
     auto a_end = a.cend();
@@ -811,7 +811,7 @@ void SDR<SDR_t, container_t>::andv(const SDR<arg_t, c_arg_t>& query, Visitor vis
 }
 
 template<typename SDR_t, typename container_t>
-template <typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename VisitorC>
+template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename VisitorC>
 void SDR<SDR_t, container_t>::orop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, VisitorA visitora, VisitorB visitorb, VisitorC visitorc) {
     auto a_pos = a.cbegin();
     auto a_end = a.cend();
@@ -1012,69 +1012,100 @@ template<typename SDR_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>& arg) {
     if constexpr(usesVector) {
-        if constexpr(isForwardList<c_arg_t>::value) {
-            // the vector rmi vector specialization iterates through both backwards,
-            // since it's faster to remove from the end of a vector
-            
-            // a forward list can't iterate backward, so instead this specialization
-            // reverts back to a normal remove and swap
-            
-            // this is lazy and can be improved
-            SDR r = this->rme(arg);
-            this->v = std::move(r.v);
-        } else {
-            auto arg_pos = arg.crbegin();
-            auto arg_end = arg.crend();
-            auto this_pos = this->v.rbegin();
-            auto this_end = this->v.rend();
-            if (arg_pos == arg_end) goto end;
-            while (true) {
-                arg_t arg_elem = *arg_pos++;
-                this_pos = lower_bound(this_pos, this_end, arg_elem.id, std::greater<SDR_t>());
-                if (this_pos == this_end) goto end;
-                SDR_t this_elem = *this_pos;
-                if (this_elem == arg_elem) {
-                    auto data = this_elem.data.rme((typename SDR_t::data_type)arg_elem.data);
-                    if (!data.rm_relevant()) {
+        // a forward list can't iterate backward
+        constexpr bool forward = isForwardList<c_arg_t>::value;
+
+        auto get_arg_begin = [&arg, forward](){
+            if constexpr(forward) {
+                return arg.cbegin(); 
+            } else {
+                return arg.crbegin(); 
+            }
+        };
+
+        auto get_arg_end = [&arg, forward]() {
+            if constexpr(forward) {
+                return arg.cend();
+            } else {
+                return arg.crend();
+            }
+        };
+
+        auto get_this_begin = [this, forward]() {
+            if constexpr(forward) {
+                return this->v.begin();
+            } else {
+                return this->v.rbegin();
+            }
+        };
+
+        auto get_this_end = [this, forward]() {
+            if constexpr(forward) {
+                return this->v.end();
+            } else {
+                return this->v.rend();
+            }
+        };
+
+        auto arg_pos = get_arg_begin();
+        auto arg_end = get_arg_end();
+        auto this_pos = get_this_begin();
+        auto this_end = get_this_end();
+        if (arg_pos == arg_end) goto end;
+        while (true) {
+            arg_t arg_elem = *arg_pos++;
+            this_pos = lower_bound(this_pos, this_end, arg_elem.id, lesser_or_greater<forward, SDR_t>());
+            if (this_pos == this_end) goto end;
+            SDR_t this_elem = *this_pos;
+            if (this_elem == arg_elem) {
+                auto data = this_elem.data.rme((typename SDR_t::data_type)arg_elem.data);
+                if (!data.rm_relevant()) {
+                    if constexpr(forward) {
+                        this->v.erase(this_pos++);
+                    } else {
                         this->v.erase((++this_pos).base());
-                        if (this_end != this->v.rend()) {
+                    }
+                    if (this_end != get_this_end()) {
+                        // revalidate iterators
+                        this_pos = get_this_end() - (this_end - this_pos);
+                        this_end = get_this_end();
+                    }
+                } else {
+                    this_pos->data = data;
+                    ++this_pos;
+                }
+                if (this_pos == this_end) goto end;
+                this_elem = *this_pos;
+            }
+            // =====
+            if constexpr (!small_args) {
+                // get this in the arg
+                arg_pos = lower_bound(arg_pos, arg_end, this_elem.id, lesser_or_greater<forward, arg_t>());
+                if (arg_pos == arg_end) goto end;
+                if (*arg_pos == this_elem) {
+                    auto data = this_elem.data.rme((typename SDR_t::data_type)arg_pos->data);
+                    if (!data.rm_relevant()) {
+                        if constexpr(forward) {
+                            this->v.erase(this_pos++);
+                        } else {
+                            this->v.erase((++this_pos).base());
+                        }
+                        if (this_end != get_this_end()) {
                             // revalidate iterators
-                            this_pos = this->v.rend() - (this_end - this_pos);
-                            this_end = this->v.rend();
+                            this_pos = get_this_end() - (this_end - this_pos);
+                            this_end = get_this_end();
                         }
                     } else {
                         this_pos->data = data;
                         ++this_pos;
                     }
-                    if (this_pos == this_end) goto end;
-                    this_elem = *this_pos;
                 }
-                // =====
-                if constexpr (!small_args) {
-                    // get this in the arg
-                    arg_pos = lower_bound(arg_pos, arg_end, this_elem.id, std::greater<arg_t>());
-                    if (arg_pos == arg_end) goto end;
-                    if (*arg_pos == this_elem) {
-                        auto data = this_elem.data.rme((typename SDR_t::data_type)arg_pos->data);
-                        if (!data.rm_relevant()) {
-                            this->v.erase((++this_pos).base());
-                            if (this_end != this->v.rend()) {
-                                // revalidate iterators
-                                this_pos = this->v.rend() - (this_end - this_pos);
-                                this_end = this->v.rend();
-                            }
-                        } else {
-                            this_pos->data = data;
-                            ++this_pos;
-                        }
-                    }
-                } else {
-                    if (arg_pos == arg_end) goto end;
-                }
+            } else {
+                if (arg_pos == arg_end) goto end;
             }
-            end:
-            this->v.shrink_to_fit();
         }
+        end:
+        this->v.shrink_to_fit();
     } else if constexpr(usesForwardList) {
         auto arg_pos = arg.cbegin();
         auto arg_end = arg.cend();
@@ -1130,7 +1161,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
 }
 
 template<typename SDR_t, typename container_t>
-template <typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename DumpEnd>
+template<typename arg_t, typename c_arg_t, typename VisitorA, typename VisitorB, typename DumpEnd>
 void SDR<SDR_t, container_t>::rmop(const SDR<SDR_t, container_t>& me, const SDR<arg_t, c_arg_t>& arg, VisitorA visitora, VisitorB visitorb, DumpEnd dump_end) {
     // this function can't place the result in the operands! see rmi instead
     auto arg_pos = arg.cbegin();

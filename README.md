@@ -80,7 +80,7 @@ int main() {
 
     // prints [0(.25)]
     // since both SDRs have an element in the same position (0),
-    // and because UnitData multiplies together in the and op (0.5 * 0.5)
+    // and because UnitData multiplies together in the and-op (0.5 * 0.5)
     auto r0 = UnitSDR{UnitSDR_t(0, 0.5)}.ande(UnitSDR{UnitSDR_t(0, 0.5)});
     std::cout << r0 << std::endl;
 
@@ -101,4 +101,19 @@ int main() {
 
 ## Containers
 
-SDR is a container adapter which uses a vector by default. An stl vector or set is best suited to be the underlying container, but it can also use a forward_list, list, multiset, or a non stl container that has an appropriate interface.
+The SDR class is a container adapter which uses a vector by default. An stl vector or set is best suited to be the underlying container, but it can also use a forward_list, list, multiset, or any non stl container types that have appropriate interfaces.
+
+## Escaping the Walled Garden
+
+If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cast`ed to its underlying container.
+
+```cpp
+SDR a{1, 2, 3};
+auto brute_force_ptr = reinterpret_cast<std::vector<SDR_t<>>*>(&a);
+(*brute_force_ptr)[1].id = 17;
+
+// SDRs have ascending elements with no duplicates
+// this is not a valid SDR since it has [1,17,3]
+// it will give strange values but not UB
+std::cout << a;
+```
