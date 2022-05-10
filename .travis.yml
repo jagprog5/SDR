@@ -17,11 +17,12 @@ before_install:
 
 install:
   - sudo apt-get install -y libboost-test-dev
-  # apt-get install -y lcov
+  # line coverage only if gcc
+  - "[ \"$TRAVIS_COMPILER\" = \"gcc\" ] && sudo apt-get install -y lcov"
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR} && cd build
-  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true
+  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=`[ "$TRAVIS_COMPILER" = "gcc" ] && echo true || echo false`
   - cmake --build .
 
 script:
@@ -30,4 +31,10 @@ script:
   - ./fuzz_sdr 20
 
 after_script:
-  - env
+  - "
+    [ \"$TRAVIS_COMPILER\" = \"gcc\" ] && 
+    cd ${TRAVIS_BUILD_DIR} && 
+    cd build && 
+    lcov --capture --directory .. --base-directory ../include/ --no-external --output-file coverage.info && 
+    lcov --list coverage.info 
+    "

@@ -24,7 +24,7 @@ if(BUILD_TESTING)
 
   if (CODE_COVERAGE)
     if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      message(WARNING "coverage requires g++")
+      message(FATAL_ERROR "coverage requires g++")
     else()
       # enable coverage for the test and fuzz targets
       # -O0 overrides previously stated optimization level
