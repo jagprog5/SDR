@@ -1,6 +1,9 @@
 language: cpp
 dist: bionic
 
+git:
+  depth: 3
+
 # branches:
   # only:
     # - master
@@ -17,15 +20,14 @@ install:
   # apt-get install -y lcov
 
 before_script:
-  - cd build
+  - cd ${TRAVIS_BUILD_DIR} && cd build
   - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true
   - cmake --build .
 
 script:
-  - cd build
+  - cd ${TRAVIS_BUILD_DIR} && cd build
   - ./test_sdr
   - ./fuzz_sdr 20
 
 after_script:
-  - g++ --version 2>&1 1> /dev/null && echo "yep" || echo "no"
-  - echo `g++ --version`
+  - env
