@@ -1,9 +1,9 @@
 language: cpp
 dist: bionic
 
-branches:
-  only:
-    - master
+# branches:
+  # only:
+    # - master
 
 compiler:
   - clang
@@ -14,12 +14,18 @@ before_install:
 
 install:
   - sudo apt-get install -y libboost-test-dev
+  # apt-get install -y lcov
 
 before_script:
-  - cmake . -DBUILD_TESTING=true
+  - cd build
+  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true
   - cmake --build .
 
 script:
+  - cd build
   - ./test_sdr
   - ./fuzz_sdr 20
- 
+
+after_script:
+  - g++ --version 2>&1 1> /dev/null && echo "yep" || echo "no"
+  - echo `g++ --version`
