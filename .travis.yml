@@ -1,9 +1,8 @@
 language: cpp
 dist: bionic
 
-# branches:
-  # only:
-    # - master
+git:
+  depth: 3
 
 compiler:
   - clang
@@ -14,18 +13,23 @@ before_install:
 
 install:
   - sudo apt-get install -y libboost-test-dev
-  # apt-get install -y lcov
+  # line coverage only if gcc
+  - "[ \"$TRAVIS_COMPILER\" = \"gcc\" ] && sudo apt-get install -y lcov || true"
 
 before_script:
-  - cd build
-  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true
+  - cd ${TRAVIS_BUILD_DIR} && cd build
+  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=`[ "$TRAVIS_COMPILER" = "gcc" ] && echo true || echo false`
   - cmake --build .
 
 script:
-  - cd build
-  - ./test_sdr
-  - ./fuzz_sdr 20
+  - cd ${TRAVIS_BUILD_DIR} && cd build
+  - ctest
 
 after_script:
-  - g++ --version 2>&1 1> /dev/null && echo "yep" || echo "no"
-  - echo `g++ --version`
+  - "
+    [ \"$TRAVIS_COMPILER\" = \"gcc\" ] && 
+    cd ${TRAVIS_BUILD_DIR} && 
+    cd build && 
+    make ccov-proc && 
+    bash <(curl -s https://codecov.io/bash) -f coverage.info
+    "
