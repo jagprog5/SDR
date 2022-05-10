@@ -18,7 +18,7 @@ before_install:
 install:
   - sudo apt-get install -y libboost-test-dev
   # line coverage only if gcc
-  - "[ \"$TRAVIS_COMPILER\" = \"gcc\" ] && sudo apt-get install -y lcov"
+  - "[ \"$TRAVIS_COMPILER\" = \"gcc\" ] && sudo apt-get install -y lcov || true"
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR} && cd build

@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
         }
         fuzz_amount = std::atoi(argv[1]);
     } else {
-        fuzz_amount = 1000;
+        fuzz_amount = 100;
     }
 
     // yes, this makes a large binary from all the template specializations.

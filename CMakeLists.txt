@@ -22,6 +22,10 @@ if(BUILD_TESTING)
   target_compile_options(test_sdr PRIVATE -Wall -Wextra -Ofast)
   target_link_libraries(test_sdr PRIVATE ${PROJECT_NAME}_lib ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
+  enable_testing()
+  add_test(NAME simple_tests COMMAND ./test_sdr)
+  add_test(NAME fuzzy_tests COMMAND ./fuzz_sdr 100)
+
   if (CODE_COVERAGE)
     if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       message(FATAL_ERROR "coverage requires g++")
