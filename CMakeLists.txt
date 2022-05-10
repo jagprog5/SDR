@@ -24,7 +24,7 @@ if(BUILD_TESTING)
 
   enable_testing()
   add_test(NAME simple_tests COMMAND ./test_sdr)
-  add_test(NAME fuzzy_tests COMMAND ./fuzz_sdr 100)
+  add_test(NAME fuzzy_tests COMMAND ./fuzz_sdr 20)
 
   if (CODE_COVERAGE)
     if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
