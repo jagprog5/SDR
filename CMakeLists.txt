@@ -29,13 +29,47 @@ if(BUILD_TESTING)
   if (CODE_COVERAGE)
     if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       message(FATAL_ERROR "coverage requires g++")
-    else()
-      # enable coverage for the test and fuzz targets
-      # -O0 overrides previously stated optimization level
-      target_compile_options(fuzz_sdr PRIVATE -O0 -g --coverage)
-      target_compile_options(test_sdr PRIVATE -O0 -g --coverage)
-      target_link_libraries(fuzz_sdr PRIVATE -lgcov)
-      target_link_libraries(test_sdr PRIVATE -lgcov)
     endif()
+
+    # enable coverage for the test and fuzz targets
+    # -O0 overrides previously stated optimization level
+    target_compile_options(fuzz_sdr PRIVATE -O0 -g --coverage)
+    target_compile_options(test_sdr PRIVATE -O0 -g --coverage)
+    target_link_libraries(fuzz_sdr PRIVATE -lgcov)
+    target_link_libraries(test_sdr PRIVATE -lgcov)
+
+    add_custom_target(ccov-clean
+      COMMAND lcov -z -d "${CMAKE_CURRENT_BINARY_DIR}"
+      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
+      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/*.png"
+      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/*.html"
+      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/*.css"
+    )
+
+    # used to make ccov-proc run the tests if they haven't yet been run
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/fuzz_sdr.dir/src/fuzz.cpp.gcda
+      DEPENDS fuzz_sdr
+      COMMAND ctest -j "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/test_sdr.dir/src/test.cpp.gcda
+      DEPENDS test_sdr
+      COMMAND ctest -j "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+
+    add_custom_target(ccov-proc
+      # the tests must be run before the coverage can be processed
+      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/fuzz_sdr.dir/src/fuzz.cpp.gcda
+      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/test_sdr.dir/src/test.cpp.gcda
+
+      COMMAND lcov --capture --directory "${CMAKE_SOURCE_DIR}" --base-directory "${CMAKE_SOURCE_DIR}/include" --no-external --output-file "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
+    )
+
+    add_custom_target(ccov-display
+      DEPENDS ccov-proc
+      COMMAND genhtml "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
+      COMMAND echo "====== OPEN IN BROWSER: ${CMAKE_CURRENT_BINARY_DIR}/index.html"
+    )
+
   endif()
 endif()

@@ -34,7 +34,6 @@ after_script:
     [ \"$TRAVIS_COMPILER\" = \"gcc\" ] && 
     cd ${TRAVIS_BUILD_DIR} && 
     cd build && 
-    lcov --capture --directory .. --base-directory ../include/ --no-external --output-file coverage.info && 
-    lcov --list coverage.info && 
-    bash <(curl -s https://codecov.io/bash)
+    make ccov-proc && 
+    bash <(curl -s https://codecov.io/bash) -f coverage.info
     "

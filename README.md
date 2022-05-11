@@ -7,7 +7,13 @@ This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDg
 ## Build Tests and Fuzzing
 
 ```bash
-cmake . -DBUILD_TESTING=true ; make
+# build
+cd build && cmake .. -DBUILD_TESTING=true && cmake --build .
+
+# test
+ctest
+
+# or run each test manually
 ./test_sdr # tests
 ./fuzz_sdr [<fuzz_amount>] # fuzzy tests
 ```
@@ -65,7 +71,7 @@ The data is a payload associated with the id. Data is combined with other data w
 
 `UnitData`: a float which is bounded from 0 to 1 inclusively
 
-`FloatData`: normal float
+`FloatData`: a normal float
 
 The default SDR_t has id: int, and data: EmptyData.
 
