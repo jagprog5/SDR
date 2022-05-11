@@ -4,10 +4,6 @@ dist: bionic
 git:
   depth: 3
 
-# branches:
-  # only:
-    # - master
-
 compiler:
   - clang
   - gcc

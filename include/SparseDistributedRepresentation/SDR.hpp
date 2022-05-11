@@ -47,16 +47,21 @@ class SDR {
         SDR& operator=(const SDR& sdr) {
             this->v = sdr.v;
             if constexpr(usesForwardList)
-                this->maybe_size.size = sdr.v.maybe_size.size;
+                this->maybe_size.size = sdr.maybe_size.size;
             return *this;
         }
 
         // move ctor
-        SDR(SDR&& sdr): v(std::move(sdr.v)) {}
+        SDR(SDR&& sdr): v(std::move(sdr.v)) {
+            if constexpr(usesForwardList)
+                this->maybe_size.size = sdr.maybe_size.size;
+        }
 
         // move assignment ctor
         SDR& operator=(SDR&& sdr) {
             this->v = std::move(sdr.v);
+            if constexpr(usesForwardList)
+                this->maybe_size.size = sdr.maybe_size.size;
             return *this;
         }
 
@@ -483,7 +488,7 @@ SDR<SDR_t, container_t>::SDR(float input, float period, size_type size, size_typ
                 v[i] = SDR_t(i);
             }
             for (size_type i = 0; i < non_wrapped_elements; ++i) {
-                v[i + non_wrapped_elements] = SDR_t(i);
+                v[i + wrapped_elements] = SDR_t(start_index + i);
             }
         } else {
             for (size_type i = 0; i < wrapped_elements; ++i) {
@@ -657,21 +662,27 @@ template<typename SDR_t, typename container_t>
 template<typename arg_t>
 typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t start_inclusive, arg_t stop_exclusive) const {
     SDR sdr;
-    if (usesSet) {
-        auto pos = v.lower_bound(start_inclusive);
+    if constexpr(usesSet) {
+        auto pos = this->v.lower_bound(start_inclusive);
         size_type count = 0;
         while (pos != v.cend()) {
-            if (*pos == stop_exclusive) {
-                return count;
+            if (*pos++ >= stop_exclusive) {
+                break;
             }
             ++count;
-            ++pos;
         }
         return count;
-    } else {
+    } else if constexpr(usesVector) {
         auto pos = lower_bound(cbegin(), cend(), start_inclusive);
         auto end_it = lower_bound(pos, cend(), stop_exclusive);
-        return (size_type)(pos - end_it);
+        return (size_type)(end_it - pos);
+    } else {
+        size_type count = 0;
+        auto pos = lower_bound(cbegin(), cend(), start_inclusive);
+        while (pos != cend() && *pos++ < stop_exclusive) {
+            ++count;
+        }
+        return count;
     }
 }
 
@@ -1317,21 +1328,24 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::append(const SDR<arg_t, c_arg_
         auto it = v.before_begin();
         while (true) {
             auto next = std::next(it);
-            if (next == v.end()) return it;
+            if (next == v.end()) break;
             it = next;
         }
         // 'it' is before end
         assert(empty() || arg.empty() || *it < *arg.v.cbegin());
-        for (auto e : arg.v) { it = insert_end(it, e); }
-    } else if constexpr(usesSet) {
-        for (auto e : arg.v) { push_back(e); }
-    } else {
+        for (auto e : arg.v) {
+            it = v.insert_after(it, e);
+            ++this->maybe_size.size;
+        }
+    } else if constexpr(usesVector) {
         auto old_size = this->v.size();
         this->v.resize(this->v.size() + arg.v.size());
         auto insert_it = this->v.begin() + old_size;
         for (auto it = arg.v.begin(); it != arg.v.end(); ++it) {
             *insert_it++ = *it;
         }
+    } else {
+        for (auto e : arg.v) { push_back(e); }
     }
     return *this;
 }

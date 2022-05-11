@@ -40,10 +40,10 @@ if(BUILD_TESTING)
 
     add_custom_target(ccov-clean
       COMMAND lcov -z -d "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
-      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/*.png"
-      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/*.html"
-      COMMAND rm -vf "${CMAKE_CURRENT_BINARY_DIR}/*.css"
+      COMMAND rm -f "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
+      COMMAND rm -f "${CMAKE_CURRENT_BINARY_DIR}/*.png"
+      COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.html' -delete
+      COMMAND rm -f "${CMAKE_CURRENT_BINARY_DIR}/gcov.css"
     )
 
     # used to make ccov-proc run the tests if they haven't yet been run
