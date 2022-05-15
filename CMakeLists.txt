@@ -2,18 +2,23 @@ cmake_minimum_required(VERSION 3.7)
 set(CMAKE_CXX_STANDARD 17)
 project(sparse_distributed_representation)
 
+option(BUILD_TESTING "Build tests and fuzzing" OFF)
+option(CODE_COVERAGE "Create coverage stats. Requires BUILD_TESTING=true and lcov and (for clang) llvm-cov" OFF)
+
 add_library(${PROJECT_NAME}_lib INTERFACE)
 
 target_include_directories(${PROJECT_NAME}_lib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-option(BUILD_TESTING "Build tests and fuzzing" OFF)
-option(CODE_COVERAGE "Create coverage stats for tests. Requires BUILD_TESTING=true and g++" OFF)
 
 if(BUILD_TESTING)
   # fuzzer for the complicated functions
   add_executable(fuzz_sdr src/fuzz.cpp)
   target_compile_options(fuzz_sdr PRIVATE -Wall -Wextra -Ofast)
   target_link_libraries(fuzz_sdr PRIVATE ${PROJECT_NAME}_lib)
+  
+  if (CODE_COVERAGE AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # prevent a crash with clang ¯\_(ツ)_/¯
+    set(Boost_USE_STATIC_LIBS ON)
+  endif()
   
   # unit tests
   set(BOOST_MIN_VERSION "1.63.0")
@@ -27,19 +32,15 @@ if(BUILD_TESTING)
   add_test(NAME fuzzy_tests COMMAND ./fuzz_sdr 20)
 
   if (CODE_COVERAGE)
-    if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      message(FATAL_ERROR "coverage requires g++")
-    endif()
-
     # enable coverage for the test and fuzz targets
-    # -O0 overrides previously stated optimization level
+    # -O0 overrides previously stated optimization level. for better debugging
     target_compile_options(fuzz_sdr PRIVATE -O0 -g --coverage)
     target_compile_options(test_sdr PRIVATE -O0 -g --coverage)
-    target_link_libraries(fuzz_sdr PRIVATE -lgcov)
-    target_link_libraries(test_sdr PRIVATE -lgcov)
+    target_link_libraries(fuzz_sdr PRIVATE --coverage)
+    target_link_libraries(test_sdr PRIVATE --coverage)
 
     add_custom_target(ccov-clean
-      COMMAND lcov -z -d "${CMAKE_CURRENT_BINARY_DIR}"
+      COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.gcda' -delete
       COMMAND rm -f "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
       COMMAND rm -f "${CMAKE_CURRENT_BINARY_DIR}/*.png"
       COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.html' -delete
@@ -57,15 +58,20 @@ if(BUILD_TESTING)
       COMMAND ctest -j "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
+    if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      set(GCOV_TOOL_OPTION "--gcov-tool")
+      set(GCOV_TOOL_VALUE "${CMAKE_CURRENT_SOURCE_DIR}/llvm-gcov.sh")
+    endif()
+
     add_custom_target(ccov-proc
       # the tests must be run before the coverage can be processed
       DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/fuzz_sdr.dir/src/fuzz.cpp.gcda
       DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/test_sdr.dir/src/test.cpp.gcda
 
-      COMMAND lcov --capture --directory "${CMAKE_SOURCE_DIR}" --base-directory "${CMAKE_SOURCE_DIR}/include" --no-external --output-file "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
+      COMMAND lcov "${GCOV_TOOL_OPTION}" "${GCOV_TOOL_VALUE}" --capture --directory "${CMAKE_CURRENT_SOURCE_DIR}" --base-directory "${CMAKE_CURRENT_SOURCE_DIR}/include" --no-external --output-file "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
     )
 
-    add_custom_target(ccov-display
+    add_custom_target(ccov-show
       DEPENDS ccov-proc
       COMMAND genhtml "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
       COMMAND echo "====== OPEN IN BROWSER: ${CMAKE_CURRENT_BINARY_DIR}/index.html"
