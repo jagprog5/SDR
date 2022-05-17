@@ -30,6 +30,6 @@ after_script:
     [ \"$TRAVIS_COMPILER\" = \"gcc\" ] && 
     cd ${TRAVIS_BUILD_DIR} && 
     cd build && 
-    make ccov-proc && 
+    make cov-proc && 
     bash <(curl -s https://codecov.io/bash) -f coverage.info
     "
