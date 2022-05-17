@@ -5,6 +5,22 @@
 
 This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDgCdWTuIzc).
 
+## Example
+
+```cpp
+#include "SparseDistributedRepresentation/SDR.hpp"
+
+using namespace SparseDistributedRepresentation;
+
+int main() {
+    SDR a{1, 2, 3, 4};
+    SDR b{2, 3, 4, 5};
+    std::cout << (a & b) << std::endl; // prints: [2,3,4]
+    return 0;
+}
+
+```
+
 ## Build Tests and Fuzzing
 
 ```bash
@@ -19,20 +35,18 @@ ctest
 ./fuzz_sdr [<fuzz_amount>] # fuzzy tests
 ```
 
-## Simple Example
+## Display Code Coverage
 
-```cpp
-#include "SparseDistributedRepresentation/SDR.hpp"
+```bash
+apt-get install lcov
+cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && make cov-show
+```
 
-using namespace SparseDistributedRepresentation;
+## Display CPU Profile
 
-int main() {
-    SDR a{1, 2, 3, 4};
-    SDR b{2, 3, 4, 5};
-    std::cout << (a & b) << std::endl; // prints: [2,3,4]
-    return 0;
-}
-
+```bash
+apt-get install libgoogle-perftools-dev  
+cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && make perf-show
 ```
 
 # Guide
