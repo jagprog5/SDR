@@ -216,14 +216,22 @@ class SDR {
         typename std::enable_if<!isForwardList<T>::value, void>::type push_back(const E& i) {
             SDR_t elem = SDR_t(i);
             assert(v.empty() || *v.crbegin() < elem);
-            v.insert(v.end(), elem);
+            if constexpr(usesVector) {
+                v.push_back(elem);
+            } else {
+                v.insert(v.end(), elem);
+            }
         }
 
         template<typename T = container_t, typename E>
         typename std::enable_if<!isForwardList<T>::value, void>::type push_back(E&& i) {
             SDR_t elem = SDR_t(i);
             assert(v.empty() || *v.crbegin() < elem);
-            v.insert(v.end(), elem);
+            if constexpr(usesVector) {
+                v.push_back(elem);
+            } else {
+                v.insert(v.end(), elem);
+            }
         }
 
 
@@ -414,7 +422,11 @@ SDR<SDR_t, container_t>::SDR(Iterator begin, Iterator end) {
         }
     } else {
         while (begin != end) {
-            v.insert(v.end(), *begin++);
+            if constexpr(usesVector) {
+                v.push_back(*begin++);
+            } else {
+                v.insert(v.end(), *begin++);
+            }
         }
     }
 }
@@ -449,7 +461,11 @@ SDR<SDR_t, container_t>::SDR(std::initializer_list<T> list) {
                 relevant = elem.data.relevant();
             }
             if (relevant) {
-                this->v.insert(this->v.end(), SDR_t(elem));
+                if constexpr(usesVector) {
+                    this->v.push_back(SDR_t(elem));
+                } else {
+                    this->v.insert(this->v.end(), SDR_t(elem));
+                }
             }
         }
     }
@@ -590,11 +606,11 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount, R
 
 template<typename SDR_t, typename container_t>
 const typename SDR_t::data_type* SDR<SDR_t, container_t>::ande(typename SDR_t::id_type val) const {
-    decltype(lower_bound(cbegin(), cend(), val)) pos;
+    decltype(std::lower_bound(cbegin(), cend(), val)) pos;
     if constexpr(usesSet) {
         pos = v.lower_bound(val);
     } else {
-        pos = lower_bound(v.cbegin(), v.cend(), val);
+        pos = std::lower_bound(v.cbegin(), v.cend(), val);
     }
     if (pos->id != val) {
         return NULL;
@@ -620,7 +636,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::ande(arg_t start_inclusive, arg_t s
     if constexpr(usesSet) {
         start_it = v.lower_bound(start_inclusive);
     } else {
-        start_it = lower_bound(v.cbegin(), v.cend(), start_inclusive);
+        start_it = std::lower_bound(v.cbegin(), v.cend(), start_inclusive);
     }
     typename container_t::const_iterator end_it;
     if constexpr(usesForwardList) {
@@ -635,7 +651,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::ande(arg_t start_inclusive, arg_t s
     } else if constexpr(usesSet) {
         end_it = v.lower_bound(stop_exclusive);
     } else {
-        end_it = lower_bound(start_it, v.cend(), stop_exclusive);
+        end_it = std::lower_bound(start_it, v.cend(), stop_exclusive);
     }
     if constexpr(isVector<c_ret_t>::value) {
         sdr.v.resize(end_it - start_it);
@@ -673,12 +689,12 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t 
         }
         return count;
     } else if constexpr(usesVector) {
-        auto pos = lower_bound(cbegin(), cend(), start_inclusive);
-        auto end_it = lower_bound(pos, cend(), stop_exclusive);
+        auto pos = std::lower_bound(cbegin(), cend(), start_inclusive);
+        auto end_it = std::lower_bound(pos, cend(), stop_exclusive);
         return (size_type)(end_it - pos);
     } else {
         size_type count = 0;
-        auto pos = lower_bound(cbegin(), cend(), start_inclusive);
+        auto pos = std::lower_bound(cbegin(), cend(), start_inclusive);
         while (pos != cend() && *pos++ < stop_exclusive) {
             ++count;
         }
@@ -702,7 +718,7 @@ void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<
         if constexpr(isSet<c_arg_t>::value) {
             b_pos = b.v.lower_bound(a_elem.id);
         } else {
-            b_pos = lower_bound(b_pos, b_end, a_elem);
+            b_pos = std::lower_bound(b_pos, b_end, a_elem);
         }
         if (b_pos == b_end) return;
         if (*b_pos == a_elem) {
@@ -717,7 +733,7 @@ void SDR<SDR_t, container_t>::andop(const SDR<SDR_t, container_t>& a, const SDR<
             if constexpr(usesSet) {
                 a_pos = a.v.lower_bound((SDR_t)b_elem);
             } else {
-                a_pos = lower_bound(a_pos, a_end, b_elem);
+                a_pos = std::lower_bound(a_pos, a_end, b_elem);
             }
             if (a_pos == a_end) return;
             a_elem = *a_pos;
@@ -1065,7 +1081,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
         if (arg_pos == arg_end) goto end;
         while (true) {
             arg_t arg_elem = *arg_pos++;
-            this_pos = lower_bound(this_pos, this_end, arg_elem.id, lesser_or_greater<forward, SDR_t>());
+            this_pos = std::lower_bound(this_pos, this_end, arg_elem.id, lesser_or_greater<forward, SDR_t>());
             if (this_pos == this_end) goto end;
             SDR_t this_elem = *this_pos;
             if (this_elem == arg_elem) {
@@ -1091,7 +1107,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
             // =====
             if constexpr (!small_args) {
                 // get this in the arg
-                arg_pos = lower_bound(arg_pos, arg_end, this_elem.id, lesser_or_greater<forward, arg_t>());
+                arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id, lesser_or_greater<forward, arg_t>());
                 if (arg_pos == arg_end) goto end;
                 if (*arg_pos == this_elem) {
                     auto data = this_elem.data.rme((typename SDR_t::data_type)arg_pos->data);

@@ -3,12 +3,20 @@
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/FloatData.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
+#include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
 #include <random>
 #include <unistd.h>
 
 using namespace SparseDistributedRepresentation;
 
 BOOST_AUTO_TEST_SUITE(sdr)
+
+BOOST_AUTO_TEST_CASE(array_container) {
+  SDR<SDR_t<>, ArrayAdaptor<SDR_t<>, 4>> a{7, 8, 9, 10};
+  SDR<SDR_t<>, ArrayAdaptor<SDR_t<>, 4>> b{7, 8, 9, 10};
+  auto r = a & b;
+  BOOST_REQUIRE_EQUAL(r, a);
+}
 
 BOOST_AUTO_TEST_CASE(copy_assignment_ctor) {
   SDR<SDR_t<>, std::forward_list<SDR_t<>>> a{1, 2, 3};

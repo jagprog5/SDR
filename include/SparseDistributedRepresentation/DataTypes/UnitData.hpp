@@ -3,6 +3,8 @@
 namespace SparseDistributedRepresentation {
 
 struct UnitData {
+    // this is the data_type for an SDR_t which stores an element from 0 to 1.
+
     constexpr UnitData() : value(1) {}
     constexpr UnitData(float value) : value(value) {
         assert(value >= 0 && value <= 1);
