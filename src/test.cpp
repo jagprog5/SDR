@@ -5,7 +5,6 @@
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include <random>
 #include <unistd.h>
-
 using namespace SparseDistributedRepresentation;
 
 BOOST_AUTO_TEST_SUITE(sdr)
