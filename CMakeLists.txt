@@ -46,7 +46,7 @@ if(BUILD_TESTING)
     add_custom_target(perf-show
       # https://gperftools.github.io/gperftools/cpuprofile.html
       DEPENDS fuzz_sdr
-      COMMAND "CPUPROFILE=${CMAKE_CURRENT_BINARY_DIR}/cpuprofile" CPUPROFILE_FREQUENCY=1000000 ./fuzz_sdr 200 2>&1 1>/dev/null
+      COMMAND "CPUPROFILE=${CMAKE_CURRENT_BINARY_DIR}/cpuprofile" CPUPROFILE_FREQUENCY=1000000 ./fuzz_sdr 2>&1 1>/dev/null
       COMMAND google-pprof --web fuzz_sdr "${CMAKE_CURRENT_BINARY_DIR}/cpuprofile"
     )
   elseif(PERF STREQUAL "HEAP")

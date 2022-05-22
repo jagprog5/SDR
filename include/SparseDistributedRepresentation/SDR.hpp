@@ -612,7 +612,7 @@ const typename SDR_t::data_type* SDR<SDR_t, container_t>::ande(typename SDR_t::i
     } else {
         pos = std::lower_bound(v.cbegin(), v.cend(), val);
     }
-    if (pos->id != val) {
+    if (pos == v.cend() || pos->id != val) {
         return NULL;
     } else {
         return &pos->data;
@@ -1328,7 +1328,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::shift(int amount) {
         #ifdef NDEBUG
         elem += amount;
         #else
-        assert(!__builtin_add_overflow(amount, elem, &elem));
+        assert(!__builtin_add_overflow(amount, elem.id, &elem.id));
         #endif
     }
     return *this;

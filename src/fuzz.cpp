@@ -9,8 +9,12 @@
 using namespace SparseDistributedRepresentation;
 using namespace std::chrono;
 
+//
 static constexpr size_t DEFAULT_FUZZ_AMOUNT = 250;
-using Arr = ArrayAdaptor<SDR_t<>, DEFAULT_FUZZ_AMOUNT * 2>;
+using ArrDefault = ArrayAdaptor<SDR_t<>, DEFAULT_FUZZ_AMOUNT * 2>;
+
+static constexpr size_t TEST_FUZZ_AMOUNT = 20;
+using ArrTest = ArrayAdaptor<SDR_t<>, TEST_FUZZ_AMOUNT * 2>;
 
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
@@ -175,9 +179,15 @@ SDR get_sdr(int val) {
     return ret;
 }
 
+template<typename T>
+struct isArrayAdaptor : std::false_type {};
+
+template<typename T, size_t N>
+struct isArrayAdaptor<ArrayAdaptor<T, N>> : std::true_type {};
+
 template<typename SDR>
 std::string get_template_name() {
-    if constexpr(std::is_same<typename SDR::container_type, Arr>::value) {
+    if constexpr(isArrayAdaptor<typename SDR::container_type>::value) {
         return "arr";
     } else if constexpr(SDR::usesVector) {
         return "vec";
@@ -354,7 +364,9 @@ int main(int argc, char** argv) {
     series<SDR<SDR_t<>, std::forward_list<SDR_t<>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
 
     if (fuzz_amount == DEFAULT_FUZZ_AMOUNT) {
-        series<SDR<SDR_t<>, Arr>, SDR<SDR_t<>, Arr>>(fuzz_amount);
+        series<SDR<SDR_t<>, ArrDefault>, SDR<SDR_t<>, ArrDefault>>(fuzz_amount);
+    } else if (fuzz_amount == TEST_FUZZ_AMOUNT) {
+        series<SDR<SDR_t<>, ArrTest>, SDR<SDR_t<>, ArrTest>>(fuzz_amount);
     }
 
     std::cout << "======With float data elements======" << std::endl;

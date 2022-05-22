@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE sparse_distribued_representation_test_module
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation/SDR.hpp"
+#include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
 #include "SparseDistributedRepresentation/DataTypes/FloatData.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include <random>
@@ -101,6 +102,19 @@ BOOST_AUTO_TEST_CASE(andop_range) {
   BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
 }
 
+BOOST_AUTO_TEST_CASE(andop_single) {
+  SDR a{1, 2, 3};
+  BOOST_REQUIRE_EQUAL(a & 4, nullptr);
+  BOOST_REQUIRE_EQUAL(a & 0, nullptr);
+  BOOST_REQUIRE_NE(a & 2, nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(shift) {
+  SDR a{1, 2, 3};
+  a.shift(2);
+  BOOST_REQUIRE_EQUAL(a, (SDR{3, 4, 5}));
+}
+
 BOOST_AUTO_TEST_CASE(append) {
   SDR a0{1, 2, 3};
   SDR b0{4, 5, 6};
@@ -120,7 +134,8 @@ BOOST_AUTO_TEST_CASE(append) {
 }
 
 BOOST_AUTO_TEST_CASE(sample_portion) {
-  std::mt19937 twister(time(NULL) * getpid());
+  // this seed happens to fully cover sample_portion
+  std::mt19937 twister(3334);
 
   SDR a{1, 2, 3};
   a.sample_portion(0.8, twister);
@@ -198,14 +213,17 @@ BOOST_AUTO_TEST_CASE(test_float_data) {
   }
 }
 
-// BOOST_AUTO_TEST_CASE(test_printing) {
-//   std::cout << FloatData(0.5555) << '\n';
-//   UnitData a(0.5555);
-//   std::cout << a << " ";
-//   a.value = 1.1;
-//   std::cout << a << '\n';
-//   std::cout << SDR{1, 2, 3} << " " << SDR<SDR_t<int, FloatData>>{1, 2, 3} << '\n';
-//   std::cout << SDR<SDR_t<int, FloatData>>{1, 2, 3} << std::endl;
-// }
+BOOST_AUTO_TEST_CASE(test_printing) {
+  auto old_buffer = std::cout.rdbuf(nullptr); // suppress
+  std::cout << FloatData(0.5555) << '\n';
+  UnitData a(0.5555);
+  std::cout << a << " ";
+  a.value = 1.1;
+  std::cout << a << '\n';
+  std::cout << SDR{1, 2, 3} << " " << SDR<SDR_t<int, FloatData>>{1, 2, 3} << '\n';
+  std::cout << SDR<SDR_t<int, FloatData>>{1, 2, 3} << std::endl;
+  std::cout << SDR<SDR_t<>, ArrayAdaptor<SDR_t<>, 3>>{1, 2, 3} << std::endl;
+  std::cout.rdbuf(old_buffer); // restore
+}
 
 BOOST_AUTO_TEST_SUITE_END()
