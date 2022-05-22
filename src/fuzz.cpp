@@ -1,5 +1,6 @@
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
+#include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
 #include <cstring>
 #include <chrono>
 #include <unistd.h>
@@ -7,6 +8,9 @@
 
 using namespace SparseDistributedRepresentation;
 using namespace std::chrono;
+
+static constexpr size_t DEFAULT_FUZZ_AMOUNT = 250;
+using Arr = ArrayAdaptor<SDR_t<>, DEFAULT_FUZZ_AMOUNT * 2>;
 
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
@@ -173,7 +177,9 @@ SDR get_sdr(int val) {
 
 template<typename SDR>
 std::string get_template_name() {
-    if constexpr(SDR::usesVector) {
+    if constexpr(std::is_same<typename SDR::container_type, Arr>::value) {
+        return "arr";
+    } else if constexpr(SDR::usesVector) {
         return "vec";
     } else if constexpr(SDR::usesSet) {
         return "set";
@@ -329,7 +335,7 @@ int main(int argc, char** argv) {
         }
         fuzz_amount = std::atoi(argv[1]);
     } else {
-        fuzz_amount = 100;
+        fuzz_amount = DEFAULT_FUZZ_AMOUNT;
     }
 
     // yes, this makes a large binary from all the template specializations.
@@ -346,6 +352,10 @@ int main(int argc, char** argv) {
     series<SDR<SDR_t<>, std::forward_list<SDR_t<>>>, SDR<SDR_t<>, std::vector<SDR_t<>>>>(fuzz_amount);
     series<SDR<SDR_t<>, std::forward_list<SDR_t<>>>, SDR<SDR_t<>, std::set<SDR_t<>>>>(fuzz_amount);
     series<SDR<SDR_t<>, std::forward_list<SDR_t<>>>, SDR<SDR_t<>, std::forward_list<SDR_t<>>>>(fuzz_amount);
+
+    if (fuzz_amount == DEFAULT_FUZZ_AMOUNT) {
+        series<SDR<SDR_t<>, Arr>, SDR<SDR_t<>, Arr>>(fuzz_amount);
+    }
 
     std::cout << "======With float data elements======" << std::endl;
 
