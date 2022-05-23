@@ -88,23 +88,20 @@ a.andi(b)           // `a` is modified and contains the result [2]
 flowchart TB
     SDR["SDR\nHas a container_t of SDR_t elements"]
     SDR_t["SDR_t\nHas an id and (optionally) data"]
-    container_t["container_t\nSDR is a container adaptor that can accept various containers\n</sub><sup>It is best suited for a std::vector or std::set"]
+    container_t["container_t\nSDR is a container adaptor that can accept various containers\nIt is best suited for a std::vector or std::set"]
     ArrayAdaptor["ArrayAdaptor\nWraps std::array in a vector-like interface"]
-    vector["std::vector"]
-    set["std::set"]
-    forward_list["std::forward_list"]
-    EmptyData["EmptyData\n</sub><sup>Disables the data functionality"]
-    UnitData["UnitData\n</sub><sup>A float bounded from 0 to 1"]
-    FloatData["FloatData\n</sub><sup>A float"]
-    id_t["id_t\n<sub><sup>An integral type which uniquely identifies an SDR_t in an SDR."]
-    data_t["data_t\n<sub><sup>A payload associated with the id."]
+    EmptyData["EmptyData\nDisables the data functionality"]
+    UnitData["UnitData\nA float bounded from 0 to 1"]
+    FloatData["FloatData\nA float"]
+    id_t["id_t\nAn integral type which uniquely identifies an SDR_t in an SDR."]
+    data_t["data_t\nA payload associated with the id."]
 
     SDR--template--->SDR_t
     SDR--template-->container_t
-    container_t-->vector
-    container_t-->set
-    container_t-->forward_list
-    container_t-->ArrayAdaptor
+    container_t-->std::vector
+    container_t-->std::set
+    container_t-->std::forward_list
+    container_t--->ArrayAdaptor
 
     SDR_t--template-->id_t
     SDR_t--template--->data_t

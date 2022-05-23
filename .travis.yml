@@ -1,6 +1,10 @@
 language: cpp
 dist: bionic
 
+branches:
+  only:
+    - master
+
 git:
   depth: 3
 
