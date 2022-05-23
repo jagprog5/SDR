@@ -5,7 +5,7 @@
 
 This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDgCdWTuIzc).
 
-## Example
+## Quick Example
 
 ```cpp
 #include "SparseDistributedRepresentation/SDR.hpp"
@@ -21,7 +21,9 @@ int main() {
 
 ```
 
-## Build Tests and Fuzzing
+## Building
+
+### Tests and Fuzzing
 
 ```bash
 # build
@@ -35,14 +37,14 @@ ctest
 ./fuzz_sdr [<fuzz_amount>] # fuzzy tests
 ```
 
-## Display Code Coverage
+### Display Code Coverage
 
 ```bash
 apt-get install lcov
 cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && make cov-show
 ```
 
-## Display CPU Profile
+### Display CPU Profile
 
 ```bash
 apt-get install libgoogle-perftools-dev  
@@ -53,48 +55,76 @@ cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && make perf-show
 
 ## Operations
 
-**AND**(`[1, 2]`, `[2, 3]`) = `[2]`  
-**OR**&nbsp;&nbsp;&nbsp;(`[1, 2]`, `[2, 3]`) = `[1, 2, 3]`  
-**XOR**(`[1, 2]`, `[2, 3]`) = `[1, 3]`  
-**RM**&nbsp;&nbsp;&nbsp;(`[1, 2]`, `[2, 3]`) = `[1]` 
+| Operation | Arg1   | Arg2   | Result    |
+|-----------|--------|--------|-----------|
+| AND       | [1, 2] | [2, 3] | [2]       |
+| OR        | [1, 2] | [2, 3] | [1, 2, 3] |
+| XOR       | [1, 2] | [2, 3] | [1, 3]    |
+| RM        | [1, 2] | [2, 3] | [1]       |
 
-Each op has three variations:
+Each operation has three variations:
+
+- normal (*and* elements, "ande")
+- size (*and* size, "ands")
+- inplace (*and* inplace, "andi")
 
 ```cpp
 SDR a{1, 2};
 SDR b{2, 3};
 
 // and elements
-SDR r = a.ande(b);  // a new sdr is created with the content: [2]
+SDR r = a.ande(b);  // a new sdr is created with the result: [2]
 
 // and size
 int s = a.ands(b);  // returns 1; this is the size of the result if ande was called
 
-// and in-place
-a.andi(b)           // `a` is modified and now contains [2]
+// and inplace
+a.andi(b)           // `a` is modified and contains the result [2]
 ```
 
-## SDR_t
+## Library Structure
 
-`SDRs` contain `SDR_t` elements. An `SDR_t` consists of an `id` and (optionally) `data`. 
+```mermaid
+flowchart TB
+    SDR["SDR<sup><sub>\nHas a container_t of SDR_t elements"]
+    SDR_t["SDR_t\n<sup><sub>Has an id and (optionally) data"]
+    container_t["container_t\n<sup><sub>SDR is a container adaptor that can accept various containers\n</sub><sup>It is best suited for a std::vector or std::set"]
+    ArrayAdaptor["ArrayAdaptor\n<sup><sub>Wraps std::array in a vector-like interface"]
+    vector["<sup><sub>std::vector"]
+    set["<sup><sub>std::set"]
+    forward_list["<sup><sub>std::forward_list"]
+    EmptyData["EmptyData\n</sub><sup>Disables the data functionality"]
+    UnitData["UnitData\n</sub><sup>A float bounded from 0 to 1"]
+    FloatData["FloatData\n</sub><sup>A float"]
+    id_t["id_t\n<sub><sup>An integral type which uniquely identifies an SDR_t in an SDR."]
+    data_t["data_t\n<sub><sup>A payload associated with the id."]
 
-The id is an integral type which is used to compare equality between elements.
+    SDR--template--->SDR_t
+    SDR--template-->container_t
+    container_t-->vector
+    container_t-->set
+    container_t-->forward_list
+    container_t-->ArrayAdaptor
 
-The data is a payload associated with the id. Data is combined with other data when ops are computed on SDRs. Three data types are defined:
+    SDR_t--template-->id_t
+    SDR_t--template--->data_t
 
-`EmptyData`: disables the data functionality
+    data_t-->EmptyData
+    data_t-->UnitData
+    data_t-->FloatData
 
-`UnitData`: a float which is bounded from 0 to 1 inclusively
 
-`FloatData`: a normal float
+```
 
-The default SDR_t has id: int, and data: EmptyData.
+## SDR_t with Data
 
 ```cpp
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 
 int main() {
+    // the SDR contains elements which are identified by an int
+    // and each id has a UnitData associated with it
     using UnitSDR_t = SDR_t<int, UnitData>;
     using UnitSDR = SDR<UnitSDR_t>;
 
@@ -118,10 +148,6 @@ int main() {
     return 0;
 }
 ```
-
-## Containers
-
-The SDR class is a container adapter which uses a vector by default. An stl vector or set is best suited to be the underlying container, but it can also use a forward_list, list, multiset, or any non stl container types that have appropriate interfaces.
 
 ## Escaping the Walled Garden
 
