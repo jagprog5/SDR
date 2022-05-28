@@ -24,10 +24,26 @@ struct SDR_t {
     constexpr SDR_t(id_t id) : id(id), data() {}
     constexpr SDR_t() : id(), data() {}
 
+    constexpr SDR_t(const SDR_t& o) : id(o.id), data(o.data) {}
+
+    constexpr SDR_t& operator=(const SDR_t& o) {
+        const_cast<id_t&>(id) = o.id;
+        data = o.data;
+        return *this;
+    }
+
+    constexpr SDR_t(SDR_t&& o) : id(std::move(o.id)), data(std::move(o.data)) {}
+
+    constexpr SDR_t& operator=(SDR_t&& o) {
+        const_cast<id_t&>(id) = std::move(o.id);
+        data = std::move(o.data);
+        return *this;
+    }
+
     using id_type = id_t;
     using data_type = data_t;
 
-    id_t id;
+    const id_t id;
     data_t data;
 
     template<typename id_t_inner, 
@@ -49,12 +65,8 @@ struct SDR_t {
     constexpr bool operator==(const id_t& o) const { return id == o; }
     constexpr bool operator>(const id_t& o) const { return id > o; }
 
-    constexpr operator id_t() const { return id; }
+    constexpr operator const id_t&() const { return id; }
 
-    constexpr SDR_t& operator+=(int o) {
-        id += o;
-        return *this;
-    }
 };
 
 template<typename id_t,

@@ -120,21 +120,20 @@ flowchart TB
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 
 int main() {
-    // the SDR contains elements which are identified by an int
+    // this SDR contains elements which are identified by an int
     // and each id has a UnitData associated with it
     using UnitSDR_t = SDR_t<int, UnitData>;
     using UnitSDR = SDR<UnitSDR_t>;
 
-    // prints [0(.25)]
-    // since both SDRs have an element in the same position (0),
-    // and because UnitData multiplies together in the and-op (0.5 * 0.5)
     auto r0 = UnitSDR{UnitSDR_t(0, 0.5)}.ande(UnitSDR{UnitSDR_t(0, 0.5)});
-    std::cout << r0 << std::endl;
+    // Both SDRs have an element in the same position [0],
+    // and UnitData multiplies together in the and-op (0.5 * 0.5)
+    std::cout << r0 << std::endl; // prints [0(.25)]
 
     // data types also define a "relevance".
     // for UnitData, if its value is < 0.1, then it is omitted from the result
     auto r1 = UnitSDR{UnitSDR_t(0, 0.25)}.ande(UnitSDR{UnitSDR_t(0, 0.25)});
-    std::cout << r1 << std::endl; // []
+    std::cout << r1 << std::endl; // empty
     int r1_size = UnitSDR{UnitSDR_t(0, 0.25)}.ands(UnitSDR{UnitSDR_t(0, 0.25)});
     std::cout << r1_size << std::endl;  // 0
 
@@ -146,6 +145,31 @@ int main() {
 }
 ```
 
+## Custom Operations
+
+AND, OR, XOR, and RM are implemented via [visitors](https://en.wikipedia.org/wiki/Visitor_pattern). Visitors do something with selections of the data.  
+For example, the `ands` operation implicitly does two separate steps:
+
+1. Find ids that are shared between the SDRs (by using the function which applies an *and visitor*, "andv").
+2. For each id pair, increment a value (which is implemented by that specific visitor).
+
+`ands` can be reimplemented with the following:
+
+```c++
+SDR a{1, 2, 3};
+SDR b{2, 3, 4};
+
+int result = 0;
+auto increment_visitor = [&result](const typename decltype(a)::value_type::id_type&,
+                                         typename decltype(a)::value_type::data_type&,
+                                         typename decltype(b)::value_type::data_type&) {
+    ++result;
+};
+
+a.andv(b, increment_visitor); // apply the visitor
+std::cout << result << std::endl; // 2 elements in commmon
+```
+
 ## Escaping the Walled Garden
 
 If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cast`ed to its underlying container.
@@ -155,7 +179,7 @@ SDR a{1, 2, 3};
 auto brute_force_ptr = reinterpret_cast<std::vector<SDR_t<>>*>(&a);
 (*brute_force_ptr)[1].id = 17;
 
-// SDRs have ascending elements with no duplicates
+// SDRs have ascending elements, with no duplicates
 // this is not a valid SDR since it has [1,17,3]
 // it will give strange values but not UB
 std::cout << a;

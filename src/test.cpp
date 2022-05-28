@@ -176,6 +176,34 @@ BOOST_AUTO_TEST_CASE(test_comparison) {
   BOOST_REQUIRE_GT((SDR{4}), (SDR{0, 1, 2}));
 }
 
+BOOST_AUTO_TEST_CASE(test_shift) {
+  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} << 1), (SDR{2, 3, 4}));
+}
+
+BOOST_AUTO_TEST_CASE(test_visitor) {
+  SDR<SDR_t<int, FloatData>> a{SDR_t<int, FloatData>(1, FloatData(1))};
+  auto increment_visitor = [&](const int&, FloatData& data){
+    data.value += 1;
+  };
+  a.visitor(increment_visitor);
+  BOOST_REQUIRE_EQUAL((a & 1)->value, 2);
+}
+
+BOOST_AUTO_TEST_CASE(test_readme_visitor) {
+  SDR a{1, 2, 3};
+  SDR b{2, 3, 4};
+
+  int result = 0;
+  auto increment_visitor = [&result](const typename decltype(a)::value_type::id_type&,
+                                           typename decltype(a)::value_type::data_type&,
+                                           typename decltype(b)::value_type::data_type&) {
+      ++result;
+  };
+
+  a.andv(b, increment_visitor);
+  BOOST_REQUIRE_EQUAL(result, 2);
+}
+
 BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
     SDR a {1, 2, 3};
