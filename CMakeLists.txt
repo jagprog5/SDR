@@ -58,7 +58,7 @@ if(BUILD_TESTING)
 
     add_custom_target(perf-show
       DEPENDS fuzz_sdr
-      COMMAND HEAPCHECK=strict ./fuzz_sdr 50 2>&1 1>/dev/null
+      COMMAND HEAPCHECK=strict ./fuzz_sdr 2>&1 1>/dev/null
     )
   endif()
 

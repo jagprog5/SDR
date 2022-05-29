@@ -40,7 +40,7 @@ ctest
 ### Display Code Coverage
 
 ```bash
-apt-get install lcov
+apt-get install lcov # and llvm if using clang
 cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && make cov-show
 ```
 
