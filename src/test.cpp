@@ -204,6 +204,29 @@ BOOST_AUTO_TEST_CASE(test_readme_visitor) {
   BOOST_REQUIRE_EQUAL(result, 2);
 }
 
+BOOST_AUTO_TEST_CASE(test_floatdata_div) {
+  using elem = SDR_t<int, FloatData>;
+  {
+    SDR<elem> a{elem(0, 10), elem(1, 7)};
+    SDR<SDR_t<long, FloatData>> b{SDR_t<long, FloatData>(0, 2)};
+    BOOST_REQUIRE_EQUAL(a / b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
+  }
+
+  {
+    SDR<elem, std::forward_list<elem>> a{elem(0, 10), elem(1, 7)};
+    SDR<SDR_t<long, FloatData>> b{SDR_t<long, FloatData>(0, 2)};
+    auto r = a / b;
+    BOOST_REQUIRE_EQUAL(r.size(), 2);
+    BOOST_REQUIRE_EQUAL(r, (SDR<elem>{elem(0, 5), elem(1, 7)}));
+  }
+
+  {
+    SDR<elem> a{elem(0, 10), elem(1, 7)};
+    SDR<SDR_t<long, FloatData>> b{SDR_t<long, FloatData>(0, 2)};
+    BOOST_REQUIRE_EQUAL(a /= b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
+  }
+}
+
 BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
     SDR a {1, 2, 3};

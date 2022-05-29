@@ -31,7 +31,7 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
             // a element is in b
             auto data = a_elem.data.ande(decltype(a_elem.data)(b_pos->data));
             if (data.relevant()) {
-                REQUIRE_TRUE(r & a_elem);
+                REQUIRE_TRUE(r & a_elem.id);
             }
         }
     }
@@ -43,7 +43,7 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
             // b element is in a
             auto data = a_pos->data.ande(decltype(a_pos->data)(b_elem.data));
             if (data.relevant()) {
-                REQUIRE_TRUE(r & b_elem);
+                REQUIRE_TRUE(r & b_elem.id);
             }
         }
     }
@@ -52,8 +52,8 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        bool in_a = std::find(a.cbegin(), a.cend(), r_elem) != a.cend();
-        bool in_b = std::find(b.cbegin(), b.cend(), r_elem) != b.cend();
+        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id) != a.cend();
+        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
     // ensure the size is correct
@@ -65,19 +65,19 @@ template<typename SDRA, typename SDRB>
 bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // every element in a must be in result
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
-        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), *a_pos) != r.cend());
+        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), a_pos->id) != r.cend());
     }
     // every element in b must be in result
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
-        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), *b_pos) != r.cend());
+        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), b_pos->id) != r.cend());
     }
     // the result can't contain any elements not in a or not in b
     typename SDRA::size_type i = 0;
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        bool in_a = std::find(a.cbegin(), a.cend(), r_elem) != a.cend();
-        bool in_b = std::find(b.cbegin(), b.cend(), r_elem) != b.cend();
+        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id) != a.cend();
+        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
     // ensure the size is correct
@@ -90,19 +90,19 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     // for every element in a, if it is not in b, then it must be in the result
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
-        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
+        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id);
         if (b_pos == b.cend() || a_elem.data.xore(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
             // a elem is not in b
-            REQUIRE_TRUE(r & a_elem)
+            REQUIRE_TRUE(r & a_elem.id)
         }
     }
     // for every element in b, if it is not in a, then it must be in the result
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
         auto b_elem = *b_pos;
-        auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
+        auto a_pos = std::find(a.cbegin(), a.cend(), b_elem.id);
         if (a_pos == a.cend() || a_pos->data.xore(decltype(a_pos->data)(b_elem.data)).rm_relevant()) {
             // b elem is not in a
-            REQUIRE_TRUE(r & b_elem);
+            REQUIRE_TRUE(r & b_elem.id);
         }
     }
     // the result can't contain any elements not in a or not in b
@@ -110,8 +110,8 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        bool in_a = std::find(a.cbegin(), a.cend(), r_elem) != a.cend();
-        bool in_b = std::find(b.cbegin(), b.cend(), r_elem) != b.cend();
+        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id) != a.cend();
+        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
     // ensure the size is correct
@@ -125,10 +125,10 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     typename SDRA::size_type i = 0;
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
-        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
+        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id);
         if (b_pos == b.cend() || a_elem.data.rme(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
             // a elem is not in b
-            REQUIRE_TRUE(r & a_elem);
+            REQUIRE_TRUE(r & a_elem.id);
             ++i;
         }
     }
@@ -369,7 +369,7 @@ int main(int argc, char** argv) {
         series<SDR<SDR_t<>, ArrTest>, SDR<SDR_t<>, ArrTest>>(fuzz_amount);
     }
 
-    std::cout << "======With float data elements======" << std::endl;
+    std::cout << "======With data elements======" << std::endl;
 
     series<SDR<SDR_t<long, UnitData>, std::vector<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::vector<SDR_t<int, UnitData>>>>(fuzz_amount);
     series<SDR<SDR_t<long, UnitData>, std::vector<SDR_t<long, UnitData>>>, SDR<SDR_t<int, UnitData>, std::set<SDR_t<int, UnitData>>>>(fuzz_amount);

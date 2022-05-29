@@ -187,7 +187,7 @@ class SDR {
 
         /*
          * apply a rm visitor. Perform an operation on elements based on a query.
-         * visitor:
+         * visitors:
          *      the element only exists in this: visitor_this(const value_type::id_type&, value_type::data_type&)
          *      the element is in both: visitor_both(const value_type::id_type&, value_type::data_type&, arg_t::value_type::data_type&)   
          * 
@@ -195,7 +195,6 @@ class SDR {
          * between the back_position and the end, there are no elements whose ids' also exist in the arg.
          * rather than calling these positions in visitor_this, the case can be optimized;
          * the position is made available in back_position(SDR::iterator)
-         * 
          */
         template<typename arg_t, typename c_arg_t, typename VisitorThis, typename VisitorBoth, typename BackPosition>
         void rmv(SDR<arg_t, c_arg_t>& query, VisitorThis visitor_this, VisitorBoth visitor_both, BackPosition back_position);
@@ -227,51 +226,37 @@ class SDR {
         template<typename T = container_t>
         typename T::const_reverse_iterator crend() const { return v.crend(); }
 
+        // calls push_back or insert (at the end) on the underlying container
+        // assert checks that the inserted element is in order and with no duplicates
         template<typename T = container_t, typename E>
-        typename std::enable_if<!isForwardList<T>::value, void>::type push_back(const E& i) {
-            SDR_t elem = SDR_t(i);
-            assert(v.empty() || *v.crbegin() < elem);
-            if constexpr(usesVector) {
-                v.push_back(elem);
-            } else {
-                v.insert(v.end(), elem);
-            }
-        }
+        void push_back(const E& i);
 
         template<typename T = container_t, typename E>
-        typename std::enable_if<!isForwardList<T>::value, void>::type push_back(E&& i) {
-            SDR_t elem = SDR_t(i);
-            assert(v.empty() || *v.crbegin() < elem);
-            if constexpr(usesVector) {
-                v.push_back(elem);
-            } else {
-                v.insert(v.end(), elem);
-            }
-        }
+        void push_back(E&& i);
 
+        // calls pop_front on the forward_list underlying container
+        // assertion checks not empty
+        template<typename T = container_t>
+        typename std::enable_if<isForwardList<T>::value, void>::type pop_front();
+
+        // calls push_front on the forward_list underlying container
+        // assertion checks that the inserted element is in order and with no duplicates
+        template<typename T = container_t, typename E>
+        typename std::enable_if<isForwardList<T>::value, void>::type push_front(const E& i);
+
+        template<typename T = container_t, typename E>
+        typename std::enable_if<isForwardList<T>::value, void>::type push_front(E&& i);
 
         template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, void>::type pop_front()  {
-            assert(!v.empty());
-            v.pop_front();
-            --maybe_size.size;
-        }
+        typename std::enable_if<isForwardList<T>::value, const_iterator>::type before_begin() { return v.before_begin(); }
+
+        // calls insert_after on the forward_list underlying container
+        // assertion checks that the inserted element is in order and with no duplicates
+        template<typename T = container_t, typename E>
+        typename std::enable_if<isForwardList<T>::value, const_iterator>::type insert_after(const_iterator pos, const E& i);
 
         template<typename T = container_t, typename E>
-        typename std::enable_if<isForwardList<T>::value, void>::type push_front(const E& i)  {
-            SDR_t elem = SDR_t(i);
-            assert(v.empty() || *v.cbegin() > elem);
-            ++maybe_size.size;
-            v.push_front(elem);
-        }
-
-        template<typename T = container_t, typename E>
-        typename std::enable_if<isForwardList<T>::value, void>::type push_front(E&& i)  {
-            SDR_t elem = SDR_t(i);
-            assert(v.empty() || *v.cbegin() > elem);
-            ++maybe_size.size;
-            v.push_front(elem);
-        }
+        typename std::enable_if<isForwardList<T>::value, const_iterator>::type insert_after(const_iterator pos, E&& i);
 
         template<typename SDR_t_inner, typename container_t_inner>
         friend std::ostream& operator<<(std::ostream& os, const SDR<SDR_t_inner, container_t_inner>& sdr);
@@ -326,7 +311,7 @@ class SDR {
                 if (other_pos == other_end) return false;
                 auto this_elem = *this_pos++;
                 auto other_elem = *other_pos++;
-                if (this_elem != other_elem) return false;
+                if (this_elem.id != other_elem.id) return false;
             }
         }
 
@@ -390,7 +375,7 @@ void SDR<SDR_t, container_t>::assert_ascending() {
             SDR_t prev_elem = *pos++;
             while (pos != end) {
                 SDR_t elem = *pos++;
-                if (prev_elem >= elem) {
+                if (prev_elem.id >= elem.id) {
                     assert(!"Elements must be in ascending order and with no duplicates.");
                 }
                 prev_elem = elem;
@@ -643,7 +628,7 @@ SDR<ret_t, c_ret_t> SDR<SDR_t, container_t>::ande(arg_t start_inclusive, arg_t s
     if constexpr(usesForwardList) {
         end_it = start_it;
         while (true) {
-            if (end_it == cend() || *end_it >= stop_exclusive) {
+            if (end_it == cend() || end_it->id >= stop_exclusive) {
                 break;
             }
             ++end_it;
@@ -683,7 +668,7 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t 
         auto pos = this->v.lower_bound(start_inclusive);
         size_type count = 0;
         while (pos != v.cend()) {
-            if (*pos++ >= stop_exclusive) {
+            if (pos++->id >= stop_exclusive) {
                 break;
             }
             ++count;
@@ -696,7 +681,7 @@ typename SDR<SDR_t, container_t>::size_type SDR<SDR_t, container_t>::ands(arg_t 
     } else {
         size_type count = 0;
         auto pos = std::lower_bound(cbegin(), cend(), start_inclusive);
-        while (pos != cend() && *pos++ < stop_exclusive) {
+        while (pos != cend() && pos++->id < stop_exclusive) {
             ++count;
         }
         return count;
@@ -719,7 +704,7 @@ void SDR<SDR_t, container_t>::andv(SDR<arg_t, c_arg_t>& query, Visitor visitor) 
         if constexpr(isSet<c_arg_t>::value) {
             query_pos = query.v.lower_bound(this_elem.id);
         } else {
-            query_pos = std::lower_bound(query_pos, query_end, this_elem);
+            query_pos = std::lower_bound(query_pos, query_end, this_elem.id);
         }
         if (query_pos == query_end) return;
         if (*query_pos == this_elem) {
@@ -732,9 +717,9 @@ void SDR<SDR_t, container_t>::andv(SDR<arg_t, c_arg_t>& query, Visitor visitor) 
         if constexpr (!small_args) {
             query_elem = *query_pos;
             if constexpr(usesSet) {
-                this_pos = this->v.lower_bound((SDR_t)query_elem);
+                this_pos = this->v.lower_bound(query_elem.id);
             } else {
-                this_pos = std::lower_bound(this_pos, this_end, query_elem);
+                this_pos = std::lower_bound(this_pos, this_end, query_elem.id);
             }
             if (this_pos == this_end) return;
             this_elem = *this_pos;
@@ -854,7 +839,7 @@ void SDR<SDR_t, container_t>::orv(SDR<arg_t, c_arg_t>& query, VisitorThis visito
     #endif
     
     while (this_valid || query_valid) {
-        if ((this_valid && !query_valid) || (this_valid && query_valid && this_val < query_val)) {
+        if ((this_valid && !query_valid) || (this_valid && query_valid && this_val.id < query_val.id)) {
             visitor_this(this_pos->id, const_cast<typename SDR_t::data_type&>(this_pos->data));
             ++this_pos;
             if (this_pos != this_end) this_val = *this_pos; else this_valid = false; // this
@@ -1073,7 +1058,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
             this_pos = std::lower_bound(this_pos, this_end, arg_elem.id, lesser_or_greater<forward, SDR_t>());
             if (this_pos == this_end) goto end;
             SDR_t this_elem = *this_pos;
-            if (this_elem == arg_elem) {
+            if (this_elem.id == arg_elem.id) {
                 auto data = this_elem.data.rme((typename SDR_t::data_type)arg_elem.data);
                 if (!data.rm_relevant()) {
                     if constexpr(forward) {
@@ -1098,7 +1083,7 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
                 // get this in the arg
                 arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id, lesser_or_greater<forward, arg_t>());
                 if (arg_pos == arg_end) goto end;
-                if (*arg_pos == this_elem) {
+                if (arg_pos->id == this_elem.id) {
                     auto data = this_elem.data.rme((typename SDR_t::data_type)arg_pos->data);
                     if (!data.rm_relevant()) {
                         if constexpr(forward) {
@@ -1138,12 +1123,12 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
         arg_elem = *arg_pos;
 
         while (true) {
-            if (this_elem < arg_elem) {
+            if (this_elem.id < arg_elem.id) {
                 ++this_lagger;
                 ++this_pos;
                 if (this_pos == this_end) break;
                 this_elem = *this_pos;
-            } else if (this_elem == arg_elem) {
+            } else if (this_elem.id == arg_elem.id) {
                 auto data = this_pos->data.rme((typename SDR_t::data_type)arg_pos->data);
                 if (!data.rm_relevant()) {
                     ++this_pos;
@@ -1200,7 +1185,7 @@ void SDR<SDR_t, container_t>::rmv(SDR<arg_t, c_arg_t>& arg, VisitorThis visitor_
 
     auto get_next_arg = [&]() -> bool {
         if constexpr (!small_args) {
-            arg_pos = std::lower_bound(arg_pos, arg_end, this_elem);
+            arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id);
         }
         if (arg_pos == arg_end) return false;
         arg_elem = *arg_pos;
@@ -1214,12 +1199,12 @@ void SDR<SDR_t, container_t>::rmv(SDR<arg_t, c_arg_t>& arg, VisitorThis visitor_
     this_elem = *this_pos;
 
     while (true) {
-        if (this_elem < arg_elem) {
+        if (this_elem.id < arg_elem.id) {
             visitor_this(this_pos->id, const_cast<typename SDR_t::data_type&>(this_pos->data));
             ++this_pos;
             if (this_pos == this_end) return;
             this_elem = *this_pos;
-        } else if (this_elem == arg_elem) {
+        } else if (this_elem.id == arg_elem.id) {
             visitor_both(this_pos->id, const_cast<typename SDR_t::data_type&>(this_pos->data), const_cast<typename arg_t::data_type&>(arg_pos->data));
             ++this_pos;
             ++arg_pos;
@@ -1308,9 +1293,9 @@ template<typename SDR_t, typename container_t>
 SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::shift(int amount) {
     for (auto& elem : v) {
         #ifdef NDEBUG
-        elem.id += amount;
+        const_cast<typename SDR_t::id_type&>(elem.id) += amount;
         #else
-        assert(!__builtin_add_overflow(amount, elem.id, &elem.id));
+        assert(!__builtin_add_overflow(amount, elem.id, const_cast<typename SDR_t::id_type*>(&elem.id)));
         #endif
     }
     return *this;
@@ -1346,6 +1331,80 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::append(const SDR<arg_t, c_arg_
         for (auto e : arg.v) { push_back(e); }
     }
     return *this;
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T, typename E>
+void SDR<SDR_t, container_t>::push_back(const E& i) {
+    SDR_t elem = SDR_t(i);
+    assert(v.empty() || v.crbegin()->id < elem.id);
+    if constexpr(usesVector) {
+        v.push_back(elem);
+    } else {
+        v.insert(v.end(), elem);
+    }
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T, typename E>
+void SDR<SDR_t, container_t>::push_back(E&& i) {
+    SDR_t elem = SDR_t(i);
+    assert(v.empty() || v.crbegin()->id < elem.id);
+    if constexpr(usesVector) {
+        v.push_back(elem);
+    } else {
+        v.insert(v.end(), elem);
+    }
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T>
+typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDR_t, container_t>::pop_front() {
+    assert(!v.empty());
+    v.pop_front();
+    --maybe_size.size;
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T, typename E>
+typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDR_t, container_t>::push_front(const E& i)  {
+    SDR_t elem = SDR_t(i);
+    assert(v.empty() || v.cbegin()->id > elem.id);
+    ++maybe_size.size;
+    v.push_front(elem);
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T, typename E>
+typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDR_t, container_t>::push_front(E&& i)  {
+    SDR_t elem = SDR_t(i);
+    assert(v.empty() || v.cbegin()->id > elem.id);
+    ++maybe_size.size;
+    v.push_front(elem);
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T, typename E>
+typename std::enable_if<isForwardList<T>::value, typename container_t::const_iterator>::type SDR<SDR_t, container_t>::insert_after(const_iterator pos, const E& i) {
+    SDR_t elem = SDR_t(i);
+    assert(pos == before_begin() || elem.id > pos->id);
+    auto ret = v.insert_after(pos, elem);
+    ++maybe_size.size;
+    auto next = std::next(ret);
+    assert(next == cend() || elem.id < next->id);
+    return ret;
+}
+
+template<typename SDR_t, typename container_t>
+template<typename T, typename E>
+typename std::enable_if<isForwardList<T>::value, typename container_t::const_iterator>::type SDR<SDR_t, container_t>::insert_after(const_iterator pos, E&& i) {
+    SDR_t elem = SDR_t(i);
+    assert(pos == before_begin() || elem.id > pos->id);
+    auto ret = v.insert_after(pos, elem);
+    ++maybe_size.size;
+    auto next = std::next(ret);
+    assert(next == cend() || elem.id < next->id);
+    return ret;
 }
 
 template<typename SDR_t, typename container_t>

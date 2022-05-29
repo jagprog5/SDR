@@ -61,12 +61,14 @@ struct SDR_t {
         return id == o.id;
     }
 
+    template<typename id_other, typename data_other>
+    constexpr bool operator>(const SDR_t<id_other, data_other>& o) const {
+        return id > o.id;
+    }
+
     constexpr bool operator<(const id_t& o) const { return id < o; }
     constexpr bool operator==(const id_t& o) const { return id == o; }
     constexpr bool operator>(const id_t& o) const { return id > o; }
-
-    constexpr operator const id_t&() const { return id; }
-
 };
 
 template<typename id_t,

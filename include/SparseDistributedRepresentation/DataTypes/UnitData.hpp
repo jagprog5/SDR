@@ -40,6 +40,11 @@ struct UnitData {
         return UnitData(this->value * (1 - o.value));
     }
 
+    template<typename T>
+    constexpr bool operator==(const T& o) const {
+        return value == (UnitData(o)).value;
+    }
+
 };
 
 std::ostream& operator<<(std::ostream& os, const UnitData& o) {

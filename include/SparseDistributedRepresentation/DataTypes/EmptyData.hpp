@@ -50,6 +50,11 @@ struct EmptyData {
     constexpr EmptyData rme(const EmptyData&) const {
         return EmptyData();
     }
+
+    template<typename T>
+    constexpr bool operator==(const T&) const {
+        return true;
+    }
 };
 
 } // namespace
