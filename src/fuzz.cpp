@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <random>
 
-using namespace SparseDistributedRepresentation;
+using namespace sparse_distributed_representation;
 using namespace std::chrono;
 
 //

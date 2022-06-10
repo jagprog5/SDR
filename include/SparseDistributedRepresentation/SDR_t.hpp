@@ -8,7 +8,7 @@
 
 #include "SparseDistributedRepresentation/DataTypes/EmptyData.hpp"
 
-namespace SparseDistributedRepresentation {
+namespace sparse_distributed_representation {
 
 /*
 An SDR element type has an id, and (optionally) some data.
@@ -81,5 +81,5 @@ std::ostream& operator<<(std::ostream& os, const SDR_t<id_t, data_t>& o) {
   return os;
 }
 
-} // namespace SparseDistributedRepresentation
+} // namespace sparse_distributed_representation
 

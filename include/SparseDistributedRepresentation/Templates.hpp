@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace SparseDistributedRepresentation {
+namespace sparse_distributed_representation {
 
 // ========== helper templates ===============
 

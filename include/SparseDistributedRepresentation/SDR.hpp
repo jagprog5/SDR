@@ -9,7 +9,7 @@
 #include "SparseDistributedRepresentation/Templates.hpp"
 #include "SparseDistributedRepresentation/SDR_t.hpp"
 
-namespace SparseDistributedRepresentation {
+namespace sparse_distributed_representation {
 
 /*
  * Inspired from ideas explained in this series:
@@ -356,10 +356,6 @@ class SDR {
 
         // used in the output stream op
         static constexpr bool print_type = false;
-
-        // set this to true if it is expected that arguments will be small compared to the object being called on
-        // e.g. large.ande(small)
-        static constexpr bool small_args = false;
 
         template<typename friend_SDR_t, typename friend_container_t>
         friend class SDR;
@@ -714,24 +710,20 @@ void SDR<SDR_t, container_t>::andv(SDR<arg_t, c_arg_t>& query, Visitor visitor) 
         }
         ++this_pos;
         // ============= a and b swapped ===^=V================
-        if constexpr (!small_args) {
-            query_elem = *query_pos;
-            if constexpr(usesSet) {
-                this_pos = this->v.lower_bound(query_elem.id);
-            } else {
-                this_pos = std::lower_bound(this_pos, this_end, query_elem.id);
-            }
-            if (this_pos == this_end) return;
-            this_elem = *this_pos;
-            if (this_elem == query_elem) {
-                visitor(this_pos->id, const_cast<typename SDR_t::data_type&>(this_pos->data), const_cast<typename arg_t::data_type&>(query_pos->data));
-                ++this_pos;
-                if (this_pos == this_end) return;
-            }
-            ++query_pos;
+        query_elem = *query_pos;
+        if constexpr(usesSet) {
+            this_pos = this->v.lower_bound(query_elem.id);
         } else {
+            this_pos = std::lower_bound(this_pos, this_end, query_elem.id);
+        }
+        if (this_pos == this_end) return;
+        this_elem = *this_pos;
+        if (this_elem == query_elem) {
+            visitor(this_pos->id, const_cast<typename SDR_t::data_type&>(this_pos->data), const_cast<typename arg_t::data_type&>(query_pos->data));
+            ++this_pos;
             if (this_pos == this_end) return;
         }
+        ++query_pos;
     }
 }
 
@@ -1079,30 +1071,26 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::rmi(const SDR<arg_t, c_arg_t>&
                 this_elem = *this_pos;
             }
             // =====
-            if constexpr (!small_args) {
-                // get this in the arg
-                arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id, lesser_or_greater<forward, arg_t>());
-                if (arg_pos == arg_end) goto end;
-                if (arg_pos->id == this_elem.id) {
-                    auto data = this_elem.data.rme((typename SDR_t::data_type)arg_pos->data);
-                    if (!data.rm_relevant()) {
-                        if constexpr(forward) {
-                            this->v.erase(this_pos++);
-                        } else {
-                            this->v.erase((++this_pos).base());
-                        }
-                        if (this_end != get_this_end()) {
-                            // revalidate iterators
-                            this_pos = get_this_end() - (this_end - this_pos);
-                            this_end = get_this_end();
-                        }
+            // get this in the arg
+            arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id, lesser_or_greater<forward, arg_t>());
+            if (arg_pos == arg_end) goto end;
+            if (arg_pos->id == this_elem.id) {
+                auto data = this_elem.data.rme((typename SDR_t::data_type)arg_pos->data);
+                if (!data.rm_relevant()) {
+                    if constexpr(forward) {
+                        this->v.erase(this_pos++);
                     } else {
-                        this_pos->data = data;
-                        ++this_pos;
+                        this->v.erase((++this_pos).base());
                     }
+                    if (this_end != get_this_end()) {
+                        // revalidate iterators
+                        this_pos = get_this_end() - (this_end - this_pos);
+                        this_end = get_this_end();
+                    }
+                } else {
+                    this_pos->data = data;
+                    ++this_pos;
                 }
-            } else {
-                if (arg_pos == arg_end) goto end;
             }
         }
         end:
@@ -1184,9 +1172,7 @@ void SDR<SDR_t, container_t>::rmv(SDR<arg_t, c_arg_t>& arg, VisitorThis visitor_
     SDR_t this_elem;
 
     auto get_next_arg = [&]() -> bool {
-        if constexpr (!small_args) {
-            arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id);
-        }
+        arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id);
         if (arg_pos == arg_end) return false;
         arg_elem = *arg_pos;
         return true;
@@ -1424,4 +1410,4 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDR_t, container_t>& sdr) {
     return os;
 }
 
-} // namespace SparseDistributedRepresentation
+} // namespace sparse_distributed_representation

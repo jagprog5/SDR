@@ -1,6 +1,6 @@
 #pragma once
 
-namespace SparseDistributedRepresentation {
+namespace sparse_distributed_representation {
 
 struct UnitData {
     // this is the data_type for an SDR_t which stores an element from 0 to 1.

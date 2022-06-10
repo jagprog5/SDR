@@ -10,7 +10,7 @@ This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDg
 ```cpp
 #include "SparseDistributedRepresentation/SDR.hpp"
 
-using namespace SparseDistributedRepresentation;
+using namespace sparse_distributed_representation;
 
 int main() {
     SDR a{1, 2, 3, 4};
@@ -118,6 +118,7 @@ flowchart TB
 ```cpp
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
+using namespace sparse_distributed_representation;
 
 int main() {
     // this SDR contains elements which are identified by an int

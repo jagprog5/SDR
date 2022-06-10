@@ -1,6 +1,6 @@
 #pragma once
 
-namespace SparseDistributedRepresentation {
+namespace sparse_distributed_representation {
 
 struct EmptyData {
     // this is the data_type for a default SDR_t which does not use the data functionality

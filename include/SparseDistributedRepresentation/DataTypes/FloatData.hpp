@@ -3,7 +3,7 @@
 #include <functional>
 #include "SparseDistributedRepresentation/Templates.hpp"
 
-namespace SparseDistributedRepresentation {
+namespace sparse_distributed_representation {
 
 struct FloatData {
     constexpr FloatData() : value(0) {}
