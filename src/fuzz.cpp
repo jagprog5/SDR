@@ -9,7 +9,6 @@
 using namespace sparse_distributed_representation;
 using namespace std::chrono;
 
-//
 static constexpr size_t DEFAULT_FUZZ_AMOUNT = 250;
 using ArrDefault = ArrayAdaptor<SDR_t<>, DEFAULT_FUZZ_AMOUNT * 2>;
 
@@ -30,8 +29,16 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         if (b_pos != b.cend()) {
             // a element is in b
             auto data = a_elem.data.ande(decltype(a_elem.data)(b_pos->data));
+            // check data correct in result
+            auto pos = r & a_elem.id;
             if (data.relevant()) {
-                REQUIRE_TRUE(r & a_elem.id);
+                if (pos == nullptr) {
+                    REQUIRE_TRUE(false);
+                } else {
+                    REQUIRE_TRUE(*pos == data);
+                }
+            } else {
+                REQUIRE_TRUE(pos == nullptr);
             }
         }
     }
@@ -42,8 +49,16 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         if (a_pos != a.cend()) {
             // b element is in a
             auto data = a_pos->data.ande(decltype(a_pos->data)(b_elem.data));
+            // check data correct in result
+            auto pos = r & b_elem.id;
             if (data.relevant()) {
-                REQUIRE_TRUE(r & b_elem.id);
+                if (pos == nullptr) {
+                    REQUIRE_TRUE(false);
+                } else {
+                    REQUIRE_TRUE(*pos == data);
+                }
+            } else {
+                REQUIRE_TRUE(pos == nullptr);
             }
         }
     }
@@ -63,11 +78,11 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
 
 template<typename SDRA, typename SDRB>
 bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
-    // every element in a must be in result
+    // every element in a must be in the result
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), a_pos->id) != r.cend());
     }
-    // every element in b must be in result
+    // every element in b must be in the result
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
         REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), b_pos->id) != r.cend());
     }
@@ -76,9 +91,17 @@ bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id) != a.cend();
-        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id) != b.cend();
-        REQUIRE_TRUE(in_a || in_b);
+        auto a_pos = std::find(a.cbegin(), a.cend(), r_elem.id);
+        auto b_pos = std::find(b.cbegin(), b.cend(), r_elem.id);
+        REQUIRE_TRUE(a_pos != a.cend() || b_pos != b.cend());
+        // data correctness
+        if (a_pos != a.cend() && b_pos != b.cend()) {
+            REQUIRE_TRUE(r_elem.data == a_pos->data.ore(decltype(a_pos->data)(b_pos->data)));
+        } else if (a_pos != a.cend()) {
+            r_elem.data == a_pos->data;
+        } else {
+            r_elem.data == b_pos->data;
+        }
     }
     // ensure the size is correct
     REQUIRE_TRUE(i == r.size());
@@ -110,9 +133,17 @@ bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id) != a.cend();
-        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id) != b.cend();
-        REQUIRE_TRUE(in_a || in_b);
+        auto a_pos = std::find(a.cbegin(), a.cend(), r_elem.id);
+        auto b_pos = std::find(b.cbegin(), b.cend(), r_elem.id);
+        REQUIRE_TRUE(a_pos != a.cend() || b_pos != b.cend());
+        // data correctness
+        if (a_pos != a.cend() && b_pos != b.cend()) {
+            REQUIRE_TRUE(r_elem.data == a_pos->data.xore(decltype(a_pos->data)(b_pos->data)));
+        } else if (a_pos != a.cend()) {
+            REQUIRE_TRUE(r_elem.data == a_pos->data);
+        } else {
+            REQUIRE_TRUE(r_elem.data == b_pos->data);
+        }
     }
     // ensure the size is correct
     REQUIRE_TRUE(i == r.size());
@@ -126,9 +157,17 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id);
-        if (b_pos == b.cend() || a_elem.data.rme(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
+        decltype(a_elem.data) data;
+        if (b_pos == b.cend()) {
+            data = a_elem.data;
+        } else {
+            data = a_elem.data.rme(decltype(a_elem.data)(b_pos->data));
+        }
+        if (b_pos == b.cend() || data.rm_relevant()) {
             // a elem is not in b
-            REQUIRE_TRUE(r & a_elem.id);
+            auto pos = r & a_elem.id;
+            REQUIRE_TRUE(pos != nullptr);
+            REQUIRE_TRUE(*pos == data);
             ++i;
         }
     }
@@ -137,7 +176,7 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     return true;
 }
 
-inline std::mt19937 twister(time(NULL) * getpid());
+std::mt19937 twister(time(NULL) * getpid());
 
 // generate a unique SDR based on a number
 // if the specialization uses UnitData, then generate some random data as well

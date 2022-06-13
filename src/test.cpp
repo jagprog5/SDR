@@ -194,10 +194,9 @@ BOOST_AUTO_TEST_CASE(test_readme_visitor) {
   SDR b{2, 3, 4};
 
   int result = 0;
-  auto increment_visitor = [&result](const typename decltype(a)::value_type::id_type&,
-                                           typename decltype(a)::value_type::data_type&,
-                                           typename decltype(b)::value_type::data_type&) {
-      ++result;
+  auto increment_visitor = [&result](typename decltype(a)::container_type::iterator,
+                                     typename decltype(b)::container_type::iterator) {
+    ++result;
   };
 
   a.andv(b, increment_visitor);

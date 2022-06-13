@@ -63,35 +63,36 @@ struct SDR_t;
 template<typename ret_id_t, typename c_ret_t, typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
 SDR<SDR_t<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDR_t<id_t, FloatData>, container_t>& a, const SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>& b) {
     SDR<SDR_t<ret_id_t, FloatData>, c_ret_t> r;
-    std::function<void(const id_t&, FloatData&)> visitor_this;
-    std::function<void(const id_t&, FloatData&, FloatData&)> visitor_both;
+    std::function<void(typename container_t::iterator)> visitor_this;
+    auto visitor_query = [](typename c_arg_t::iterator){};
+    std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> visitor_both;
     [[maybe_unused]] typename c_ret_t::const_iterator it;
 
     if constexpr(isForwardList<c_ret_t>::value) {
         it = r.before_begin();
-        visitor_this = [&](const id_t& this_id, FloatData& this_data) {
+        visitor_this = [&](typename container_t::iterator this_pos) {
             // pass through
-            it = r.insert_after(it, SDR_t<ret_id_t, FloatData>(this_id, this_data));
+            it = r.insert_after(it, SDR_t<ret_id_t, FloatData>(*this_pos));
         };
 
-        visitor_both = [&](const id_t& this_id, FloatData& this_data, FloatData& arg_data) {
+        visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // no relevance check since FloatData is always relevant
-            SDR_t<ret_id_t, FloatData> elem(this_id, this_data / arg_data);
+            SDR_t<ret_id_t, FloatData> elem(this_pos->id, this_pos->data / arg_pos->data);
             it = r.insert_after(it, elem);
         };
 
     } else {
-        visitor_this = [&](const id_t& this_id, FloatData& this_data) {
-            SDR_t<ret_id_t, FloatData> elem(this_id, this_data);
+        visitor_this = [&](typename container_t::iterator this_pos) {
+            SDR_t<ret_id_t, FloatData> elem(*this_pos);
             r.push_back(elem);
         };
 
-        visitor_both = [&](const id_t& this_id, FloatData& this_data, FloatData& arg_data) {
-            SDR_t<ret_id_t, FloatData> elem(this_id, this_data / arg_data);
+        visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+            SDR_t<ret_id_t, FloatData> elem(this_pos->id, this_pos->data / arg_pos->data);
             r.push_back(elem);
         };
     }
-    const_cast<SDR<SDR_t<id_t, FloatData>, container_t>&>(a).rmv(const_cast<SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>&>(b), visitor_this, visitor_both);
+    const_cast<SDR<SDR_t<id_t, FloatData>, container_t>&>(a).orv(const_cast<SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>&>(b), visitor_this, visitor_query, visitor_both);
     return r;
 }
 
@@ -103,8 +104,8 @@ SDR<SDR_t<id_t, FloatData>, container_t> operator/(const SDR<SDR_t<id_t, FloatDa
 
 template<typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
 SDR<SDR_t<id_t, FloatData>, container_t>& operator/=(SDR<SDR_t<id_t, FloatData>, container_t>& a, const SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>& b) {
-    auto visitor = [&](const id_t&, FloatData& this_data, FloatData& arg_data) {
-        this_data /= arg_data;
+    auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        this_pos->data /= arg_pos->data;
     };
 
     a.andv(const_cast<SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>&>(b), visitor);

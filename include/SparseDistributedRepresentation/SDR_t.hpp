@@ -23,8 +23,10 @@ struct SDR_t {
     constexpr SDR_t(id_t id, data_t data) : id(id), data(data) {}
     constexpr SDR_t(id_t id) : id(id), data() {}
     constexpr SDR_t() : id(), data() {}
-
     constexpr SDR_t(const SDR_t& o) : id(o.id), data(o.data) {}
+
+    template<typename o_id_t, typename o_data_t>
+    constexpr SDR_t(const SDR_t<o_id_t, o_data_t>& o) : id(o.id), data(o.data) {}
 
     constexpr SDR_t& operator=(const SDR_t& o) {
         const_cast<id_t&>(id) = o.id;
