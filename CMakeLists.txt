@@ -6,8 +6,9 @@ project(sparse_distributed_representation)
 
 option(BUILD_TESTING "Build tests and fuzzing" OFF)
 option(CODE_COVERAGE "Create coverage stats. Needs lcov and (for clang) llvm-cov. Invoke with \"make cov-show\"" OFF)
-set(PERF OFF CACHE STRING "Profile \"CPU\" or check the \"HEAP\". Needs libgoogle-perftools-dev. Invoke with \"make perf-show\"") 
+set(PERF OFF CACHE STRING "Profile \"CPU\" or check the \"HEAP\". Needs libgoogle-perftools-dev. Invoke with \"make perf-show\"")
 set_property(CACHE PERF PROPERTY STRINGS OFF CPU HEAP)
+option(PGO "Build the fuzzer in two passes, the latter with profile guided optimization. Invoke with \"make pgo\"" OFF)
 
 add_library(${PROJECT_NAME}_lib INTERFACE)
 
@@ -93,9 +94,9 @@ if(BUILD_TESTING)
       COMMAND ctest -j "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
-    if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       set(GCOV_TOOL_OPTION "--gcov-tool")
-      set(GCOV_TOOL_VALUE "${CMAKE_CURRENT_SOURCE_DIR}/llvm-gcov.sh")
+      set(GCOV_TOOL_VALUE "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/llvm-gcov.sh")
     endif()
 
     add_custom_target(cov-proc
@@ -113,4 +114,49 @@ if(BUILD_TESTING)
     )
 
   endif()
+
+  if (PGO)
+    if(CODE_COVERAGE OR NOT PERF STREQUAL "OFF")
+      message(FATAL_ERROR "PGO must be run without other profiling options")
+    endif()
+
+    # for pgo, the executable needs to be build twice. once for getting the profile, the other for building with the profile
+    # my goal is to have a single target automate the entire process, build, run, build again
+    # I tried building the same executable again through a different target name (just copy pasting the same sources, etc),
+    # but gcc didn't like that the gcda file was build by a different executable, and wouldn't accept it, "-Werror=coverage-mismatch"
+
+    # in cmake you can't define the same executable target twice, so I'm left with this hacky workaround of running it manually
+    # here I grab a snapshot of the properties attached with the executable before adding profiling options
+    # (in this case, I only set compile options and link libraries, but this may be expanded later, e.g. compile_definitions, ...)
+    add_custom_target(pgo-clean
+      COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.gcda' -delete
+      COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.profdata' -delete
+      COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.profraw' -delete
+    )
+
+    # override previous optimization level
+    target_compile_options(fuzz_sdr PRIVATE -fprofile-generate)
+    target_link_libraries(fuzz_sdr PRIVATE -fprofile-generate)
+
+    # llvm-profdata merge -output default.profdata default*.profraw
+
+    add_custom_target(pgo
+      DEPENDS fuzz_sdr
+      COMMAND "${CMAKE_CURRENT_BINARY_DIR}/fuzz_sdr"
+
+      # generate "build/compile_commands.json"
+      COMMAND cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=true
+
+      # only for clang
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/gpo_proc_data.sh"
+
+      # run the scipt that rebuilds the object file, but it instead reads the profile instead of generating it
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_compile.py" "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" "${CMAKE_CURRENT_SOURCE_DIR}/src/fuzz.cpp"
+
+      # same as above but for linking
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_link.py" "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/fuzz_sdr.dir/link.txt"
+    )
+
+  endif()
+  
 endif()

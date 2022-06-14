@@ -115,6 +115,13 @@ flowchart TB
 
 ## SDR_t with Data
 
+SDRs are composed of SDR_t elements. By default, an SDR_t has an `int` identifier and an `EmptyData` data.  
+This means that each index in the dense representation is identified by an int,  
+and that each position has no data (aka EmptyData) associated with it.
+
+Data can define a "relevance". If the SDR_t's data is not relevant, then it is not placed in the result.  
+This is helpful given the context in which sparse vector's are used. Only important values are worth mentioning.
+
 ```cpp
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"

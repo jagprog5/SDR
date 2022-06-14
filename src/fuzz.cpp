@@ -98,9 +98,9 @@ bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
         if (a_pos != a.cend() && b_pos != b.cend()) {
             REQUIRE_TRUE(r_elem.data == a_pos->data.ore(decltype(a_pos->data)(b_pos->data)));
         } else if (a_pos != a.cend()) {
-            r_elem.data == a_pos->data;
+            REQUIRE_TRUE(r_elem.data == a_pos->data);
         } else {
-            r_elem.data == b_pos->data;
+            REQUIRE_TRUE(r_elem.data == b_pos->data);
         }
     }
     // ensure the size is correct
