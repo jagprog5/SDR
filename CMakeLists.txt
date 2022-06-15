@@ -32,6 +32,10 @@ if(BUILD_TESTING)
   target_compile_options(test_sdr PRIVATE -Wall -Wextra -Ofast)
   target_link_libraries(test_sdr PRIVATE ${PROJECT_NAME}_lib ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
+  enable_testing()
+  add_test(NAME simple_tests COMMAND ./test_sdr)
+  add_test(NAME fuzzy_tests COMMAND ./fuzz_sdr 20)
+
   if(NOT PERF STREQUAL "OFF")
     # https://stackoverflow.com/a/49104701/15534181
     target_link_options(fuzz_sdr PUBLIC -Wl,-no-as-needed)
@@ -62,10 +66,6 @@ if(BUILD_TESTING)
       COMMAND HEAPCHECK=strict ./fuzz_sdr 2>&1 1>/dev/null
     )
   endif()
-
-  enable_testing()
-  add_test(NAME simple_tests COMMAND ./test_sdr)
-  add_test(NAME fuzzy_tests COMMAND ./fuzz_sdr 20)
 
   if (CODE_COVERAGE)
     # enable coverage for the test and fuzz targets
