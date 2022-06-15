@@ -133,12 +133,12 @@ BOOST_AUTO_TEST_CASE(append) {
   BOOST_REQUIRE_EQUAL(a2, (SDR{1, 2, 3, 4, 5, 6}));
 }
 
-BOOST_AUTO_TEST_CASE(sample_portion) {
-  // this seed happens to fully cover sample_portion
+BOOST_AUTO_TEST_CASE(sample) {
+  // this seed happens to fully cover sample
   std::mt19937 twister(3334);
 
   SDR a{1, 2, 3};
-  a.sample_portion(0.8, twister);
+  a.sample(0.8, twister);
   BOOST_REQUIRE(a.size() <= 3);
   auto ita = a.cbegin();
   while (ita != a.cend()) {
@@ -147,7 +147,7 @@ BOOST_AUTO_TEST_CASE(sample_portion) {
   }
 
   SDR<SDR_t<>, std::set<SDR_t<>>> b{1, 2, 3};
-  b.sample_portion(0.8, twister);
+  b.sample(0.8, twister);
   BOOST_REQUIRE(b.size() <= 3);
   auto itb = b.cbegin();
 
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(sample_portion) {
   }
 
   SDR<SDR_t<>, std::forward_list<SDR_t<>>> c{1, 2, 3};
-  c.sample_portion(0.8, twister);
+  c.sample(0.8, twister);
   BOOST_REQUIRE(c.size() <= 3);
   auto itc = c.cbegin();
 
@@ -182,8 +182,8 @@ BOOST_AUTO_TEST_CASE(test_shift) {
 
 BOOST_AUTO_TEST_CASE(test_visitor) {
   SDR<SDR_t<int, FloatData>> a{SDR_t<int, FloatData>(1, FloatData(1))};
-  auto increment_visitor = [&](const int&, FloatData& data){
-    data.value += 1;
+  auto increment_visitor = [&](typename decltype(a)::container_type::iterator iter){
+    iter->data.value += 1;
   };
   a.visitor(increment_visitor);
   BOOST_REQUIRE_EQUAL((a & 1)->value, 2);

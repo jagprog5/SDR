@@ -11,10 +11,15 @@
 
 namespace sparse_distributed_representation {
 
-/*
+/**
+ * An SDR or sparse vector.
+ * 
  * Inspired from ideas explained in this series:
  * https://youtu.be/ZDgCdWTuIzc
  * Numenta: SDR Capacity & Comparison (Episode 2)
+ * 
+ * @tparam SDR_t The elements, which have an id, and optionally data associated with the id.
+ * @tparam container_t The underlying container for the SDR_t elements.
  */
 template<typename SDR_t = SDR_t<>, typename container_t = std::vector<SDR_t>>
 class SDR {
@@ -65,61 +70,108 @@ class SDR {
             return *this;
         }
 
-        // iterator ctor
-        // note for if the iterators point to SDR_t elements:
-        //      each element's data is NOT checked for relevance before insertion
+        /**
+         * Iterator ctor.
+         * 
+         * If the iterators point to SDR_t elements then the elements are NOT checked for relevance before insertion.
+         * 
+         * @param begin Iterator to the first element to insert.
+         * @param end Iterator to one past the last element to insert.
+         */
         template<typename Iterator>
         SDR(Iterator begin, Iterator end);
 
-        // initializer list ctor
-        // if the list has SDR_t elements, then each element's data is checked for relevance before insertion
+        /**
+         * Initializer list ctor.
+         * 
+         * @param list If the list has SDR_t elements, then each element's data is checked for relevance before insertion.
+         */
         template<typename T>
         SDR(std::initializer_list<T> list);
 
-        // Encode a float as an SDR.
-        // @param input the float to encode. Should be from 0 to 1 inclusively. Must be non-negative.
-        // @param size the size of the instantiated SDR result.
-        // @param underlying_array_length the size of the dense array being represented.
+        /**
+         * Encode a float as an SDR.
+         * 
+         * @param input the float to encode. Should be from 0 to 1 inclusively. Must be non-negative. 
+         * @param size the size of the instantiated SDR result. 
+         * @param underlying_array_length the size of the corresponding dense representation. 
+         */
         SDR(float input, size_type size, size_type underlying_array_length);
 
-        // Encode a float as an SDR.
-        // @param input the float to encode. Must be non-negative.
-        // @param period encodes the input such that it wraps back to 0 as it approaches a multiple of the period. Must be non-negative.
-        // @param size the size of the instantiated SDR result.
-        // @param underlying_array_length the size of the dense array being represented.
+        /**
+         * Encode a periodic float as an SDR.
+         * 
+         * @param input the float to encode. Must be non-negative.
+         * @param period encodes the input such that it wraps back to 0 as it approaches a multiple of the period. Must be non-negative.
+         * @param size the size of the instantiated SDR result.
+         * @param underlying_array_length the size of the corresponding dense representation.
+         */
         SDR(float input, float period, size_type size, size_type underlying_array_length);
 
-        // Each bit has a chance of being turned off, specified by amount, where 0 always clears the sdr, and 1 nearly always leaves it unchanged.
+        /**
+         * sample. Each element has a chance of being removed.
+         * 
+         * @param amount 0 always clears the sdr, and 1 nearly always leaves it unchanged.
+         * @param g The random generator. e.g. a std::mt19937 instance.
+         * @return Ref to this.
+         */
         template<typename RandomGenerator>
-        SDR<SDR_t, container_t>& sample_portion(float amount, RandomGenerator& g);
+        SDR<SDR_t, container_t>& sample(float amount, RandomGenerator& g);
 
-        // apply a visitor. Perform an operation on each element in this,
-        // The visitor arg is called with each element as visitor(const value_type::id_type&, value_type::data_type&)
+        /**
+         * apply a visitor on all elements.
+         * 
+         * @param visitor A functor that can be called as visitor(iterator)
+         */
         template<typename Visitor>
         void visitor(Visitor visitor);
 
-        // and element. used for checking for the existence of an element.
-        // if the element exists, returns a pointer to its data; else, returns null.
+        /**
+         * and element. used for checking for the existence of an element.
+         * 
+         * @param val The element's id.
+         * @return A pointer to the element's data, or null if the id is not in this.
+         */
         const typename SDR_t::data_type* ande(typename SDR_t::id_type val) const;
         typename SDR_t::data_type* ande(typename SDR_t::id_type val);
 
-        // and elements. returns the state of many elements.
+        /**
+         * and elements. query the state of many elements.
+         * 
+         * @return An SDR that contains elements in common between this and the arg (combined accordingly if the element is in both).
+         */
         template<typename ret_t = SDR_t, typename c_ret_t = container_t, typename arg_t, typename c_arg_t>
         SDR<ret_t, c_ret_t> ande(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // and elements. returns the state of many elements from start to stop.
+        /**
+         * and elements. query for a range of elements based on a start and stop id
+         * 
+         * @return As SDR that contains all elements in the specified range in this.
+         */
         template<typename ret_t = SDR_t, typename c_ret_t = container_t, typename arg_t>
         SDR<ret_t, c_ret_t> ande(arg_t start_inclusive, arg_t stop_exclusive) const;
 
-        // and inplace. turn off all elements not in arg (compute arg AND this, and place the result in this). Returns this.
+        /**
+         * and inplace. Computes arg AND this, and place the result in this.
+         * 
+         * @return Ref to this.
+         */
         template<typename arg_t, typename c_arg_t>
         SDR<SDR_t, container_t>& andi(const SDR<arg_t, c_arg_t>& arg);
 
-        // and size. returns the number of elements in both this and arg.
+        /**
+         * and size
+         * 
+         * @return returns the number of elements in common between this and arg.
+         */
         template<typename arg_t, typename c_arg_t>
         size_type ands(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // and size. returns the number of elements from start to stop.
+        /**
+         * and size.
+         * 
+         * @return the number of elements in this from start to stop.
+         */
         template<typename arg_t>
         size_type ands(arg_t start_inclusive, arg_t stop_exclusive) const;
         
@@ -131,35 +183,59 @@ class SDR {
         template<typename arg_t, typename c_arg_t, typename Visitor>
         void andv(SDR<arg_t, c_arg_t>& arg, Visitor visitor);
         
-        // or elements.
+        /**
+         * or elements.
+         * 
+         * @return The combined elements in this and the arg.
+         */
         template<typename ret_t = SDR_t, typename c_ret_t = container_t, typename arg_t, typename c_arg_t>
         SDR<ret_t, c_ret_t> ore(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // or inplace. turn on all elements in arg. Returns this.
+        /**
+         * or inplace. Insert elements into this, or combine elements if they are already in this.
+         * 
+         * @return Ref to this.
+         */
         template<typename arg_t, typename c_arg_t>
         SDR<SDR_t, container_t>& ori(const SDR<arg_t, c_arg_t>& arg);
 
-        // or size. returns the number of elements in this or arg.
+        /**
+         * or size
+         * 
+         * @return the number of elements in this or arg.
+         */
         template<typename arg_t, typename c_arg_t>
         size_type ors(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // xor elements.
+        /**
+         * xor elements
+         * 
+         * @return An SDR that contains elements only in this or only in the arg (or combined accordingly if the element is in both).
+         */
         template<typename ret_t = SDR_t, typename c_ret_t = container_t, typename arg_t, typename c_arg_t>
         SDR<ret_t, c_ret_t> xore(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // xor inplace. computes this xor arg, and places the result in this. Returns this.
+        /**
+         * xor inplace. computes this xor arg, and places the result in this.
+         * 
+         * @return Ref to this.
+         */
         template<typename arg_t, typename c_arg_t>
         SDR<SDR_t, container_t>& xori(const SDR<arg_t, c_arg_t>& arg);
 
-        // xor size, aka hamming distance. returns the number of elements in this xor arg.
+        /**
+         * xor size, aka hamming distance
+
+         * @return returns the number of elements in this xor arg 
+         */
         template<typename arg_t, typename c_arg_t>
         size_type xors(const SDR<arg_t, c_arg_t>& arg) const;
 
         /**
          * apply an or visitor. Perform an operation on each element in this OR in arg
          * three visitors are defined:
-         *      the element only exists in this: this_visitor(iterator this_position)
-         *      the element only exists in the arg: arg_visitor(c_arg_t::iterator arg_position)
+         *      the element is only in this: this_visitor(iterator this_position)
+         *      the element is only in the arg: arg_visitor(c_arg_t::iterator arg_position)
          *      the element is in both: both_visitor(iterator this_position, c_arg_t::iterator arg_position)
          * the visitors must not invalidate the proceeding iterator (one after this_position or one after arg_position)
          */
@@ -169,12 +245,12 @@ class SDR {
         /**
          * apply an or visitor. Perform an operation on each element in this OR in arg
          * three visitors are defined:
-         *      the element only exists in this: this_visitor(iterator this_position)
-         *      the element only exists in the arg: arg_visitor(c_arg_t::iterator arg_position)
+         *      the element is only in this: this_visitor(iterator this_position)
+         *      the element is only in the arg: arg_visitor(c_arg_t::iterator arg_position)
          *      the element is in both: both_visitor(iterator this_position, c_arg_t::iterator arg_position)
          *
          * while applying the visitors, this function will reach a point where there doesn't exist any more elements in the arg.
-         * at this point, this_back_position(SDR::iterator) is called with the curent position in this, and then this function exits.
+         * at this point, this_back_position(iterator) is called with the curent position in this, and then this function exits.
          * similarly, if there are no more elements in this, then arg_back_position(c_arg_t::iterator) is called, followed by an exit.
          * 
          * the visitors must not invalidate the proceeding iterator (one after this_position or one after arg_position)
@@ -182,36 +258,44 @@ class SDR {
         template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor, typename ThisBackPosition, typename ArgBackPosition>
         void orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor, ThisBackPosition this_back_position, ArgBackPosition arg_back_position);
 
-        // Returns a copy of this which lacks any bit from arg.
+        /**
+         * remove elements.
+         * 
+         * @return A copy of this with each element in the arg removed from it.
+         */
         template<typename ret_t = SDR_t, typename c_ret_t = container_t, typename arg_t, typename c_arg_t>
         SDR<ret_t, c_ret_t> rme(const SDR<arg_t, c_arg_t>& arg) const;
 
-        // Remove inplace. Remove all bits in arg from this, then returns this.
+        /**
+         * remove inplace. Remove all elements in arg from this.
+         * 
+         * @return Ref to this.
+         */
         template<typename arg_t, typename c_arg_t>
         SDR<SDR_t, container_t>& rmi(const SDR<arg_t, c_arg_t>& arg);
 
-        // Returns the number of elements in this that are not in arg.
+        /**
+         * remove size.
+         * 
+         * @return Returns the number of elements in this that are not in arg. 
+         */
         template<typename arg_t, typename c_arg_t>
         size_type rms(const SDR<arg_t, c_arg_t>& arg) const;
 
-        /*
-         * apply a rm visitor. Perform an operation on elements based on a arg.
-         * visitors:
-         *      the element only exists in this: this_visitor(const value_type::id_type&, value_type::data_type&)
-         *      the element is in both: both_visitor(const value_type::id_type&, value_type::data_type&, arg_t::value_type::data_type&)   
+        /**
+         * Shift the elements in this.
          * 
-         * the back_position is an iterator in this.
-         * between the back_position and the end, there are no elements whose ids' also exist in the arg.
-         * rather than calling these positions in this_visitor, the case can be optimized;
-         * the position is made available in back_position(SDR::iterator)
+         * @param amount increments each element's id.
+         * @return Ref to this.
          */
-        // template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename BothVisitor, typename BackPosition>
-        // void rmv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, BothVisitor both_visitor, BackPosition back_position);
-
-        // Returns this, shifted by amount.
         SDR<SDR_t, container_t>& shift(int amount);
 
-        // concatenate an SDR to an SDR. Every element in arg must be greater than every element in this. Returns this.
+        /**
+         * concatenate an SDR to an SDR
+         * 
+         * @param arg Every element in arg must be greater than every element in this.
+         * @return Ref to this
+         */
         template<typename arg_t, typename c_arg_t>
         SDR<SDR_t, container_t>& append(const SDR<arg_t, c_arg_t>& arg);
 
@@ -548,7 +632,7 @@ SDR<SDR_t, container_t>::SDR(float input, size_type size, size_type underlying_a
 
 template<typename SDR_t, typename container_t>
 template<typename RandomGenerator>
-SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample_portion(float amount, RandomGenerator& g) {
+SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::sample(float amount, RandomGenerator& g) {
     assert(amount >= 0 && amount <= 1);
     auto check_val = amount * (float)g.max();
     if constexpr(usesForwardList) {
@@ -613,8 +697,10 @@ typename SDR_t::data_type* SDR<SDR_t, container_t>::ande(typename SDR_t::id_type
 template<typename SDR_t, typename container_t>
 template<typename Visitor>
 void SDR<SDR_t, container_t>::visitor(Visitor visitor) {
-    for (auto& elem : this->v) {
-        visitor(elem.id, elem.data);
+    auto this_pos = this->v.begin();
+    auto this_end = this->v.end();
+    while (this_pos != this_end) {
+        visitor(this_pos++);
     }
 }
 
