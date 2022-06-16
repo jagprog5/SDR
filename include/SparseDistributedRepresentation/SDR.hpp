@@ -322,9 +322,6 @@ class SDR {
         // calls push_back or insert (at the end) on the underlying container
         // assert checks that the inserted element is in order and with no duplicates
         template<typename T = container_t, typename E>
-        void push_back(const E& i);
-
-        template<typename T = container_t, typename E>
         void push_back(E&& i);
 
         // calls pop_front on the forward_list underlying container
@@ -335,9 +332,6 @@ class SDR {
         // calls push_front on the forward_list underlying container
         // assertion checks that the inserted element is in order and with no duplicates
         template<typename T = container_t, typename E>
-        typename std::enable_if<isForwardList<T>::value, void>::type push_front(const E& i);
-
-        template<typename T = container_t, typename E>
         typename std::enable_if<isForwardList<T>::value, void>::type push_front(E&& i);
 
         template<typename T = container_t>
@@ -346,52 +340,49 @@ class SDR {
         // calls insert_after on the forward_list underlying container
         // assertion checks that the inserted element is in order and with no duplicates
         template<typename T = container_t, typename E>
-        typename std::enable_if<isForwardList<T>::value, const_iterator>::type insert_after(const_iterator pos, const E& i);
-
-        template<typename T = container_t, typename E>
         typename std::enable_if<isForwardList<T>::value, const_iterator>::type insert_after(const_iterator pos, E&& i);
 
         template<typename SDR_t_inner, typename container_t_inner>
         friend std::ostream& operator<<(std::ostream& os, const SDR<SDR_t_inner, container_t_inner>& sdr);
 
         template<typename other>
-        auto operator&(const other& o) { return ande(o); }
+        auto operator&(other&& o) { return ande(o); }
         template<typename other>
-        auto operator&(const other& o) const { return ande(o); }
+        auto operator&(other&& o) const { return ande(o); }
         template<typename other>
-        auto operator&&(const other& o) const { return ands(o); }
+        auto operator&&(other&& o) const { return ands(o); }
         template<typename other>
-        auto operator&=(const other& o) { return andi(o); }
+        auto operator&=(other&& o) { return andi(o); }
         template<typename other>
-        auto operator*(const other& o) const { return ande(o); }
+        auto operator*(other&& o) const { return ande(o); }
         template<typename other>
-        auto operator*=(const other& o) { return andi(o); }
+        auto operator*=(other&& o) { return andi(o); }
         template<typename other>
-        auto operator|(const other& o) const { return ore(o); }
+        auto operator|(other&& o) const { return ore(o); }
         template<typename other>
-        auto operator||(const other& o) const { return ors(o); }
+        auto operator||(other&& o) const { return ors(o); }
         template<typename other>
-        auto operator|=(const other& o) { return ori(o); }
+        auto operator|=(other&& o) { return ori(o); }
         template<typename other>
-        auto operator^(const other& o) const { return xore(o); }
+        auto operator^(other&& o) const { return xore(o); }
         template<typename other>
-        auto operator^=(const other& o) { return xori(o); }
+        auto operator^=(other&& o) { return xori(o); }
         template<typename other>
-        auto operator+(const other& o) const { return ore(o); }
+        auto operator+(other&& o) const { return ore(o); }
         template<typename other>
-        auto operator+=(const other& o) { return ori(o); }
+        auto operator+=(other&& o) { return ori(o); }
         template<typename other>
-        auto operator-(const other& o) const { return rme(o); }
+        auto operator-(other&& o) const { return rme(o); }
         template<typename other>
-        auto operator-=(const other& o) { return rmi(o); }
+        auto operator-=(other&& o) { return rmi(o); }
         template<typename other>
-        auto operator<<(const other& o) const { return SDR(*this).shift(o); }
+        auto operator<<(other&& o) const { return SDR(*this).shift(o); }
         template<typename other>
-        auto operator>>(const other& o) const { return SDR(*this).shift(-o); }
+        auto operator>>(other&& o) const { return SDR(*this).shift(-o); }
         template<typename other>
-        auto operator<<=(const other& o) { return shift(o); }
+        auto operator<<=(other&& o) { return shift(o); }
         template<typename other>
-        auto operator>>=(const other& o) { return shift(-o); }
+        auto operator>>=(other&& o) { return shift(-o); }
 
         template<typename arg_t, typename c_arg_t>
         auto operator==(const SDR<arg_t, c_arg_t>& other) const {
@@ -1435,18 +1426,6 @@ SDR<SDR_t, container_t>& SDR<SDR_t, container_t>::append(const SDR<arg_t, c_arg_
 
 template<typename SDR_t, typename container_t>
 template<typename T, typename E>
-void SDR<SDR_t, container_t>::push_back(const E& i) {
-    SDR_t elem = SDR_t(i);
-    assert(v.empty() || v.crbegin()->id < elem.id);
-    if constexpr(usesVector) {
-        v.push_back(elem);
-    } else {
-        v.insert(v.end(), elem);
-    }
-}
-
-template<typename SDR_t, typename container_t>
-template<typename T, typename E>
 void SDR<SDR_t, container_t>::push_back(E&& i) {
     SDR_t elem = SDR_t(i);
     assert(v.empty() || v.crbegin()->id < elem.id);
@@ -1467,32 +1446,11 @@ typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDR_t, containe
 
 template<typename SDR_t, typename container_t>
 template<typename T, typename E>
-typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDR_t, container_t>::push_front(const E& i)  {
-    SDR_t elem = SDR_t(i);
-    assert(v.empty() || v.cbegin()->id > elem.id);
-    ++maybe_size.size;
-    v.push_front(elem);
-}
-
-template<typename SDR_t, typename container_t>
-template<typename T, typename E>
 typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDR_t, container_t>::push_front(E&& i)  {
     SDR_t elem = SDR_t(i);
     assert(v.empty() || v.cbegin()->id > elem.id);
     ++maybe_size.size;
     v.push_front(elem);
-}
-
-template<typename SDR_t, typename container_t>
-template<typename T, typename E>
-typename std::enable_if<isForwardList<T>::value, typename container_t::const_iterator>::type SDR<SDR_t, container_t>::insert_after(const_iterator pos, const E& i) {
-    SDR_t elem = SDR_t(i);
-    assert(pos == before_begin() || elem.id > pos->id);
-    auto ret = v.insert_after(pos, elem);
-    ++maybe_size.size;
-    auto next = std::next(ret);
-    assert(next == cend() || elem.id < next->id);
-    return ret;
 }
 
 template<typename SDR_t, typename container_t>
