@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 # Sparse Distributed Representation (SDR)
 
-This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDgCdWTuIzc). It has feature creeped into a sparse vector library.
+This is a header-only C++17 library for manipulating [SDRs](https://youtu.be/ZDgCdWTuIzc) and sparse vectors.
 
 ## Quick Example
 
