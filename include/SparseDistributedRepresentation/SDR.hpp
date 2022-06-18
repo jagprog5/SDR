@@ -313,6 +313,11 @@ class SDR {
             }
         }
 
+        void clear() noexcept { v.clear(); }
+
+        template<typename T = container_t>
+        void reserve(size_type n) { v.reserve(n); }
+
         template<typename T = container_t>
         typename T::const_reverse_iterator crbegin() const { return v.crbegin(); }
 

@@ -19,7 +19,7 @@ using ArrTest = ArrayAdaptor<SDR_t<>, TEST_FUZZ_AMOUNT * 2>;
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
 // only do a speed test, don't check for correctness
-static constexpr bool disable_validation = true;
+static constexpr bool disable_validation = false;
 
 template<typename SDR_t, typename container_t, typename arg_t, typename c_arg_t>
 bool validate_andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, const SDR<SDR_t, container_t>& r) {

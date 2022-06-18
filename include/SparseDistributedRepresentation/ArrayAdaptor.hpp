@@ -94,11 +94,13 @@ class ArrayAdaptor {
         }
 
         void resize(size_t size) {
-            #ifndef NDEBUG
-                assert(size <= N);
-            #endif
+            assert(size <= N);
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             end_ = &arr_[0] + size;
+        }
+
+        void clear() {
+            end_ = begin();
         }
 
         void shrink_to_fit() {}
