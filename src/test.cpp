@@ -118,17 +118,17 @@ BOOST_AUTO_TEST_CASE(shift) {
 BOOST_AUTO_TEST_CASE(append) {
   SDR a0{1, 2, 3};
   SDR b0{4, 5, 6};
-  a0.append(b0);
+  a0.append(std::move(b0));
   BOOST_REQUIRE_EQUAL(a0, (SDR{1, 2, 3, 4, 5, 6}));
 
   SDR<SDR_t<>, std::set<SDR_t<>>> a1{1, 2, 3};
   SDR<SDR_t<>, std::set<SDR_t<>>> b1{4, 5, 6};
-  a1.append(b1);
+  a1.append(std::move(b1));
   BOOST_REQUIRE_EQUAL(a1, (SDR{1, 2, 3, 4, 5, 6}));
 
   SDR<SDR_t<>, std::forward_list<SDR_t<>>> a2{1, 2, 3};
   SDR<SDR_t<>, std::forward_list<SDR_t<>>> b2{4, 5, 6};
-  a2.append(b2);
+  a2.append(std::move(b2));
   BOOST_REQUIRE_EQUAL(a2.size(), 6);
   BOOST_REQUIRE_EQUAL(a2, (SDR{1, 2, 3, 4, 5, 6}));
 }
@@ -183,10 +183,10 @@ BOOST_AUTO_TEST_CASE(test_shift) {
 BOOST_AUTO_TEST_CASE(test_visitor) {
   SDR<SDR_t<int, FloatData>> a{SDR_t<int, FloatData>(1, FloatData(1))};
   auto increment_visitor = [&](typename decltype(a)::container_type::iterator iter){
-    iter->data.value += 1;
+    iter->data().value(iter->data().value() + 1);
   };
   a.visitor(increment_visitor);
-  BOOST_REQUIRE_EQUAL((a & 1)->value, 2);
+  BOOST_REQUIRE_EQUAL((a & 1)->value(), 2);
 }
 
 BOOST_AUTO_TEST_CASE(test_readme_visitor) {
@@ -201,6 +201,16 @@ BOOST_AUTO_TEST_CASE(test_readme_visitor) {
 
   a.andv(b, increment_visitor);
   BOOST_REQUIRE_EQUAL(result, 2);
+}
+
+BOOST_AUTO_TEST_CASE(test_readme_walled_garden) {
+  SDR a{1, 2, 3};
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  auto brute_force_ptr = reinterpret_cast<std::vector<SDR_t<>>*>(&a);
+  const_cast<int&>((*brute_force_ptr)[1].id()) = 17;
+  BOOST_REQUIRE_EQUAL((a.begin() + 0)->id(), 1);
+  BOOST_REQUIRE_EQUAL((a.begin() + 1)->id(), 17);
+  BOOST_REQUIRE_EQUAL((a.begin() + 2)->id(), 3);
 }
 
 BOOST_AUTO_TEST_CASE(test_floatdata_div) {
@@ -258,8 +268,8 @@ BOOST_AUTO_TEST_CASE(test_float_data) {
   SDR<SDR_t<int, FloatData>>b{SDR_t<int, FloatData>(0, 2), SDR_t<int, FloatData>(1, 2), SDR_t<int, FloatData>(2, 2)};
   auto result = a - b;
   float val = 1;
-  for (const auto& elem : result) {
-    BOOST_REQUIRE_EQUAL(elem.data.value, val--);
+  for (auto& elem : result) {
+    BOOST_REQUIRE_EQUAL(elem.data().value(), val--);
   }
 }
 
@@ -268,7 +278,7 @@ BOOST_AUTO_TEST_CASE(test_printing) {
   std::cout << FloatData(0.5555) << '\n';
   UnitData a(0.5555);
   std::cout << a << " ";
-  a.value = 1.1;
+  a.value(1.1);
   std::cout << a << '\n';
   std::cout << SDR{1, 2, 3} << " " << SDR<SDR_t<int, FloatData>>{1, 2, 3} << '\n';
   std::cout << SDR<SDR_t<int, FloatData>>{1, 2, 3} << std::endl;

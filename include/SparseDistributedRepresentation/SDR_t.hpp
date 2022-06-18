@@ -17,68 +17,75 @@ and their data are combined in the result.
 */
 template<typename id_t = int,
          typename data_t = EmptyData>
-struct SDR_t {
-    static_assert(std::is_integral<id_t>::value);
+class SDR_t {
+    public:
+        static_assert(std::is_integral<id_t>::value);
+        using id_type = id_t;
+        using data_type = data_t;
 
-    constexpr SDR_t(id_t id, data_t data) : id(id), data(data) {}
-    constexpr SDR_t(id_t id) : id(id), data() {}
-    constexpr SDR_t() : id(), data() {}
-    constexpr SDR_t(const SDR_t& o) : id(o.id), data(o.data) {}
+        constexpr SDR_t(id_t id, data_t data) : id_(id), data_(data) {}
+        constexpr SDR_t(id_t id) : id_(id), data_() {}
+        constexpr SDR_t() : id_(), data_() {}
+        constexpr SDR_t(const SDR_t& o) : id_(o.id()), data_(o.data()) {}
 
-    template<typename o_id_t, typename o_data_t>
-    constexpr SDR_t(const SDR_t<o_id_t, o_data_t>& o) : id(o.id), data(o.data) {}
+        template<typename o_id_t, typename o_data_t>
+        constexpr SDR_t(const SDR_t<o_id_t, o_data_t>& o) : id_(o.id()), data_(o.data()) {}
 
-    constexpr SDR_t& operator=(const SDR_t& o) {
-        const_cast<id_t&>(id) = o.id;
-        data = o.data;
-        return *this;
-    }
+        constexpr SDR_t& operator=(const SDR_t& o) {
+            const_cast<id_t&>(id_) = o.id();
+            data_ = o.data();
+            return *this;
+        }
 
-    constexpr SDR_t(SDR_t&& o) : id(std::move(o.id)), data(std::move(o.data)) {}
+        constexpr SDR_t(SDR_t&& o) noexcept : id_(std::move(o.id())), data_(std::move(o.data())) {}
 
-    constexpr SDR_t& operator=(SDR_t&& o) {
-        const_cast<id_t&>(id) = std::move(o.id);
-        data = std::move(o.data);
-        return *this;
-    }
+        constexpr SDR_t& operator=(SDR_t&& o) noexcept {
+            const_cast<id_t&>(id_) = std::move(const_cast<id_t&>(o.id()));
+            data_ = std::move(o.data());
+            return *this;
+        }
 
-    using id_type = id_t;
-    using data_type = data_t;
+        constexpr const id_t& id() const { return id_; }
+        constexpr data_t& data() { return data_; }
+        constexpr const data_t& data() const { return data_; }
+        constexpr void date(data_t data) { data_ = data; }
 
-    const id_t id;
-    data_t data;
+        template<typename id_t_inner, 
+                typename data_t_inner>
+        friend std::ostream& operator<<(std::ostream&,
+            const SDR_t<id_t_inner, data_t_inner>&);
 
-    template<typename id_t_inner, 
-             typename data_t_inner>
-    friend std::ostream& operator<<(std::ostream&,
-        const SDR_t<id_t_inner, data_t_inner>&);
+        template<typename id_other, typename data_other>
+        constexpr bool operator<(const SDR_t<id_other, data_other>& o) const {
+            return id() < o.id();
+        }
 
-    template<typename id_other, typename data_other>
-    constexpr bool operator<(const SDR_t<id_other, data_other>& o) const {
-        return id < o.id;
-    }
+        template<typename id_other, typename data_other>
+        constexpr bool operator==(const SDR_t<id_other, data_other>& o) const {
+            return id() == o.id();
+        }
 
-    template<typename id_other, typename data_other>
-    constexpr bool operator==(const SDR_t<id_other, data_other>& o) const {
-        return id == o.id;
-    }
+        template<typename id_other, typename data_other>
+        constexpr bool operator>(const SDR_t<id_other, data_other>& o) const {
+            return id() > o.id();
+        }
 
-    template<typename id_other, typename data_other>
-    constexpr bool operator>(const SDR_t<id_other, data_other>& o) const {
-        return id > o.id;
-    }
-
-    constexpr bool operator<(const id_t& o) const { return id < o; }
-    constexpr bool operator==(const id_t& o) const { return id == o; }
-    constexpr bool operator>(const id_t& o) const { return id > o; }
+        constexpr bool operator<(const id_t& o) const { return id() < o; }
+        constexpr bool operator==(const id_t& o) const { return id() == o; }
+        constexpr bool operator>(const id_t& o) const { return id() > o; }
+    
+    private:
+        const id_t id_;
+        data_t data_;
 };
 
 template<typename id_t,
          typename data_t>
 std::ostream& operator<<(std::ostream& os, const SDR_t<id_t, data_t>& o) {
-  os << o.id;
+  os << o.id();
+  // NOLINTNEXTLINE(bugprone-sizeof-expression)
   if constexpr(sizeof(data_t) > 0) {
-      os << "(" << o.data << ")";
+      os << "(" << o.data() << ")";
   }
   return os;
 }

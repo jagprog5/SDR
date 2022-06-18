@@ -4,6 +4,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 project(sparse_distributed_representation)
 
+option(STATIC_ANALYSIS "Run static code analysis" OFF)
 option(BUILD_TESTING "Build tests and fuzzing" OFF)
 option(CODE_COVERAGE "Create coverage stats. Needs lcov and (for clang) llvm-cov. Invoke with \"make cov-show\"" OFF)
 set(PERF OFF CACHE STRING "Profile \"CPU\" or check the \"HEAP\". Needs libgoogle-perftools-dev. Invoke with \"make perf-show\"")
@@ -14,10 +15,35 @@ add_library(${PROJECT_NAME}_lib INTERFACE)
 
 target_include_directories(${PROJECT_NAME}_lib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+if (STATIC_ANALYSIS)
+  find_program(CLANGTIDY clang-tidy)
+  if(CLANGTIDY)
+    set(CMAKE_CXX_CLANG_TIDY 
+    clang-tidy;
+    "-checks=boost-*,\
+        bugprone-*,\
+        clang-analyzer-*,\
+        cppcoreguidelines-*,\
+        misc-*,\
+        performance-*,\
+        portability-*,\
+        -*-magic-numbers,\
+        -cppcoreguidelines-special-member-functions,\
+        -cppcoreguidelines-avoid-c-arrays,\
+        -cppcoreguidelines-pro-type-const-cast,\
+        -cppcoreguidelines-avoid-goto,\
+        -cppcoreguidelines-init-variables"
+    --header-filter=${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+  else()
+    message(SEND_ERROR "clang-tidy NOT FOUND")
+  endif()
+endif()
+
 if(BUILD_TESTING)
   # fuzzer for the complicated functions
   add_executable(fuzz_sdr src/fuzz.cpp)
-  target_compile_options(fuzz_sdr PRIVATE -Wall -Wextra -Ofast)
+  target_compile_options(fuzz_sdr PRIVATE -Wall -Wno-maybe-uninitialized -Wextra -Ofast)
   target_link_libraries(fuzz_sdr PRIVATE ${PROJECT_NAME}_lib)
   
   if (CODE_COVERAGE AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -29,7 +55,7 @@ if(BUILD_TESTING)
   set(BOOST_MIN_VERSION "1.63.0")
   find_package(Boost REQUIRED COMPONENTS unit_test_framework)
   add_executable(test_sdr src/test.cpp)
-  target_compile_options(test_sdr PRIVATE -Wall -Wextra -Ofast)
+  target_compile_options(test_sdr PRIVATE -Wall -Wno-maybe-uninitialized -Wextra -Ofast)
   target_link_libraries(test_sdr PRIVATE ${PROJECT_NAME}_lib ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
 
   enable_testing()
@@ -137,8 +163,6 @@ if(BUILD_TESTING)
     # override previous optimization level
     target_compile_options(fuzz_sdr PRIVATE -fprofile-generate)
     target_link_libraries(fuzz_sdr PRIVATE -fprofile-generate)
-
-    # llvm-profdata merge -output default.profdata default*.profraw
 
     add_custom_target(pgo
       DEPENDS fuzz_sdr

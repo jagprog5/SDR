@@ -4,6 +4,8 @@
 /**
  * An ArrayAdaptor provides a vector-like interface so an array can be used in an SDR.
  * This is needed for statically allocated SDRs.
+ * 
+ * No bound checking is done. Ensure that the size if sufficient. e.g. or elements can produce an output with a size only up to (inclusively) the sum of the arguments' sizes
  */
 template<typename SDR_t, std::size_t N>
 class ArrayAdaptor {
@@ -26,7 +28,8 @@ class ArrayAdaptor {
 
         ArrayAdaptor() : arr_(), end_(&arr_[0]) {}
 
-        ArrayAdaptor& operator=(const ArrayAdaptor& o) {
+        // NOLINTNEXTLINE(bugprone-unhandled-self-assignment) self assignment is no-op
+        ArrayAdaptor& operator=(const ArrayAdaptor& o) noexcept {
             auto o_pos = o.cbegin();
             auto o_end = o.cend();
             auto this_pos = begin();
@@ -41,7 +44,7 @@ class ArrayAdaptor {
             *this = o;
         }
 
-        ArrayAdaptor& operator=(ArrayAdaptor&& o) {
+        ArrayAdaptor& operator=(ArrayAdaptor&& o) noexcept {
             auto o_pos = std::make_move_iterator(o.begin());
             auto o_end = std::make_move_iterator(o.end());
             auto this_pos = begin();
@@ -52,7 +55,7 @@ class ArrayAdaptor {
             return *this;
         }
 
-        ArrayAdaptor(ArrayAdaptor&& o) {
+        ArrayAdaptor(ArrayAdaptor&& o) noexcept {
             *this = o;
         }
 
@@ -76,6 +79,7 @@ class ArrayAdaptor {
             #ifndef NDEBUG
                 assert((size_t)(end_ - &arr_[0]) < N);
             #endif
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             *end_++ = val;
         }
 
@@ -93,6 +97,7 @@ class ArrayAdaptor {
             #ifndef NDEBUG
                 assert(size <= N);
             #endif
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             end_ = &arr_[0] + size;
         }
 

@@ -2,62 +2,71 @@
 
 namespace sparse_distributed_representation {
 
-struct UnitData {
-    // this is the data_type for an SDR_t which stores an element from 0 to 1.
+// this is the data_type for an SDR_t which stores an element from 0 to 1.
+class UnitData {
+    public:
+        constexpr UnitData() : value_(1) {}
+        constexpr UnitData(float value) : value_(value) {
+            assert(value_ >= 0 && value_ <= 1);
+        }
 
-    constexpr UnitData() : value(1) {}
-    constexpr UnitData(float value) : value(value) {
-        assert(value >= 0 && value <= 1);
-    }
+        constexpr float value() const { return value_; }
+        constexpr void value(float value) { value_ = value; }
 
-    float value;
+        constexpr bool relevant() const {
+            return value() >= 0.1;
+        }
 
-    constexpr bool relevant() const {
-        return value >= 0.1;
-    }
+        constexpr bool rm_relevant() const {
+            return relevant();
+        }
 
-    constexpr bool rm_relevant() const {       
-        return relevant();
-    }
+        // for compatibility with other data types
+        template<typename T>
+        explicit constexpr operator T() const { return T(value); }
+    
+        UnitData ande(const UnitData& o) const {
+            return UnitData(value() * o.value());
+        }
 
-    // for compatibility with other data types
-    template<typename T>
-    explicit constexpr operator T() const { return T(value); }
+        constexpr UnitData ore(const UnitData& o) const {
+            return UnitData(value() > o.value() ? value() : o.value());
+        }
 
-    constexpr UnitData ande(const UnitData& o) const {
-        return UnitData(this->value * o.value);
-    }
+        constexpr UnitData xore(const UnitData& o) const {
+            return UnitData(std::abs(value() - o.value()));
+        }
 
-    constexpr UnitData ore(const UnitData& o) const {
-        return UnitData(this->value > o.value ? this->value : o.value);
-    }
+        constexpr UnitData rme(const UnitData& o) const {
+            return UnitData(value() * (1 - o.value()));
+        }
 
-    constexpr UnitData xore(const UnitData& o) const {
-        return UnitData(std::abs(this->value - o.value));
-    }
+        template<typename T>
+        constexpr bool operator==(const T& o) const {
+            return value() == (UnitData(o)).value();
+        }
 
-    constexpr UnitData rme(const UnitData& o) const {
-        return UnitData(this->value * (1 - o.value));
-    }
-
-    template<typename T>
-    constexpr bool operator==(const T& o) const {
-        return value == (UnitData(o)).value;
-    }
-
+    private:
+        float value_;
 };
 
-std::ostream& operator<<(std::ostream& os, const UnitData& o) {
-    auto val = o.value;
+inline std::ostream& operator<<(std::ostream& os, const UnitData& o) {
+    auto val = o.value();
     if (val > 1 || val < 0) {
         os << "!!!";
     } else {
-        os << '.';
-        val *= 10;
-        os << (int)val;
-        val -= (int)val;
-        val *= 10;
-        os << (int)val;
+        if (val == 1) {
+            os << "1.0";
+        } else {
+            // in range [0,1)
+            os << '.';
+            val *= 10;
+            os << (int)val;
+            // NOLINTNEXTLINE
+            val -= (int)val;
+            val *= 10;
+            os << (int)val;
+        }
     }
     return os;
 }

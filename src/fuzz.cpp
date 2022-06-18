@@ -15,22 +15,22 @@ using ArrDefault = ArrayAdaptor<SDR_t<>, DEFAULT_FUZZ_AMOUNT * 2>;
 static constexpr size_t TEST_FUZZ_AMOUNT = 20;
 using ArrTest = ArrayAdaptor<SDR_t<>, TEST_FUZZ_AMOUNT * 2>;
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
 // only do a speed test, don't check for correctness
-static constexpr bool disable_validation = false;
+static constexpr bool disable_validation = true;
 
-template<typename SDRA, typename SDRB>
-bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
+template<typename SDR_t, typename container_t, typename arg_t, typename c_arg_t>
+bool validate_andop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, const SDR<SDR_t, container_t>& r) {
     // for every element in a, if it is also in b, then it must be in the result
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
         if (b_pos != b.cend()) {
-            // a element is in b
-            auto data = a_elem.data.ande(decltype(a_elem.data)(b_pos->data));
+            auto data = a_elem.data().ande(typename SDR_t::data_type(b_pos->data()));
             // check data correct in result
-            auto pos = r & a_elem.id;
+            auto pos = r & a_elem.id();
             if (data.relevant()) {
                 if (pos == nullptr) {
                     REQUIRE_TRUE(false);
@@ -48,9 +48,9 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
         if (a_pos != a.cend()) {
             // b element is in a
-            auto data = a_pos->data.ande(decltype(a_pos->data)(b_elem.data));
+            auto data = a_pos->data().ande(typename SDR_t::data_type(b_elem.data()));
             // check data correct in result
-            auto pos = r & b_elem.id;
+            auto pos = r & b_elem.id();
             if (data.relevant()) {
                 if (pos == nullptr) {
                     REQUIRE_TRUE(false);
@@ -63,12 +63,12 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
         }
     }
     // the result can't contain any elements not in a or not in b
-    typename SDRA::size_type i = 0;
+    typename container_t::size_type i = 0;
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
-        auto r_elem = *r_pos;
-        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id) != a.cend();
-        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id) != b.cend();
+        const auto& r_elem = *r_pos;
+        bool in_a = std::find(a.cbegin(), a.cend(), r_elem.id()) != a.cend();
+        bool in_b = std::find(b.cbegin(), b.cend(), r_elem.id()) != b.cend();
         REQUIRE_TRUE(in_a || in_b);
     }
     // ensure the size is correct
@@ -76,31 +76,31 @@ bool validate_andop(const SDRA& a, const SDRB& b, const SDRA& r) {
     return true;
 }
 
-template<typename SDRA, typename SDRB>
-bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
+template<typename SDR_t, typename container_t, typename arg_t, typename c_arg_t>
+bool validate_orop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, const SDR<SDR_t, container_t>& r) {
     // every element in a must be in the result
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
-        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), a_pos->id) != r.cend());
+        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), a_pos->id()) != r.cend());
     }
     // every element in b must be in the result
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
-        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), b_pos->id) != r.cend());
+        REQUIRE_TRUE(std::find(r.cbegin(), r.cend(), b_pos->id()) != r.cend());
     }
     // the result can't contain any elements not in a or not in b
-    typename SDRA::size_type i = 0;
+    typename container_t::size_type i = 0;
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        auto a_pos = std::find(a.cbegin(), a.cend(), r_elem.id);
-        auto b_pos = std::find(b.cbegin(), b.cend(), r_elem.id);
+        auto a_pos = std::find(a.cbegin(), a.cend(), r_elem.id());
+        auto b_pos = std::find(b.cbegin(), b.cend(), r_elem.id());
         REQUIRE_TRUE(a_pos != a.cend() || b_pos != b.cend());
         // data correctness
         if (a_pos != a.cend() && b_pos != b.cend()) {
-            REQUIRE_TRUE(r_elem.data == a_pos->data.ore(decltype(a_pos->data)(b_pos->data)));
+            REQUIRE_TRUE(r_elem.data() == a_pos->data().ore(typename SDR_t::data_type(b_pos->data())));
         } else if (a_pos != a.cend()) {
-            REQUIRE_TRUE(r_elem.data == a_pos->data);
+            REQUIRE_TRUE(r_elem.data() == a_pos->data());
         } else {
-            REQUIRE_TRUE(r_elem.data == b_pos->data);
+            REQUIRE_TRUE(r_elem.data() == b_pos->data());
         }
     }
     // ensure the size is correct
@@ -108,41 +108,41 @@ bool validate_orop(const SDRA& a, const SDRB& b, const SDRA& r) {
     return true;
 }
 
-template<typename SDRA, typename SDRB>
-bool validate_xorop(const SDRA& a, const SDRB& b, const SDRA& r) {
+template<typename SDR_t, typename container_t, typename arg_t, typename c_arg_t>
+bool validate_xorop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, const SDR<SDR_t, container_t>& r) {
     // for every element in a, if it is not in b, then it must be in the result
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
-        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id);
-        if (b_pos == b.cend() || a_elem.data.xore(decltype(a_elem.data)(b_pos->data)).rm_relevant()) {
+        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id());
+        if (b_pos == b.cend() || a_elem.data().xore(typename SDR_t::data_type(b_pos->data())).rm_relevant()) {
             // a elem is not in b
-            REQUIRE_TRUE(r & a_elem.id)
+            REQUIRE_TRUE(r & a_elem.id())
         }
     }
     // for every element in b, if it is not in a, then it must be in the result
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
         auto b_elem = *b_pos;
-        auto a_pos = std::find(a.cbegin(), a.cend(), b_elem.id);
-        if (a_pos == a.cend() || a_pos->data.xore(decltype(a_pos->data)(b_elem.data)).rm_relevant()) {
+        auto a_pos = std::find(a.cbegin(), a.cend(), b_elem.id());
+        if (a_pos == a.cend() || a_pos->data().xore(typename SDR_t::data_type(b_elem.data())).rm_relevant()) {
             // b elem is not in a
-            REQUIRE_TRUE(r & b_elem.id);
+            REQUIRE_TRUE(r & b_elem.id());
         }
     }
     // the result can't contain any elements not in a or not in b
-    typename SDRA::size_type i = 0;
+    typename container_t::size_type i = 0;
     for(auto r_pos = r.cbegin(); r_pos != r.cend(); ++r_pos) {
         ++i;
         auto r_elem = *r_pos;
-        auto a_pos = std::find(a.cbegin(), a.cend(), r_elem.id);
-        auto b_pos = std::find(b.cbegin(), b.cend(), r_elem.id);
+        auto a_pos = std::find(a.cbegin(), a.cend(), r_elem.id());
+        auto b_pos = std::find(b.cbegin(), b.cend(), r_elem.id());
         REQUIRE_TRUE(a_pos != a.cend() || b_pos != b.cend());
         // data correctness
         if (a_pos != a.cend() && b_pos != b.cend()) {
-            REQUIRE_TRUE(r_elem.data == a_pos->data.xore(decltype(a_pos->data)(b_pos->data)));
+            REQUIRE_TRUE(r_elem.data() == a_pos->data().xore(typename SDR_t::data_type(b_pos->data())));
         } else if (a_pos != a.cend()) {
-            REQUIRE_TRUE(r_elem.data == a_pos->data);
+            REQUIRE_TRUE(r_elem.data() == a_pos->data());
         } else {
-            REQUIRE_TRUE(r_elem.data == b_pos->data);
+            REQUIRE_TRUE(r_elem.data() == b_pos->data());
         }
     }
     // ensure the size is correct
@@ -156,16 +156,16 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     typename SDRA::size_type i = 0;
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
-        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id);
-        decltype(a_elem.data) data;
+        auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id());
+        typename std::remove_reference<decltype(a_elem.data())>::type data;
         if (b_pos == b.cend()) {
-            data = a_elem.data;
+            data = a_elem.data();
         } else {
-            data = a_elem.data.rme(decltype(a_elem.data)(b_pos->data));
+            data = a_elem.data().rme(typename std::remove_reference<decltype(a_elem.data())>::type(b_pos->data()));
         }
         if (b_pos == b.cend() || data.rm_relevant()) {
             // a elem is not in b
-            auto pos = r & a_elem.id;
+            auto pos = r & a_elem.id();
             REQUIRE_TRUE(pos != nullptr);
             REQUIRE_TRUE(*pos == data);
             ++i;
@@ -176,6 +176,7 @@ bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
     return true;
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::mt19937 twister(time(NULL) * getpid());
 
 // generate a unique SDR based on a number
@@ -203,10 +204,8 @@ SDR get_sdr(int val) {
     }
     for (long i = start; i != stop; i += change) {
         if ((1 << i) & val) {
-            typename SDR::value_type::data_type data;
-            if constexpr(std::is_same<typename SDR::value_type::data_type, UnitData>::value) {
-                data.value = (float)twister() / (float)twister.max();
-            }
+            // only sets value if UnitData
+            typename SDR::value_type::data_type data((float)twister() / (float)twister.max());
             typename SDR::value_type elem(i, data);
             if constexpr(SDR::usesForwardList) {
                 ret.push_front(elem);
@@ -242,8 +241,8 @@ std::string get_template_name() {
 // name: some sort of identifier
 // f: the function to time and test. should return false if it failed
 template<typename SDRA, typename SDRB, typename funct>
-void time_op(std::string name, funct f, int fuzz_amount) {
-    duration<int64_t, std::nano> duration(0);
+void time_op(const std::string& name, funct f, int fuzz_amount) {
+    duration<long, std::nano> duration(0);
     for (int i = 0; i < fuzz_amount; ++i) {
         for (int j = 0; j < fuzz_amount; ++j) {
             SDRA sdra = get_sdr<SDRA>(i);
@@ -262,7 +261,7 @@ void time_op(std::string name, funct f, int fuzz_amount) {
 
 template<typename SDRA, typename SDRB>
 void series(int fuzz_amount) {
-    auto ande = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ande = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         SDRA and_result = a.ande(b);
         auto stop = high_resolution_clock::now();
@@ -271,7 +270,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>("ande", ande, fuzz_amount);
 
-    auto andi = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto andi = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         SDRA a_cp(a);
         auto start = high_resolution_clock::now();
         a_cp.andi(b);
@@ -281,7 +280,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>("andi", andi, fuzz_amount);
 
-    auto ands = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ands = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         auto s = a.ands(b);
         auto stop = high_resolution_clock::now();
@@ -290,7 +289,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>("ands", ands, fuzz_amount);
 
-    auto ore = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ore = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         SDRA or_result = a.ore(b);
         auto stop = high_resolution_clock::now();
@@ -299,7 +298,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" ore", ore, fuzz_amount);
 
-    auto ori = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ori = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         SDRA a_cp(a);
         auto start = high_resolution_clock::now();
         a_cp.ori(b);
@@ -309,7 +308,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" ori", ori, fuzz_amount);
 
-    auto ors = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto ors = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         auto s = a.ors(b);
         auto stop = high_resolution_clock::now();
@@ -318,7 +317,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" ors", ors, fuzz_amount);
 
-    auto xore = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto xore = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         SDRA xor_result = a.xore(b);
         auto stop = high_resolution_clock::now();
@@ -327,7 +326,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>("xore", xore, fuzz_amount);
 
-    auto xori = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto xori = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         SDRA a_cp(a);
         auto start = high_resolution_clock::now();
         a_cp.xori(b);
@@ -337,7 +336,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>("xori", xori, fuzz_amount);
 
-    auto xors = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto xors = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         auto s = a.xors(b);
         auto stop = high_resolution_clock::now();
@@ -346,7 +345,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>("xors", xors, fuzz_amount);
 
-    auto rme = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto rme = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         SDRA rm_result = a.rme(b);
         auto stop = high_resolution_clock::now();
@@ -355,7 +354,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" rme", rme, fuzz_amount);
 
-    auto rmi = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto rmi = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         SDRA a_cp(a);
         auto start = high_resolution_clock::now();
         a_cp.rmi(b);
@@ -365,7 +364,7 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" rmi", rmi, fuzz_amount);
 
-    auto rms = [](const SDRA& a, const SDRB& b, duration<int64_t, std::nano>& total_time) {
+    auto rms = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
         auto s = a.rms(b);
         auto stop = high_resolution_clock::now();
@@ -378,10 +377,12 @@ void series(int fuzz_amount) {
 int main(int argc, char** argv) {
     int fuzz_amount;
     if (argc > 1) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         if (std::strcmp(argv[1], "--help") == 0) {
             std::cout << "Usage: fuzz_sdr [<amount>]\n";
             exit(0);
         }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         fuzz_amount = std::atoi(argv[1]);
     } else {
         fuzz_amount = DEFAULT_FUZZ_AMOUNT;

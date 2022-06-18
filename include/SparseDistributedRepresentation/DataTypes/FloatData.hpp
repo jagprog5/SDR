@@ -5,50 +5,58 @@
 
 namespace sparse_distributed_representation {
 
-struct FloatData {
-    constexpr FloatData() : value(0) {}
-    constexpr FloatData(float value) : value(value) {}
+class FloatData {
+    public:
+        constexpr FloatData() : value_(0) {}
+        constexpr FloatData(float value) : value_(value) {}
 
-    float value;
+        constexpr float value() const { return value_; }
+        constexpr void value(float value) { value_ = value; }
 
-    constexpr bool relevant() const {
-        return true;
-    }
+        constexpr bool relevant() const {
+            return true;
+        }
 
-    constexpr bool rm_relevant() const {       
-        return relevant();
-    }
+        constexpr bool rm_relevant() const {       
+            return relevant();
+        }
 
-    // for compatibility with other data types
-    template<typename T>
-    explicit constexpr operator T() const { return T(value); }
+        // for compatibility with other data types
+        template<typename T>
+        explicit constexpr operator T() const { return T(value); }
 
-    constexpr FloatData ande(const FloatData& o) const {
-        return FloatData(this->value * o.value);
-    }
+        constexpr FloatData ande(const FloatData& o) const {
+            return FloatData(this->value() * o.value());
+        }
 
-    constexpr FloatData ore(const FloatData& o) const {
-        return FloatData(this->value + o.value);
-    }
+        constexpr FloatData ore(const FloatData& o) const {
+            return FloatData(this->value() + o.value());
+        }
 
-    // xor doesn't make sense in this context
-    // instead we have divide
-    auto operator/(const FloatData& o) const { return value / o.value; }
-    auto operator/=(const FloatData& o) { return value /= o.value; }
+        // xor doesn't make sense in this context
+        // instead we have divide
+        constexpr auto operator/(const FloatData& o) const { return value() / o.value(); }
 
-    constexpr FloatData rme(const FloatData& o) const {
-        return FloatData(this->value - o.value);
-    }
+        constexpr FloatData& operator/=(const FloatData& o) {
+            value_ /= o.value();
+            return *this;
+        }
 
-    template<typename T>
-    constexpr bool operator==(const T& o) const {
-        return value == ((FloatData)o).value;
-    }
+        constexpr FloatData rme(const FloatData& o) const {
+            return FloatData(value() - o.value());
+        }
 
+        template<typename T>
+        constexpr bool operator==(const T& o) const {
+            return value() == ((FloatData)o).value();
+        }
+
+    private:
+        float value_;
 };
 
-std::ostream& operator<<(std::ostream& os, const FloatData& o) {
-    os << o.value;
+inline std::ostream& operator<<(std::ostream& os, const FloatData& o) {
+    os << o.value();
     return os;
 }
 
@@ -58,7 +66,7 @@ template<typename SDR_t, typename container_t>
 class SDR;
 
 template<typename id_t, typename data_t>
-struct SDR_t;
+class SDR_t;
 
 template<typename ret_id_t, typename c_ret_t, typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
 SDR<SDR_t<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDR_t<id_t, FloatData>, container_t>& a, const SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>& b) {
@@ -77,7 +85,7 @@ SDR<SDR_t<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDR_t<id_t, FloatData>
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // no relevance check since FloatData is always relevant
-            SDR_t<ret_id_t, FloatData> elem(this_pos->id, this_pos->data / arg_pos->data);
+            SDR_t<ret_id_t, FloatData> elem(this_pos->id(), this_pos->data() / arg_pos->data());
             it = r.insert_after(it, elem);
         };
 
@@ -88,7 +96,7 @@ SDR<SDR_t<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDR_t<id_t, FloatData>
         };
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            SDR_t<ret_id_t, FloatData> elem(this_pos->id, this_pos->data / arg_pos->data);
+            SDR_t<ret_id_t, FloatData> elem(this_pos->id(), this_pos->data() / arg_pos->data());
             r.push_back(elem);
         };
     }
@@ -105,7 +113,7 @@ SDR<SDR_t<id_t, FloatData>, container_t> operator/(const SDR<SDR_t<id_t, FloatDa
 template<typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
 SDR<SDR_t<id_t, FloatData>, container_t>& operator/=(SDR<SDR_t<id_t, FloatData>, container_t>& a, const SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>& b) {
     auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-        this_pos->data /= arg_pos->data;
+        this_pos->data() /= arg_pos->data();
     };
 
     a.andv(const_cast<SDR<SDR_t<arg_id_t, FloatData>, c_arg_t>&>(b), visitor);

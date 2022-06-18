@@ -26,6 +26,9 @@ int main() {
 ### Tests and Fuzzing
 
 ```bash
+# dependencies
+apt-get install cmake g++ libboost-test-dev
+
 # build
 cd build && cmake .. -DBUILD_TESTING=true && cmake --build .
 
@@ -117,7 +120,7 @@ flowchart TB
 
 SDRs are composed of SDR_t elements. By default, an SDR_t has an `int` identifier and an `EmptyData` data.  
 This means that each index in the dense representation is identified by an int,  
-and that each position has no data (aka EmptyData) associated with it.
+and that each index has no data (aka EmptyData) associated with it.
 
 Data can define a "relevance". If the SDR_t's data is not relevant, then it is not placed in the result.  
 This is helpful given the context in which sparse vector's are used. Only important values are worth mentioning.
@@ -183,8 +186,10 @@ If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cas
 
 ```cpp
 SDR a{1, 2, 3};
+// get the vector
 auto brute_force_ptr = reinterpret_cast<std::vector<SDR_t<>>*>(&a);
-(*brute_force_ptr)[1].id = 17;
+// const_cast since id should normally not be set directly
+const_cast<int&>((*brute_force_ptr)[1].id()) = 17;
 
 // SDRs have ascending elements, with no duplicates
 // this is not a valid SDR since it has [1,17,3]
