@@ -4,7 +4,8 @@ namespace sparse_distributed_representation {
 
 class EmptyData {
     public:
-        // this is the data_type for a default SDR_elem_t which does not use the data functionality
+        // this is the data_type for a default SDRElem
+        // it disables the data functionality
 
         constexpr EmptyData() : unused() {}
 

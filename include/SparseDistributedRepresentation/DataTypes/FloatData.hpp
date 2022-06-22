@@ -62,15 +62,15 @@ inline std::ostream& operator<<(std::ostream& os, const FloatData& o) {
 
 // ======= fancyness to give FloatData SDRs the division op ===============
 
-template<typename SDR_elem_t, typename container_t>
+template<typename, typename>
 class SDR;
 
-template<typename id_t, typename data_t>
-class SDR_elem_t;
+template<typename, typename>
+class SDRElem;
 
 template<typename ret_id_t, typename c_ret_t, typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
-SDR<SDR_elem_t<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDR_elem_t<id_t, FloatData>, container_t>& a, const SDR<SDR_elem_t<arg_id_t, FloatData>, c_arg_t>& b) {
-    SDR<SDR_elem_t<ret_id_t, FloatData>, c_ret_t> r;
+SDR<SDRElem<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDRElem<id_t, FloatData>, container_t>& a, const SDR<SDRElem<arg_id_t, FloatData>, c_arg_t>& b) {
+    SDR<SDRElem<ret_id_t, FloatData>, c_ret_t> r;
     std::function<void(typename container_t::iterator)> visitor_this;
     auto visitor_query = [](typename c_arg_t::iterator){};
     std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> visitor_both;
@@ -80,43 +80,43 @@ SDR<SDR_elem_t<ret_id_t, FloatData>, c_ret_t> divide(const SDR<SDR_elem_t<id_t, 
         it = r.before_begin();
         visitor_this = [&](typename container_t::iterator this_pos) {
             // pass through
-            it = r.insert_after(it, SDR_elem_t<ret_id_t, FloatData>(*this_pos));
+            it = r.insert_after(it, SDRElem<ret_id_t, FloatData>(*this_pos));
         };
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // no relevance check since FloatData is always relevant
-            SDR_elem_t<ret_id_t, FloatData> elem(this_pos->id(), this_pos->data() / arg_pos->data());
+            SDRElem<ret_id_t, FloatData> elem(this_pos->id(), this_pos->data() / arg_pos->data());
             it = r.insert_after(it, elem);
         };
 
     } else {
         visitor_this = [&](typename container_t::iterator this_pos) {
-            SDR_elem_t<ret_id_t, FloatData> elem(*this_pos);
+            SDRElem<ret_id_t, FloatData> elem(*this_pos);
             r.push_back(elem);
         };
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            SDR_elem_t<ret_id_t, FloatData> elem(this_pos->id(), this_pos->data() / arg_pos->data());
+            SDRElem<ret_id_t, FloatData> elem(this_pos->id(), this_pos->data() / arg_pos->data());
             r.push_back(elem);
         };
     }
-    const_cast<SDR<SDR_elem_t<id_t, FloatData>, container_t>&>(a).orv(const_cast<SDR<SDR_elem_t<arg_id_t, FloatData>, c_arg_t>&>(b), visitor_this, visitor_query, visitor_both);
+    const_cast<SDR<SDRElem<id_t, FloatData>, container_t>&>(a).orv(const_cast<SDR<SDRElem<arg_id_t, FloatData>, c_arg_t>&>(b), visitor_this, visitor_query, visitor_both);
     return r;
 }
 
 template<typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
-SDR<SDR_elem_t<id_t, FloatData>, container_t> operator/(const SDR<SDR_elem_t<id_t, FloatData>, container_t>& a, const SDR<SDR_elem_t<arg_id_t, FloatData>, c_arg_t>& b) {
+SDR<SDRElem<id_t, FloatData>, container_t> operator/(const SDR<SDRElem<id_t, FloatData>, container_t>& a, const SDR<SDRElem<arg_id_t, FloatData>, c_arg_t>& b) {
     // assumes that the returned container and id type are the same as the first arg's container and id type
     return divide<id_t, container_t>(a, b);
 }
 
 template<typename id_t, typename container_t, typename arg_id_t, typename c_arg_t>
-SDR<SDR_elem_t<id_t, FloatData>, container_t>& operator/=(SDR<SDR_elem_t<id_t, FloatData>, container_t>& a, const SDR<SDR_elem_t<arg_id_t, FloatData>, c_arg_t>& b) {
+SDR<SDRElem<id_t, FloatData>, container_t>& operator/=(SDR<SDRElem<id_t, FloatData>, container_t>& a, const SDR<SDRElem<arg_id_t, FloatData>, c_arg_t>& b) {
     auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
         this_pos->data() /= arg_pos->data();
     };
 
-    a.andv(const_cast<SDR<SDR_elem_t<arg_id_t, FloatData>, c_arg_t>&>(b), visitor);
+    a.andv(const_cast<SDR<SDRElem<arg_id_t, FloatData>, c_arg_t>&>(b), visitor);
     return a;
 }
 
