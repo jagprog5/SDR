@@ -89,31 +89,57 @@ a.andi(b)           // `a` is modified and contains the result [2]
 
 ```mermaid
 flowchart TB
-    SDR["SDR\nHas a container_t of SDRElem elements"]
+    subgraph Legend
+        tparam["Templated Type"]
+        instance["Template Instance"]
+
+        style instance fill:#777
+    end
+
+    direction TB
+    SDR["SDR\nHas a container of SDRElem elements"]
     SDRElem["SDRElem\nHas an id and (optionally) data"]
-    container_t["container_t\nSDR is a container adaptor that can accept various containers\nIt is best suited for a std::vector or std::set"]
+    container["container\nSDR is a container adaptor that can use various containers\nIt is best suited for a std::vector or std::set"]
     ArrayAdaptor["ArrayAdaptor\nWraps std::array in a vector-like interface"]
     EmptyData["EmptyData\nDisables the data functionality"]
     UnitData["UnitData\nA float bounded from 0 to 1"]
     FloatData["FloatData\nA float"]
-    id_t["id_t\nAn integral type which uniquely identifies an SDRElem in an SDR."]
-    data_t["data_t\nA payload associated with the id."]
+    id["id\nThe position of an SDRElem in an SDR"]
+    data["data\nSomething associated with the id"]
 
-    SDR--template--->SDRElem
-    SDR--template-->container_t
-    container_t-->std::vector
-    container_t-->std::set
-    container_t-->std::forward_list
-    container_t--->ArrayAdaptor
+    SDR--->SDRElem
+    SDR-->container
+    container-->std::vector
+    container-->std::set
+    container-->std::forward_list
+    container--->ArrayAdaptor
 
-    SDRElem--template-->id_t
-    SDRElem--template--->data_t
+    SDRElem--->data
+    SDRElem-->id
 
-    data_t-->EmptyData
-    data_t-->UnitData
-    data_t-->FloatData
+    id-->int
+    id-->uint64_t
+    id-->etc...
 
+    data-->EmptyData
+    data-->UnitData
+    data-->FloatData
 
+style ArrayAdaptor fill:#777
+style std::vector fill:#777
+style std::set fill:#777
+style std::forward_list fill:#777
+style EmptyData fill:#777
+style UnitData fill:#777
+style FloatData fill:#777
+style int fill:#777
+style uint64_t fill:#777
+style etc... fill:#777
+
+linkStyle 0 stroke:grey,stroke-width:7px;
+linkStyle 1 stroke:grey,stroke-width:7px;
+linkStyle 6 stroke:grey,stroke-width:7px;
+linkStyle 7 stroke:grey,stroke-width:7px;
 ```
 
 ## SDRElem with Data
