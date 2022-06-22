@@ -150,18 +150,18 @@ bool validate_xorop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>&
     return true;
 }
 
-template<typename SDRA, typename SDRB>
-bool validate_rmop(const SDRA& a, const SDRB& b, const SDRA& r) {
+template<typename SDR_t, typename container_t, typename arg_t, typename c_arg_t>
+bool validate_rmop(const SDR<SDR_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, const SDR<SDR_t, container_t>& r) {
     // for every elements in a, if it is not in b, then it must be in the result
-    typename SDRA::size_type i = 0;
+    typename container_t::size_type i = 0;
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id());
-        typename std::remove_reference<decltype(a_elem.data())>::type data;
+        typename SDR_t::data_type data;
         if (b_pos == b.cend()) {
             data = a_elem.data();
         } else {
-            data = a_elem.data().rme(typename std::remove_reference<decltype(a_elem.data())>::type(b_pos->data()));
+            data = a_elem.data().rme(typename SDR_t::data_type(b_pos->data()));
         }
         if (b_pos == b.cend() || data.rm_relevant()) {
             // a elem is not in b
