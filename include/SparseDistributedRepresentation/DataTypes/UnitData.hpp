@@ -2,7 +2,7 @@
 
 namespace sparse_distributed_representation {
 
-// this is the data_type for an SDR_t which stores an element from 0 to 1.
+// this is the data_type for an SDR_elem_t which stores an element from 0 to 1.
 class UnitData {
     public:
         constexpr UnitData() : value_(1) {}

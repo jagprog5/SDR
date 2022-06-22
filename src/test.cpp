@@ -11,23 +11,23 @@ using namespace sparse_distributed_representation;
 BOOST_AUTO_TEST_SUITE(sdr)
 
 BOOST_AUTO_TEST_CASE(copy_assignment_ctor) {
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> a{1, 2, 3};
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> b;
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> a{1, 2, 3};
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> b;
   b = a;
   BOOST_REQUIRE_EQUAL(b, a);
   BOOST_REQUIRE_EQUAL(b.size(), a.size());
 }
 
 BOOST_AUTO_TEST_CASE(move_ctor) {
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> a{1, 2, 3};
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> a{1, 2, 3};
   auto b(std::move(a));
   BOOST_REQUIRE_EQUAL(b.size(), 3);
   BOOST_REQUIRE_EQUAL(b, (SDR{1, 2, 3}));
 }
 
 BOOST_AUTO_TEST_CASE(move_assign_ctor) {
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> a{1, 2, 3};
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> b;
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> a{1, 2, 3};
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> b;
   b = std::move(a);
   BOOST_REQUIRE_EQUAL(b.size(), 3);
   BOOST_REQUIRE_EQUAL(b, (SDR{1, 2, 3}));
@@ -36,14 +36,14 @@ BOOST_AUTO_TEST_CASE(move_assign_ctor) {
 BOOST_AUTO_TEST_CASE(iter_ctor) {
   std::vector<int> v{1, 2, 3};
   BOOST_REQUIRE_EQUAL(SDR(v.begin(), v.end()), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>(v.begin(), v.end())), (SDR{1, 2, 3}));
-  auto a = SDR<SDR_t<>, std::forward_list<SDR_t<>>>(v.begin(), v.end());
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>(v.begin(), v.end())), (SDR{1, 2, 3}));
+  auto a = SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>(v.begin(), v.end());
   BOOST_REQUIRE_EQUAL(a.size(), 3);
   BOOST_REQUIRE_EQUAL(a, (SDR{1, 2, 3}));
 }
 
 BOOST_AUTO_TEST_CASE(init_list_ctor) {
-  auto a = SDR<SDR_t<int, UnitData>, std::forward_list<SDR_t<int, UnitData>>>{SDR_t<int, UnitData>(1, 0.5), SDR_t<int, UnitData>(1, 0.0)};
+  auto a = SDR<SDR_elem_t<int, UnitData>, std::forward_list<SDR_elem_t<int, UnitData>>>{SDR_elem_t<int, UnitData>(1, 0.5), SDR_elem_t<int, UnitData>(1, 0.0)};
   BOOST_REQUIRE_EQUAL(a.size(), 1);
   BOOST_REQUIRE_EQUAL(a, SDR{1});
 }
@@ -56,21 +56,21 @@ BOOST_AUTO_TEST_CASE(test_encode) {
   BOOST_REQUIRE_EQUAL(SDR(0.8, 1, 3, 10), (SDR{0, 8, 9}));
   BOOST_REQUIRE_EQUAL(SDR(0, 1, 3, 10), (SDR{0, 1, 2}));
 
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>(0, 3, 100)), (SDR{0, 1, 2}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>(1, 3, 100)), (SDR{97, 98, 99}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>(0, 3, 100)), (SDR{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>(1, 3, 100)), (SDR{97, 98, 99}));
 
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>(0.8, 1, 3, 10)), (SDR<>{0, 8, 9}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>(0, 1, 3, 10)), (SDR{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>(0.8, 1, 3, 10)), (SDR<>{0, 8, 9}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>(0, 1, 3, 10)), (SDR{0, 1, 2}));
 
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>(0, 3, 100)), (SDR{0, 1, 2}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>(1, 3, 100)), (SDR{97, 98, 99}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>(0, 3, 100)), (SDR{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>(1, 3, 100)), (SDR{97, 98, 99}));
 
-  auto b0 = SDR<SDR_t<>, std::forward_list<SDR_t<>>>(0.8, 1, 3, 10);
+  auto b0 = SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>(0.8, 1, 3, 10);
   BOOST_REQUIRE_EQUAL(b0, (SDR<>{0, 8, 9}));
   BOOST_REQUIRE_EQUAL(b0.size(), 3);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>(0, 1, 3, 10)), (SDR<>{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>(0, 1, 3, 10)), (SDR<>{0, 1, 2}));
 }
 
 BOOST_AUTO_TEST_CASE(andop_range) {
@@ -83,23 +83,23 @@ BOOST_AUTO_TEST_CASE(andop_range) {
   BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
   BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.ands(0, 0)), 0);
   
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ande(2, 5)), (SDR{2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ands(2, 5)), 2);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ande(20, 70)), (SDR{20}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ands(20, 70)), 1);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::set<SDR_t<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(2, 5)), (SDR{2, 3}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(2, 5)), 2);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(20, 70)), (SDR{20}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(20, 70)), 1);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
 
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ande(2, 5)), (SDR{2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ands(2, 5)), 2);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ande(20, 70)), (SDR{20}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ands(20, 70)), 1);
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
-  BOOST_REQUIRE_EQUAL((SDR<SDR_t<>, std::forward_list<SDR_t<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(2, 5)), (SDR{2, 3}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(2, 5)), 2);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(20, 70)), (SDR{20}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(20, 70)), 1);
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
+  BOOST_REQUIRE_EQUAL((SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
 }
 
 BOOST_AUTO_TEST_CASE(andop_single) {
@@ -121,13 +121,13 @@ BOOST_AUTO_TEST_CASE(append) {
   a0.append(std::move(b0));
   BOOST_REQUIRE_EQUAL(a0, (SDR{1, 2, 3, 4, 5, 6}));
 
-  SDR<SDR_t<>, std::set<SDR_t<>>> a1{1, 2, 3};
-  SDR<SDR_t<>, std::set<SDR_t<>>> b1{4, 5, 6};
+  SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>> a1{1, 2, 3};
+  SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>> b1{4, 5, 6};
   a1.append(std::move(b1));
   BOOST_REQUIRE_EQUAL(a1, (SDR{1, 2, 3, 4, 5, 6}));
 
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> a2{1, 2, 3};
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> b2{4, 5, 6};
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> a2{1, 2, 3};
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> b2{4, 5, 6};
   a2.append(std::move(b2));
   BOOST_REQUIRE_EQUAL(a2.size(), 6);
   BOOST_REQUIRE_EQUAL(a2, (SDR{1, 2, 3, 4, 5, 6}));
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(sample) {
     ++ita;
   }
 
-  SDR<SDR_t<>, std::set<SDR_t<>>> b{1, 2, 3};
+  SDR<SDR_elem_t<>, std::set<SDR_elem_t<>>> b{1, 2, 3};
   b.sample(0.8, twister);
   BOOST_REQUIRE(b.size() <= 3);
   auto itb = b.cbegin();
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(sample) {
     ++itb;
   }
 
-  SDR<SDR_t<>, std::forward_list<SDR_t<>>> c{1, 2, 3};
+  SDR<SDR_elem_t<>, std::forward_list<SDR_elem_t<>>> c{1, 2, 3};
   c.sample(0.8, twister);
   BOOST_REQUIRE(c.size() <= 3);
   auto itc = c.cbegin();
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(test_shift) {
 }
 
 BOOST_AUTO_TEST_CASE(test_visitor) {
-  SDR<SDR_t<int, FloatData>> a{SDR_t<int, FloatData>(1, FloatData(1))};
+  SDR<SDR_elem_t<int, FloatData>> a{SDR_elem_t<int, FloatData>(1, FloatData(1))};
   auto increment_visitor = [&](typename decltype(a)::container_type::iterator iter){
     iter->data().value(iter->data().value() + 1);
   };
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(test_readme_visitor) {
 BOOST_AUTO_TEST_CASE(test_readme_walled_garden) {
   SDR a{1, 2, 3};
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  auto brute_force_ptr = reinterpret_cast<std::vector<SDR_t<>>*>(&a);
+  auto brute_force_ptr = reinterpret_cast<std::vector<SDR_elem_t<>>*>(&a);
   const_cast<int&>((*brute_force_ptr)[1].id()) = 17;
   BOOST_REQUIRE_EQUAL((a.begin() + 0)->id(), 1);
   BOOST_REQUIRE_EQUAL((a.begin() + 1)->id(), 17);
@@ -214,16 +214,16 @@ BOOST_AUTO_TEST_CASE(test_readme_walled_garden) {
 }
 
 BOOST_AUTO_TEST_CASE(test_floatdata_div) {
-  using elem = SDR_t<int, FloatData>;
+  using elem = SDR_elem_t<int, FloatData>;
   {
     SDR<elem> a{elem(0, 10), elem(1, 7)};
-    SDR<SDR_t<long, FloatData>> b{SDR_t<long, FloatData>(0, 2)};
+    SDR<SDR_elem_t<long, FloatData>> b{SDR_elem_t<long, FloatData>(0, 2)};
     BOOST_REQUIRE_EQUAL(a / b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
   }
 
   {
     SDR<elem, std::forward_list<elem>> a{elem(0, 10), elem(1, 7)};
-    SDR<SDR_t<long, FloatData>> b{SDR_t<long, FloatData>(0, 2)};
+    SDR<SDR_elem_t<long, FloatData>> b{SDR_elem_t<long, FloatData>(0, 2)};
     auto r = a / b;
     BOOST_REQUIRE_EQUAL(r.size(), 2);
     BOOST_REQUIRE_EQUAL(r, (SDR<elem>{elem(0, 5), elem(1, 7)}));
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(test_floatdata_div) {
 
   {
     SDR<elem> a{elem(0, 10), elem(1, 7)};
-    SDR<SDR_t<long, FloatData>> b{SDR_t<long, FloatData>(0, 2)};
+    SDR<SDR_elem_t<long, FloatData>> b{SDR_elem_t<long, FloatData>(0, 2)};
     BOOST_REQUIRE_EQUAL(a /= b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
   }
 }
@@ -240,32 +240,32 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_and = a.ande<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>> r_and = a.ande<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_or = a.ore<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>> r_or = a.ore<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_xor = a.xore<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>> r_xor = a.xore<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
-    SDR<SDR_t<long>, std::forward_list<SDR_t<long>>> r_rm = a.rme<SDR_t<long>, std::forward_list<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>> r_rm = a.rme<SDR_elem_t<long>, std::forward_list<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_and = a.ande<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::set<SDR_elem_t<long>>> r_and = a.ande<SDR_elem_t<long>, std::set<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_or = a.ore<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::set<SDR_elem_t<long>>> r_or = a.ore<SDR_elem_t<long>, std::set<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_xor = a.xore<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::set<SDR_elem_t<long>>> r_xor = a.xore<SDR_elem_t<long>, std::set<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
-    SDR<SDR_t<long>, std::set<SDR_t<long>>> r_rm = a.rme<SDR_t<long>, std::set<SDR_t<long>>>(b);
+    SDR<SDR_elem_t<long>, std::set<SDR_elem_t<long>>> r_rm = a.rme<SDR_elem_t<long>, std::set<SDR_elem_t<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
 }
 
 BOOST_AUTO_TEST_CASE(test_float_data) {
-  SDR<SDR_t<int, FloatData>>a{SDR_t<int, FloatData>(0, 3), SDR_t<int, FloatData>(1, 2), SDR_t<int, FloatData>(2, 1)};
-  SDR<SDR_t<int, FloatData>>b{SDR_t<int, FloatData>(0, 2), SDR_t<int, FloatData>(1, 2), SDR_t<int, FloatData>(2, 2)};
+  SDR<SDR_elem_t<int, FloatData>>a{SDR_elem_t<int, FloatData>(0, 3), SDR_elem_t<int, FloatData>(1, 2), SDR_elem_t<int, FloatData>(2, 1)};
+  SDR<SDR_elem_t<int, FloatData>>b{SDR_elem_t<int, FloatData>(0, 2), SDR_elem_t<int, FloatData>(1, 2), SDR_elem_t<int, FloatData>(2, 2)};
   auto result = a - b;
   float val = 1;
   for (auto& elem : result) {
@@ -280,9 +280,9 @@ BOOST_AUTO_TEST_CASE(test_printing) {
   std::cout << a << " ";
   a.value(1.1);
   std::cout << a << '\n';
-  std::cout << SDR{1, 2, 3} << " " << SDR<SDR_t<int, FloatData>>{1, 2, 3} << '\n';
-  std::cout << SDR<SDR_t<int, FloatData>>{1, 2, 3} << std::endl;
-  std::cout << SDR<SDR_t<>, ArrayAdaptor<SDR_t<>, 3>>{1, 2, 3} << std::endl;
+  std::cout << SDR{1, 2, 3} << " " << SDR<SDR_elem_t<int, FloatData>>{1, 2, 3} << '\n';
+  std::cout << SDR<SDR_elem_t<int, FloatData>>{1, 2, 3} << std::endl;
+  std::cout << SDR<SDR_elem_t<>, ArrayAdaptor<SDR_elem_t<>, 3>>{1, 2, 3} << std::endl;
   std::cout.rdbuf(old_buffer); // restore
 }
 
