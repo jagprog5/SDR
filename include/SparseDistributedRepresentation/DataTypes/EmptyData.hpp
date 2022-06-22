@@ -54,6 +54,9 @@ class EmptyData {
             #if __has_warning("-Wzero-length-array")
                 #pragma GCC diagnostic ignored "-Wzero-length-array"
             #endif
+            #if __has_warning("-Wunused-private-field")
+                #pragma GCC diagnostic ignored "-Wunused-private-field"
+            #endif
         #endif
         // if this member wasn't here, the struct size would be 1, instead of 0.
         // just cpp being quirky I guess
