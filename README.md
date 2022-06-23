@@ -87,25 +87,30 @@ a.andi(b)           // `a` is modified and contains the result [2]
 
 ## Library Structure
 
+
 ```mermaid
 flowchart TB
-    subgraph Legend
-        tparam["Templated Type"]
-        instance["Template Instance"]
+    tclass>"Templated Class"]
+    tparam("Template Parameter")
+    instance["Template Instance"]
+    dinst["Default instance"]
 
-        style instance fill:#777
-    end
-
-    direction TB
-    SDR["SDR\nHas a container of SDRElem elements"]
-    SDRElem["SDRElem\nHas an id and (optionally) data"]
-    container["container\nSDR is a container adaptor that can use various containers\nIt is best suited for a std::vector or std::set"]
+    style tparam fill:#111
+    style tclass fill:#111
+    style instance fill:#444
+    style dinst fill:#888
+```
+```mermaid
+flowchart TB
+    SDR>"SDR\nHas a container of SDRElem elements"]
+    SDRElem>"SDRElem\nHas an id and (optionally) data"]
+    container("container\nSDR is a container adaptor that can use various containers\nIt is best suited for a std::vector or std::set")
     ArrayAdaptor["ArrayAdaptor\nWraps std::array in a vector-like interface"]
     EmptyData["EmptyData\nDisables the data functionality"]
     UnitData["UnitData\nA float bounded from 0 to 1"]
     FloatData["FloatData\nA float"]
-    id["id\nThe position of an SDRElem in an SDR"]
-    data["data\nSomething associated with the id"]
+    id("id\nThe position of an SDRElem in an SDR")
+    data("data\nSomething associated with the id")
 
     SDR--->SDRElem
     SDR-->container
@@ -125,16 +130,23 @@ flowchart TB
     data-->UnitData
     data-->FloatData
 
-style ArrayAdaptor fill:#777
-style std::vector fill:#777
-style std::set fill:#777
-style std::forward_list fill:#777
-style EmptyData fill:#777
-style UnitData fill:#777
-style FloatData fill:#777
-style int fill:#777
-style uint64_t fill:#777
-style etc... fill:#777
+style SDR fill:#111
+style container fill:#111
+style SDRElem fill:#111
+style id fill:#111
+style data fill:#111
+
+style ArrayAdaptor fill:#444
+style std::set fill:#444
+style std::forward_list fill:#444
+style UnitData fill:#444
+style FloatData fill:#444
+style uint64_t fill:#444
+style etc... fill:#444
+
+style std::vector fill:#888
+style EmptyData fill:#888
+style int fill:#888
 
 linkStyle 0 stroke:grey,stroke-width:7px;
 linkStyle 1 stroke:grey,stroke-width:7px;
