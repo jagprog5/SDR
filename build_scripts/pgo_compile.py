@@ -27,7 +27,7 @@ def compile(compile_commands_path: str, file_path: str):
                 print(command)
             return p.returncode
     print("FAILED to find compile command: \"" + file_path + "\"")
-    return 111
+    return -1
 
 
 if __name__ == "__main__":

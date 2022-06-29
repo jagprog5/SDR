@@ -171,8 +171,7 @@ if(BUILD_TESTING)
       # generate "build/compile_commands.json"
       COMMAND cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=true
 
-      # only for clang
-      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/gpo_proc_data.sh"
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_proc_data.sh"
 
       # run the scipt that rebuilds the object file, but it instead reads the profile instead of generating it
       COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_compile.py" "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" "${CMAKE_CURRENT_SOURCE_DIR}/src/fuzz.cpp"

@@ -16,7 +16,7 @@ def link(link_command_path: str):
             del command[i]
     # run it
     p = subprocess.run(command, stderr=subprocess.PIPE, text=True)
-    print(p.stdout, end='')
+    print(p.stderr, end='')
     if p.returncode != 0:
         print("FAILED to link for pgo")
         print(command)
