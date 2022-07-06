@@ -2,7 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
-#include "SparseDistributedRepresentation/DataTypes/FloatData.hpp"
+#include "SparseDistributedRepresentation/DataTypes/ArithData.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include <random>
 #include <unistd.h>
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(test_shift) {
 }
 
 BOOST_AUTO_TEST_CASE(test_visitor) {
-  SDR<SDRElem<int, FloatData>> a{SDRElem<int, FloatData>(1, FloatData(1))};
+  SDR<SDRElem<int, ArithData<>>> a{SDRElem<int, ArithData<>>(1, ArithData<>(1))};
   auto increment_visitor = [&](typename decltype(a)::container_type::iterator iter){
     iter->data().value(iter->data().value() + 1);
   };
@@ -213,17 +213,17 @@ BOOST_AUTO_TEST_CASE(test_readme_walled_garden) {
   BOOST_REQUIRE_EQUAL((a.begin() + 2)->id(), 3);
 }
 
-BOOST_AUTO_TEST_CASE(test_floatdata_div) {
-  using elem = SDRElem<int, FloatData>;
+BOOST_AUTO_TEST_CASE(test_arith_div) {
+  using elem = SDRElem<int, ArithData<>>;
   {
     SDR<elem> a{elem(0, 10), elem(1, 7)};
-    SDR<SDRElem<long, FloatData>> b{SDRElem<long, FloatData>(0, 2)};
+    SDR<SDRElem<long, ArithData<>>> b{SDRElem<long, ArithData<>>(0, 2)};
     BOOST_REQUIRE_EQUAL(a / b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
   }
 
   {
     SDR<elem, std::forward_list<elem>> a{elem(0, 10), elem(1, 7)};
-    SDR<SDRElem<long, FloatData>> b{SDRElem<long, FloatData>(0, 2)};
+    SDR<SDRElem<long, ArithData<>>> b{SDRElem<long, ArithData<>>(0, 2)};
     auto r = a / b;
     BOOST_REQUIRE_EQUAL(r.size(), 2);
     BOOST_REQUIRE_EQUAL(r, (SDR<elem>{elem(0, 5), elem(1, 7)}));
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(test_floatdata_div) {
 
   {
     SDR<elem> a{elem(0, 10), elem(1, 7)};
-    SDR<SDRElem<long, FloatData>> b{SDRElem<long, FloatData>(0, 2)};
+    SDR<SDRElem<long, ArithData<>>> b{SDRElem<long, ArithData<>>(0, 2)};
     BOOST_REQUIRE_EQUAL(a /= b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
   }
 }
@@ -264,8 +264,8 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
 }
 
 BOOST_AUTO_TEST_CASE(test_float_data) {
-  SDR<SDRElem<int, FloatData>>a{SDRElem<int, FloatData>(0, 3), SDRElem<int, FloatData>(1, 2), SDRElem<int, FloatData>(2, 1)};
-  SDR<SDRElem<int, FloatData>>b{SDRElem<int, FloatData>(0, 2), SDRElem<int, FloatData>(1, 2), SDRElem<int, FloatData>(2, 2)};
+  SDR<SDRElem<int, ArithData<>>>a{SDRElem<int, ArithData<>>(0, 3), SDRElem<int, ArithData<>>(1, 2), SDRElem<int, ArithData<>>(2, 1)};
+  SDR<SDRElem<int, ArithData<>>>b{SDRElem<int, ArithData<>>(0, 2), SDRElem<int, ArithData<>>(1, 2), SDRElem<int, ArithData<>>(2, 2)};
   auto result = a - b;
   float val = 1;
   for (auto& elem : result) {
@@ -275,13 +275,13 @@ BOOST_AUTO_TEST_CASE(test_float_data) {
 
 BOOST_AUTO_TEST_CASE(test_printing) {
   auto old_buffer = std::cout.rdbuf(nullptr); // suppress
-  std::cout << FloatData(0.5555) << '\n';
+  std::cout << ArithData<>(0.5555) << '\n';
   UnitData a(0.5555);
   std::cout << a << " ";
   a.value(1.1);
   std::cout << a << '\n';
-  std::cout << SDR{1, 2, 3} << " " << SDR<SDRElem<int, FloatData>>{1, 2, 3} << '\n';
-  std::cout << SDR<SDRElem<int, FloatData>>{1, 2, 3} << std::endl;
+  std::cout << SDR{1, 2, 3} << " " << SDR<SDRElem<int, ArithData<>>>{1, 2, 3} << '\n';
+  std::cout << SDR<SDRElem<int, ArithData<>>>{1, 2, 3} << std::endl;
   std::cout << SDR<SDRElem<>, ArrayAdaptor<SDRElem<>, 3>>{1, 2, 3} << std::endl;
   std::cout.rdbuf(old_buffer); // restore
 }

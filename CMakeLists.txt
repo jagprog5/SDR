@@ -152,8 +152,7 @@ if(BUILD_TESTING)
     # but gcc didn't like that the gcda file was build by a different executable, and wouldn't accept it, "-Werror=coverage-mismatch"
 
     # in cmake you can't define the same executable target twice, so I'm left with this hacky workaround of running it manually
-    # here I grab a snapshot of the properties attached with the executable before adding profiling options
-    # (in this case, I only set compile options and link libraries, but this may be expanded later, e.g. compile_definitions, ...)
+    # that's the purpose of the scripts in ./build_scripts, compiling and linking a target the exact same way cmake would do it
     add_custom_target(pgo-clean
       COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.gcda' -delete
       COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.profdata' -delete

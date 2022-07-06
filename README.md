@@ -108,11 +108,11 @@ flowchart TB
     ArrayAdaptor["ArrayAdaptor\nWraps std::array in a vector-like interface"]
     EmptyData["EmptyData\nDisables the data functionality"]
     UnitData["UnitData\nA float bounded from 0 to 1"]
-    FloatData["FloatData\nA float"]
-    id("id\nThe position of an SDRElem in an SDR")
+    ArithData>"ArithData\nNormal arithmetic type"]
+    id("id\nThe position of an SDRElem in the dense representation")
     data("data\nSomething associated with the id")
 
-    SDR--->SDRElem
+    SDR-->SDRElem
     SDR-->container
     container-->std::vector
     container-->std::set
@@ -128,7 +128,12 @@ flowchart TB
 
     data-->EmptyData
     data-->UnitData
-    data-->FloatData
+    data-->ArithData
+
+    ArithData-->float
+    ArithData-->double
+    etc2["etc..."]
+    ArithData-->etc2
 
 style SDR fill:#111
 style container fill:#111
@@ -140,7 +145,7 @@ style ArrayAdaptor fill:#444
 style std::set fill:#444
 style std::forward_list fill:#444
 style UnitData fill:#444
-style FloatData fill:#444
+style ArithData fill:#111
 style uint64_t fill:#444
 style etc... fill:#444
 
@@ -148,10 +153,10 @@ style std::vector fill:#888
 style EmptyData fill:#888
 style int fill:#888
 
-linkStyle 0 stroke:grey,stroke-width:7px;
-linkStyle 1 stroke:grey,stroke-width:7px;
-linkStyle 6 stroke:grey,stroke-width:7px;
-linkStyle 7 stroke:grey,stroke-width:7px;
+style float fill:#888
+style double fill:#444
+style etc2 fill:#444
+
 ```
 
 ## SDRElem with Data

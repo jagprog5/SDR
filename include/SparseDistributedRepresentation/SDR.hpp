@@ -237,7 +237,7 @@ class SDR {
          *      the element is only in this: this_visitor(iterator this_position)
          *      the element is only in the arg: arg_visitor(c_arg_t::iterator arg_position)
          *      the element is in both: both_visitor(iterator this_position, c_arg_t::iterator arg_position)
-         * the visitors must not invalidate the proceeding iterator (one after this_position or one after arg_position)
+         * the visitors must not invalidate proceeding iterators (one this_position or one arg_position)
          */
         template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor>
         void orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor);
@@ -253,7 +253,7 @@ class SDR {
          * at this point, this_back_position(iterator) is called with the curent position in this, and then this function exits.
          * similarly, if there are no more elements in this, then arg_back_position(c_arg_t::iterator) is called, followed by an exit.
          * 
-         * the visitors must not invalidate the proceeding iterator (one after this_position or one after arg_position)
+         * the visitors must not invalidate proceeding iterators (one this_position or one arg_position)
          */
         template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor, typename ThisBackPosition, typename ArgBackPosition>
         void orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor, ThisBackPosition this_back_position, ArgBackPosition arg_back_position);
