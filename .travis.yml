@@ -4,36 +4,49 @@ dist: bionic
 branches:
   only:
     - main
+    - travis_testing
 
 git:
   depth: 1
 
-compiler:
-  - clang
-  - gcc
+jobs:
+  include:
+    - name: "g++ & code cov"
+      before_install:
+        # next line should be removed once boost ubuntu package catches up
+        - sudo add-apt-repository -y ppa:mhier/libboost-latest
+        - sudo apt-get update
+      install:
+        - sudo apt-get install libboost1.74-dev # see previous comment
+        # - sudo apt-get install -y libboost-test-dev
+        - sudo apt-get install -y lcov # line coverage
+        - sudo apt-get install -y g++-10 # c++20 features
+      before_script:
+        - cd ${TRAVIS_BUILD_DIR} && cd build
+        - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true -DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10
+        - cmake --build .
+      script:
+        - cd ${TRAVIS_BUILD_DIR} && cd build
+        - ctest
+      after_script:
+        - cd ${TRAVIS_BUILD_DIR} && cd build
+        - make cov-proc && bash <(curl -s https://codecov.io/bash) -f coverage.info
 
-before_install:
-  - sudo apt-get update
-
-install:
-  - sudo apt-get install -y libboost-test-dev
-  # line coverage only if gcc
-  - "[ \"$TRAVIS_COMPILER\" = \"gcc\" ] && sudo apt-get install -y lcov || true"
-
-before_script:
-  - cd ${TRAVIS_BUILD_DIR} && cd build
-  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=`[ "$TRAVIS_COMPILER" = "gcc" ] && echo true || echo false`
-  - cmake --build .
-
-script:
-  - cd ${TRAVIS_BUILD_DIR} && cd build
-  - ctest
-
-after_script:
-  - "
-    [ \"$TRAVIS_COMPILER\" = \"gcc\" ] && 
-    cd ${TRAVIS_BUILD_DIR} && 
-    cd build && 
-    make cov-proc && 
-    bash <(curl -s https://codecov.io/bash) -f coverage.info
-    "
+    - name: "clang++"
+      before_install:
+        # next line should be removed once boost ubuntu package catches up
+        - sudo add-apt-repository -y ppa:mhier/libboost-latest
+        - sudo apt-get update
+      install:
+        - sudo apt-get install libboost1.74-dev # see previous comment
+        # - sudo apt-get install -y libboost-test-dev
+        - sudo apt-get install -y    # c++ 20 features
+        # clang++ relies on g++'s headers (for some strange reason)
+        - sudo apt-get install -y g++-10
+      before_script:
+        - cd ${TRAVIS_BUILD_DIR} && cd build
+        - cmake .. -DBUILD_TESTING=true -DCMAKE_C_COMPILER=clang-12 -DCMAKE_CXX_COMPILER=clang++-12
+        - cmake --build .
+      script:
+        - cd ${TRAVIS_BUILD_DIR} && cd build
+        - ctest
