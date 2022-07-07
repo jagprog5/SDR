@@ -15,8 +15,8 @@ def link(link_command_path: str):
         if command[i] == "-fprofile-generate":
             del command[i]
     # run it
-    p = subprocess.run(command, stderr=subprocess.PIPE, text=True)
-    print(p.stderr, end='')
+    p = subprocess.run(command, stderr=subprocess.PIPE)
+    print(p.stderr.decode(), end='')
     if p.returncode != 0:
         print("FAILED to link for pgo")
         print(command)

@@ -20,8 +20,8 @@ def compile(compile_commands_path: str, file_path: str):
                 if command[i] == "-fprofile-generate":
                     command[i] = "-fprofile-use"
             # run it
-            p = subprocess.run(command, stderr=subprocess.PIPE, text=True)
-            print(p.stderr, end='')
+            p = subprocess.run(command, stderr=subprocess.PIPE)
+            print(p.stderr.decode(), end='')
             if p.returncode != 0:
                 print("FAILED to compile \"" + file_path + "\" for pgo")
                 print(command)
