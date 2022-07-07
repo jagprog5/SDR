@@ -40,7 +40,7 @@ jobs:
       install:
         - sudo apt-get install libboost1.73-dev # see previous comment
         # - sudo apt-get install -y libboost-test-dev
-        - sudo apt-get install -y    # c++ 20 features
+        - sudo apt-get install -y clang-10 # c++ 20 features
         # clang++ relies on g++'s headers (for some strange reason)
         - sudo apt-get install -y g++-10
       before_script:
