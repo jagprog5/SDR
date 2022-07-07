@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 project(sparse_distributed_representation)
 
@@ -52,8 +52,7 @@ if(BUILD_TESTING)
   endif()
   
   # unit tests
-  set(BOOST_MIN_VERSION "1.63.0")
-  find_package(Boost REQUIRED COMPONENTS unit_test_framework)
+  find_package(Boost REQUIRED 1.73.0 COMPONENTS unit_test_framework)
   add_executable(test_sdr src/test.cpp)
   target_compile_options(test_sdr PRIVATE -Wall -Wextra -Ofast)
   target_link_libraries(test_sdr PRIVATE ${PROJECT_NAME}_lib ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
