@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.12)
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 20)
 endif()
@@ -52,7 +52,17 @@ if(BUILD_TESTING)
   endif()
   
   # unit tests
-  find_package(Boost REQUIRED 1.73.0 COMPONENTS unit_test_framework)
+  find_package(Boost REQUIRED COMPONENTS unit_test_framework)
+
+  # check minimum version >=1.73, since that's when boost test supports c++20
+  if(${Boost_MAJOR_VERSION} LESS 1)
+    message(FATAL_ERROR "boost major version must be >= 1")
+  endif()
+
+  if(${Boost_MINOR_VERSION} LESS 73)
+    message(FATAL_ERROR "boost minor version must be >= 73")
+  endif()
+  
   add_executable(test_sdr src/test.cpp)
   target_compile_options(test_sdr PRIVATE -Wall -Wextra -Ofast)
   target_link_libraries(test_sdr PRIVATE ${PROJECT_NAME}_lib ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
