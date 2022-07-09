@@ -122,7 +122,7 @@ if(BUILD_TESTING)
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       set(GCOV_TOOL_OPTION "--gcov-tool")
-      set(GCOV_TOOL_VALUE "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/llvm-gcov.sh")
+      set(GCOV_TOOL_VALUE "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/llvm_gcov.sh")
     endif()
 
     add_custom_target(cov-proc
@@ -136,7 +136,7 @@ if(BUILD_TESTING)
     add_custom_target(cov-show
       DEPENDS cov-proc
       COMMAND genhtml "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
-      COMMAND xdg-open "${CMAKE_CURRENT_BINARY_DIR}/index.html"
+      COMMAND sensible-browser "${CMAKE_CURRENT_BINARY_DIR}/index.html"
     )
 
   endif()
@@ -170,7 +170,7 @@ if(BUILD_TESTING)
       # generate "build/compile_commands.json"
       COMMAND cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=true
 
-      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_proc_data.sh" "${CMAKE_CXX_COMPILER_VERSION}"
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_proc_data.sh"
 
       # run the scipt that rebuilds the object file, but it instead reads the profile instead of generating it
       COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_compile.py" "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" "${CMAKE_CURRENT_SOURCE_DIR}/src/fuzz.cpp"
