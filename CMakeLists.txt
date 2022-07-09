@@ -129,17 +129,13 @@ if(BUILD_TESTING)
       COMMAND ctest -j "${CMAKE_CURRENT_BINARY_DIR}"
     )
 
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      set(GCOV_TOOL_OPTION "--gcov-tool")
-      set(GCOV_TOOL_VALUE "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/llvm-gcov.sh")
-    endif()
-
     add_custom_target(cov-proc
       # the tests must be run before the coverage can be processed
       DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/fuzz_sdr.dir/src/fuzz.cpp.gcda
       DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/test_sdr.dir/src/test.cpp.gcda
 
-      COMMAND lcov "${GCOV_TOOL_OPTION}" "${GCOV_TOOL_VALUE}" --capture --directory "${CMAKE_CURRENT_SOURCE_DIR}" --base-directory "${CMAKE_CURRENT_SOURCE_DIR}/include" --no-external --output-file "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
+      # uses lcov with the proper gcov or llvm-cov tool
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/cov_proc.sh" "${CMAKE_CXX_COMPILER_ID}" "${CMAKE_CXX_COMPILER_VERSION}"
     )
 
     add_custom_target(cov-show
@@ -179,7 +175,7 @@ if(BUILD_TESTING)
       # generate "build/compile_commands.json"
       COMMAND cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=true
 
-      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_proc_data.sh" "${CMAKE_CXX_COMPILER_VERSION}"
+      COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_proc_data.sh" "${CMAKE_CXX_COMPILER_ID}" "${CMAKE_CXX_COMPILER_VERSION}"
 
       # run the scipt that rebuilds the object file, but it instead reads the profile instead of generating it
       COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_compile.py" "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" "${CMAKE_CURRENT_SOURCE_DIR}/src/fuzz.cpp"
