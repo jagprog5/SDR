@@ -329,23 +329,28 @@ class SDR {
         template<typename T = container_t, typename E>
         void push_back(E&& i);
 
+        // calls insert on the underlying container
+        // assert checks that the inserted element is in order and with no duplicates
+        template<typename T = container_t, typename E>
+        const_iterator insert(const_iterator position, E&& i);
+
         // calls pop_front on the forward_list underlying container
         // assertion checks not empty
         template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, void>::type pop_front();
+        void pop_front();
 
         // calls push_front on the forward_list underlying container
         // assertion checks that the inserted element is in order and with no duplicates
         template<typename T = container_t, typename E>
-        typename std::enable_if<isForwardList<T>::value, void>::type push_front(E&& i);
+        void push_front(E&& i);
 
         template<typename T = container_t>
-        typename std::enable_if<isForwardList<T>::value, const_iterator>::type before_begin() { return v.before_begin(); }
+        const_iterator before_begin() { return v.before_begin(); }
 
         // calls insert_after on the forward_list underlying container
         // assertion checks that the inserted element is in order and with no duplicates
         template<typename T = container_t, typename E>
-        typename std::enable_if<isForwardList<T>::value, const_iterator>::type insert_after(const_iterator pos, E&& i);
+        const_iterator insert_after(const_iterator pos, E&& i);
 
         template<typename SDRElem_t_inner, typename container_t_inner>
         friend std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t_inner, container_t_inner>& sdr);
@@ -1445,15 +1450,24 @@ void SDR<SDRElem_t, container_t>::push_back(E&& i) {
     SDRElem_t elem = SDRElem_t(i);
     assert(v.empty() || v.crbegin()->id() < elem.id());
     if constexpr(usesVector) {
-        v.push_back(elem);
+        v.push_back(i);
     } else {
-        v.insert(v.end(), elem);
+        v.insert(v.end(), i);
     }
 }
 
 template<typename SDRElem_t, typename container_t>
+template<typename T, typename E>
+typename container_t::const_iterator SDR<SDRElem_t, container_t>::insert(const_iterator position, E&& i) {
+    SDRElem_t elem = SDRElem_t(i);
+    assert(position == cend() || elem.id() < position->id());
+    assert(position == cbegin() || elem.id() > std::prev(position)->id());
+    return v.insert(position, i);
+}
+
+template<typename SDRElem_t, typename container_t>
 template<typename T>
-typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDRElem_t, container_t>::pop_front() {
+void SDR<SDRElem_t, container_t>::pop_front() {
     assert(!v.empty());
     v.pop_front();
     --maybe_size.size;
@@ -1461,22 +1475,22 @@ typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDRElem_t, cont
 
 template<typename SDRElem_t, typename container_t>
 template<typename T, typename E>
-typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDRElem_t, container_t>::push_front(E&& i)  {
+void SDR<SDRElem_t, container_t>::push_front(E&& i)  {
     SDRElem_t elem = SDRElem_t(i);
     assert(v.empty() || v.cbegin()->id() > elem.id());
     ++maybe_size.size;
-    v.push_front(elem);
+    v.push_front(i);
 }
 
 template<typename SDRElem_t, typename container_t>
 template<typename T, typename E>
-typename std::enable_if<isForwardList<T>::value, typename container_t::const_iterator>::type SDR<SDRElem_t, container_t>::insert_after(const_iterator pos, E&& i) {
+typename container_t::const_iterator SDR<SDRElem_t, container_t>::insert_after(const_iterator pos, E&& i) {
     SDRElem_t elem = SDRElem_t(i);
     assert(pos == before_begin() || elem.id() > pos->id());
-    auto ret = v.insert_after(pos, elem);
-    ++maybe_size.size;
-    auto next = std::next(ret);
+    auto next = std::next(pos);
     assert(next == cend() || elem.id() < next->id());
+    auto ret = v.insert_after(pos, i);
+    ++maybe_size.size;
     return ret;
 }
 
