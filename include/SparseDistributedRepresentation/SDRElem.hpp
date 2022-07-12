@@ -23,7 +23,8 @@ class SDRElem {
         using id_type = id_t;
         using data_type = data_t;
 
-        constexpr SDRElem(id_t id, data_t data) : id_(id), data_(data) {}
+        constexpr SDRElem(id_t id, const data_t& data) : id_(id), data_(data) {}
+        constexpr SDRElem(id_t id, data_t&& data) : id_(id), data_(data) {}
         constexpr SDRElem(id_t id) : id_(id), data_() {}
         constexpr SDRElem() : id_(), data_() {}
         constexpr SDRElem(const SDRElem& o) : id_(o.id()), data_(o.data()) {}

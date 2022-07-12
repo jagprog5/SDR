@@ -25,23 +25,23 @@ class EmptyData {
 
         // for compatibility with other data types
         template<typename T>
-        explicit constexpr operator T() const { return T(); }
+        explicit constexpr operator T() const { std::cerr << "T\n"; return T(); }
 
-        constexpr EmptyData ande(const EmptyData&) const {
-            return EmptyData();
-        }
+        constexpr EmptyData ande(const EmptyData&) const { return EmptyData(); }
 
-        constexpr EmptyData ore(const EmptyData&) const {
-            return EmptyData();
-        }
+        constexpr EmptyData& andi(const EmptyData&) { return *this; }
 
-        constexpr EmptyData xore(const EmptyData&) const {
-            return EmptyData();
-        }
+        constexpr EmptyData ore(const EmptyData&) const { return EmptyData(); }
 
-        constexpr EmptyData rme(const EmptyData&) const {
-            return EmptyData();
-        }
+        constexpr EmptyData& ori(const EmptyData&) { return *this; }
+
+        constexpr EmptyData xore(const EmptyData&) const { return EmptyData(); }
+
+        constexpr EmptyData& xori(const EmptyData&) { return *this; }
+
+        constexpr EmptyData rme(const EmptyData&) const { return EmptyData(); }
+
+        constexpr EmptyData& rmi(const EmptyData&) { return *this; }
 
         template<typename T>
         constexpr bool operator==(const T&) const {

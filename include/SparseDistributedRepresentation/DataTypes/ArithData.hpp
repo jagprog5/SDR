@@ -27,11 +27,25 @@ class ArithData {
         explicit constexpr operator T() const { return T(value); }
 
         constexpr ArithData ande(const ArithData& o) const {
-            return ArithData(this->value() * o.value());
+            ArithData r(*this);
+            r.andi(o); // reusing andi
+            return r;
+        }
+        
+        constexpr ArithData& andi(const ArithData& o) {
+            value_ *= o.value();
+            return *this;
         }
 
         constexpr ArithData ore(const ArithData& o) const {
-            return ArithData(this->value() + o.value());
+            ArithData r(*this);
+            r.ori(o); // reusing ori
+            return r;
+        }
+        
+        constexpr ArithData& ori(const ArithData& o) {
+            value_ += o.value();
+            return *this;
         }
 
         // xor doesn't make sense in this context
@@ -44,7 +58,14 @@ class ArithData {
         }
 
         constexpr ArithData rme(const ArithData& o) const {
-            return ArithData(value() - o.value());
+            ArithData r(*this);
+            r.rmi(o); // reusing rmi
+            return r;
+        }
+        
+        constexpr ArithData& rmi(const ArithData& o) {
+            value_ -= o.value();
+            return *this;
         }
 
         template<typename T>

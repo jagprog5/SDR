@@ -25,20 +25,48 @@ class UnitData {
         template<typename T>
         explicit constexpr operator T() const { return T(value); }
     
-        UnitData ande(const UnitData& o) const {
-            return UnitData(value() * o.value());
+        constexpr UnitData ande(const UnitData& o) const {
+            UnitData r(*this);
+            r.andi(o); // reusing andi
+            return r;
+        }
+        
+        constexpr UnitData& andi(const UnitData& o) {
+            value_ *= o.value();
+            return *this;
         }
 
         constexpr UnitData ore(const UnitData& o) const {
-            return UnitData(value() > o.value() ? value() : o.value());
+            UnitData r(*this);
+            r.ori(o); // reusing ori
+            return r;
+        }
+
+        constexpr UnitData& ori(const UnitData& o) {
+            value_ = value_ > o.value() ? value_ : o.value();
+            return *this;
         }
 
         constexpr UnitData xore(const UnitData& o) const {
-            return UnitData(std::abs(value() - o.value()));
+            UnitData r(*this);
+            r.xori(o); // reusing xori
+            return r;
+        }
+
+        constexpr UnitData& xori(const UnitData& o) {
+            value_ = std::abs(value_ - o.value());
+            return *this;
         }
 
         constexpr UnitData rme(const UnitData& o) const {
-            return UnitData(value() * (1 - o.value()));
+            UnitData r(*this);
+            r.rmi(o); // reusing rmi
+            return r;
+        }
+
+        constexpr UnitData& rmi(const UnitData& o) {
+            value_ = value_ * (1 - o.value());
+            return *this;
         }
 
         template<typename T>

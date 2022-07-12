@@ -389,10 +389,6 @@ class SDR {
         template<typename other>
         auto operator&=(other&& o) { return andi(o); }
         template<typename other>
-        auto operator*(other&& o) const { return ande(o); }
-        template<typename other>
-        auto operator*=(other&& o) { return andi(o); }
-        template<typename other>
         auto operator|(other&& o) const { return ore(o); }
         template<typename other>
         auto operator||(other&& o) const { return ors(o); }
@@ -402,10 +398,6 @@ class SDR {
         auto operator^(other&& o) const { return xore(o); }
         template<typename other>
         auto operator^=(other&& o) { return xori(o); }
-        template<typename other>
-        auto operator+(other&& o) const { return ore(o); }
-        template<typename other>
-        auto operator+=(other&& o) { return ori(o); }
         template<typename other>
         auto operator-(other&& o) const { return rme(o); }
         template<typename other>
@@ -816,36 +808,36 @@ void SDR<SDRElem_t, container_t>::andv(SDR<arg_t, c_arg_t>& arg, Visitor visitor
     auto this_end = this->v.end();
     auto arg_pos = arg.v.begin();
     auto arg_end = arg.v.end();
-    SDRElem_t this_elem;
-    [[maybe_unused]] arg_t arg_elem;
+    const SDRElem_t* this_elem;
+    [[maybe_unused]] const arg_t* arg_elem;
 
     if (this_pos == this_end) return;
     while (true) {
         // get an element in this
-        this_elem = *this_pos;
+        this_elem = &*this_pos;
         // try to find the matching element in the arg
         if constexpr(isSet<c_arg_t>::value) {
-            arg_pos = arg.v.lower_bound(this_elem.id());
+            arg_pos = arg.v.lower_bound(this_elem->id());
         } else {
-            arg_pos = std::lower_bound(arg_pos, arg_end, this_elem.id());
+            arg_pos = std::lower_bound(arg_pos, arg_end, this_elem->id());
         }
         if (arg_pos == arg_end) return;
         // if the elements are equal, call the visitor
-        if (*arg_pos == this_elem) {
+        if (*arg_pos == *this_elem) {
             visitor(this_pos++, arg_pos++);
             if (arg_pos == arg_end) return;
         } else {
             ++this_pos;
         }
         // the rest of this is all of the above, except with this and arg swapped
-        arg_elem = *arg_pos;
+        arg_elem = &*arg_pos;
         if constexpr(usesSet) {
-            this_pos = this->v.lower_bound(arg_elem.id());
+            this_pos = this->v.lower_bound(arg_elem->id());
         } else {
-            this_pos = std::lower_bound(this_pos, this_end, arg_elem.id());
+            this_pos = std::lower_bound(this_pos, this_end, arg_elem->id());
         }
         if (this_pos == this_end) return;
-        if (*this_pos == arg_elem) {
+        if (*this_pos == *arg_elem) {
             visitor(this_pos++, arg_pos++);
             if (this_pos == this_end) return;
         } else {
@@ -863,19 +855,22 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
     if constexpr(isForwardList<c_ret_t>::value) {
         it = r.v.before_begin();
         visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            auto data = (typename ret_t::data_type)this_pos->data().ande((typename SDRElem_t::data_type)arg_pos->data());
+            auto data = (typename ret_t::data_type)this_pos->data().ande((const typename SDRElem_t::data_type&)arg_pos->data());
             if (data.relevant()) {
                 ++r.maybe_size.size;
-                ret_t elem(this_pos->id(), data);
-                it = r.v.insert_after(it, elem);
+                ret_t elem(this_pos->id(), std::move(data));
+                it = r.v.insert_after(it, std::move(elem));
             }
         };
     } else {
         visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            auto data = (typename ret_t::data_type)this_pos->data().ande((typename SDRElem_t::data_type)arg_pos->data());
+            auto data = (typename ret_t::data_type)this_pos->data().ande((const typename SDRElem_t::data_type&)arg_pos->data());
+            std::cerr << (typename SDRElem_t::data_type)arg_pos->data() << std::endl;
+            std::cerr << "=======\n";
+            std::cerr << (const typename SDRElem_t::data_type&)arg_pos->data() << std::endl;
             if (data.relevant()) {
-                ret_t elem(this_pos->id(), data);
-                r.push_back(elem);
+                ret_t elem(this_pos->id(), std::move(data));
+                r.push_back(std::move(elem));
             }
         };
     }
@@ -889,10 +884,12 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const SDR<arg_t, 
     if constexpr(usesVector) {
         auto pos = this->v.begin();
         auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            auto data = this_pos->data().ande((typename SDRElem_t::data_type)arg_pos->data());
+            // TODO consider expanding data::andi to allow different types. instead of a vector type cast here, it should cast each vec element
+            // requires some rethinking
+            const typename SDRElem_t::data_type& data = this_pos->data().andi((const typename SDRElem_t::data_type&)arg_pos->data());
             if (data.relevant()) {
-                SDRElem_t elem(this_pos->id(), data);
-                *pos++ = elem;
+                SDRElem_t elem(this_pos->id(), std::move(data));
+                *pos++ = std::move(elem);
             }
         };
         andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), visitor);
