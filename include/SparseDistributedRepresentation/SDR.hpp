@@ -334,6 +334,14 @@ class SDR {
         template<typename T = container_t, typename E>
         const_iterator insert(const_iterator position, E&& i);
 
+        // calls erase on the underlying container
+        template<typename T = container_t>
+        const_iterator erase(const_iterator position) { v.erase(position); };
+
+        // calls erase on the underlying container
+        template<typename T = container_t>
+        const_iterator erase(const_iterator first, const_iterator last) { v.erase(first, last); };
+
         // calls pop_front on the forward_list underlying container
         // assertion checks not empty
         template<typename T = container_t>
@@ -352,11 +360,28 @@ class SDR {
         template<typename T = container_t, typename E>
         const_iterator insert_after(const_iterator pos, E&& i);
 
+        // calls erase_after on the forward_list underlying container
+        template<typename T = container_t>
+        const_iterator erase_after(const_iterator pos) {
+            this->maybe_size.size -= 1;
+            return v.erase_after(pos);
+        }
+
+        // calls erase_after on the forward_list underlying container
+        template<typename T = container_t>
+        const_iterator erase_after(const_iterator first, const_iterator last) {
+            while (first != last) {
+                this->maybe_size.size -= 1;
+                v.erase_after(first++);
+            }
+            return last;
+        }
+
         template<typename SDRElem_t_inner, typename container_t_inner>
         friend std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t_inner, container_t_inner>& sdr);
 
         template<typename other>
-        auto operator&(other&& o) { return ande(o); }
+        auto operator&(other&& o) { return ande(o); } // non-const version for ande(id_type)
         template<typename other>
         auto operator&(other&& o) const { return ande(o); }
         template<typename other>
@@ -393,6 +418,10 @@ class SDR {
         auto operator<<=(other&& o) { return shift(o); }
         template<typename other>
         auto operator>>=(other&& o) { return shift(-o); }
+        
+        template<typename other>
+        auto operator[](other&& o) const { return ande(o); }
+
 
         template<typename arg_t, typename c_arg_t>
         auto operator==(const SDR<arg_t, c_arg_t>& other) const {
@@ -1510,5 +1539,8 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t, container_t>& sd
     os << ']';
     return os;
 }
+
+template <typename sv_t = float>
+using SparseVector = SDR<SDRElem<unsigned int, sv_t>>;
 
 } // namespace sparse_distributed_representation

@@ -15,6 +15,9 @@ def compile(compile_commands_path: str, file_path: str):
     for elem in content:
         if elem["file"] == file_path:
             command = elem["command"]
+            # at this point command looks like:
+            # /usr/bin/g++-7   -I/home/john/Documents/SDR/include    -Wall -Wextra -Ofast -fprofile-generate -std=gnu++1z -o CMakeFiles/fuzz_sdr.dir/src/fuzz.cpp.o -c /home/john/Documents/SDR/src/fuzz.cpp
+            # shlex is required to be robust against weirdly named files
             command = shlex.split(command)
             for i in range(len(command)):
                 if command[i] == "-fprofile-generate":
