@@ -865,9 +865,9 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
     } else {
         visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = (typename ret_t::data_type)this_pos->data().ande((const typename SDRElem_t::data_type&)arg_pos->data());
-            std::cerr << (typename SDRElem_t::data_type)arg_pos->data() << std::endl;
-            std::cerr << "=======\n";
-            std::cerr << (const typename SDRElem_t::data_type&)arg_pos->data() << std::endl;
+            // std::cerr << (typename SDRElem_t::data_type)arg_pos->data() << std::endl;
+            // std::cerr << "=======\n";
+            // std::cerr << (const typename SDRElem_t::data_type&)arg_pos->data() << std::endl;
             if (data.relevant()) {
                 ret_t elem(this_pos->id(), std::move(data));
                 r.push_back(std::move(elem));

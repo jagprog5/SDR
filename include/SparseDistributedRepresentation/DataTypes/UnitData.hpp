@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SparseDistributedRepresentation/Templates.hpp"
+
 namespace sparse_distributed_representation {
 
 // this is the data_type for an SDRElem which stores an element from 0 to 1.
@@ -21,57 +23,69 @@ class UnitData {
             return relevant();
         }
 
-        // for compatibility with other data types
         template<typename T>
-        explicit constexpr operator T() const { return T(value); }
-    
-        constexpr UnitData ande(const UnitData& o) const {
+        constexpr UnitData ande(const T& o) const {
             UnitData r(*this);
             r.andi(o); // reusing andi
             return r;
         }
         
-        constexpr UnitData& andi(const UnitData& o) {
-            value_ *= o.value();
+        template<typename T>
+        constexpr UnitData& andi(const T& o) {
+            // EmptyData lacks a value() function
+            if constexpr(hasValue<T>::value) {
+                value_ *= o.value();
+            }
             return *this;
         }
 
-        constexpr UnitData ore(const UnitData& o) const {
+        template<typename T>
+        constexpr UnitData ore(const T& o) const {
             UnitData r(*this);
             r.ori(o); // reusing ori
             return r;
         }
 
-        constexpr UnitData& ori(const UnitData& o) {
-            value_ = value_ > o.value() ? value_ : o.value();
+        template<typename T>
+        constexpr UnitData& ori(const T& o) {
+            if constexpr(hasValue<T>::value) {
+                value_ = value_ > o.value() ? value_ : o.value();
+            }
             return *this;
         }
 
-        constexpr UnitData xore(const UnitData& o) const {
+        template<typename T>
+        constexpr UnitData xore(const T& o) const {
             UnitData r(*this);
             r.xori(o); // reusing xori
             return r;
         }
 
-        constexpr UnitData& xori(const UnitData& o) {
-            value_ = std::abs(value_ - o.value());
+        template<typename T>
+        constexpr UnitData& xori(const T& o) {
+            if constexpr(hasValue<T>::value) {
+                value_ = std::abs(value_ - o.value());
+            }
             return *this;
         }
 
-        constexpr UnitData rme(const UnitData& o) const {
+        template<typename T>
+        constexpr UnitData rme(const T& o) const {
             UnitData r(*this);
             r.rmi(o); // reusing rmi
             return r;
         }
 
-        constexpr UnitData& rmi(const UnitData& o) {
-            value_ = value_ * (1 - o.value());
+        template<typename T>
+        constexpr UnitData& rmi(const T& o) {
+            if constexpr(hasValue<T>::value) {
+                value_ = value_ * (1 - o.value());
+            }
             return *this;
         }
 
-        template<typename T>
-        constexpr bool operator==(const T& o) const {
-            return value() == (UnitData(o)).value();
+        constexpr bool operator==(const UnitData& o) const {
+            return value() == o.value();
         }
 
     private:

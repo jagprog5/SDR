@@ -3,15 +3,11 @@
 namespace sparse_distributed_representation {
 
 class EmptyData {
+    // this is the data_type for a default SDRElem
+    // it disables the data functionality
+
     public:
-        // this is the data_type for a default SDRElem
-        // it disables the data functionality
-
         constexpr EmptyData() : unused() {}
-
-        // for compatibility with other data types
-        template<typename T>
-        constexpr EmptyData(T) : unused() {}
 
         constexpr bool relevant() const {
             // if any element is combined with this one, then it is in the result
@@ -23,25 +19,29 @@ class EmptyData {
             return false;
         }
 
-        // for compatibility with other data types
         template<typename T>
-        explicit constexpr operator T() const { std::cerr << "T\n"; return T(); }
+        constexpr EmptyData ande(const T&) const { return EmptyData(); }
 
-        constexpr EmptyData ande(const EmptyData&) const { return EmptyData(); }
+        template<typename T>
+        constexpr EmptyData& andi(const T&) { return *this; }
 
-        constexpr EmptyData& andi(const EmptyData&) { return *this; }
+        template<typename T>
+        constexpr EmptyData ore(const T&) const { return EmptyData(); }
 
-        constexpr EmptyData ore(const EmptyData&) const { return EmptyData(); }
+        template<typename T>
+        constexpr EmptyData& ori(const T&) { return *this; }
 
-        constexpr EmptyData& ori(const EmptyData&) { return *this; }
+        template<typename T>
+        constexpr EmptyData xore(const T&) const { return EmptyData(); }
 
-        constexpr EmptyData xore(const EmptyData&) const { return EmptyData(); }
+        template<typename T>
+        constexpr EmptyData& xori(const T&) { return *this; }
 
-        constexpr EmptyData& xori(const EmptyData&) { return *this; }
+        template<typename T>
+        constexpr EmptyData rme(const T&) const { return EmptyData(); }
 
-        constexpr EmptyData rme(const EmptyData&) const { return EmptyData(); }
-
-        constexpr EmptyData& rmi(const EmptyData&) { return *this; }
+        template<typename T>
+        constexpr EmptyData& rmi(const T&) { return *this; }
 
         template<typename T>
         constexpr bool operator==(const T&) const {

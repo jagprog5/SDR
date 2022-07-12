@@ -22,29 +22,33 @@ class ArithData {
             return relevant();
         }
 
-        // for compatibility with other data types
         template<typename T>
-        explicit constexpr operator T() const { return T(value); }
-
-        constexpr ArithData ande(const ArithData& o) const {
+        constexpr ArithData ande(const T& o) const {
             ArithData r(*this);
             r.andi(o); // reusing andi
             return r;
         }
         
-        constexpr ArithData& andi(const ArithData& o) {
-            value_ *= o.value();
+        template<typename T>
+        constexpr ArithData& andi(const T& o) {
+            if constexpr(hasValue<T>::value) {
+                value_ *= o.value();
+            }
             return *this;
         }
 
-        constexpr ArithData ore(const ArithData& o) const {
+        template<typename T>
+        constexpr ArithData ore(const T& o) const {
             ArithData r(*this);
             r.ori(o); // reusing ori
             return r;
         }
         
-        constexpr ArithData& ori(const ArithData& o) {
-            value_ += o.value();
+        template<typename T>
+        constexpr ArithData& ori(const T& o) {
+            if constexpr(hasValue<T>::value) {
+                value_ += o.value();
+            }
             return *this;
         }
 
@@ -57,20 +61,23 @@ class ArithData {
             return *this;
         }
 
-        constexpr ArithData rme(const ArithData& o) const {
+        template<typename T>
+        constexpr ArithData rme(const T& o) const {
             ArithData r(*this);
             r.rmi(o); // reusing rmi
             return r;
         }
         
-        constexpr ArithData& rmi(const ArithData& o) {
-            value_ -= o.value();
+        template<typename T>
+        constexpr ArithData& rmi(const T& o) {
+            if constexpr(hasValue<T>::value) {
+                value_ -= o.value();
+            }
             return *this;
         }
 
-        template<typename T>
-        constexpr bool operator==(const T& o) const {
-            return value() == ((ArithData)o).value();
+        constexpr bool operator==(const ArithData& o) const {
+            return value() == o.value();
         }
 
     private:
