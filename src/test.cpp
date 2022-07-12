@@ -133,22 +133,6 @@ BOOST_AUTO_TEST_CASE(append) {
   BOOST_REQUIRE_EQUAL(a2, (SDR{1, 2, 3, 4, 5, 6}));
 }
 
-BOOST_AUTO_TEST_CASE(map_op) {
-  // GETTERS
-  {
-    SDR a{0};
-    // [] can act as a getter.
-    BOOST_REQUIRE_NE(a[0], nullptr);
-    BOOST_REQUIRE_EQUAL(a[1], nullptr);
-
-    SDR<SDRElem<int, UnitData>> b{SDRElem<int, UnitData>(0, UnitData(0.5))};
-    BOOST_REQUIRE_EQUAL(*b[0], UnitData(0.5));
-    BOOST_REQUIRE_EQUAL(b[1], nullptr);
-  }
-
-  // SETTERS
-}
-
 BOOST_AUTO_TEST_CASE(sample) {
   // this seed happens to fully cover sample
   std::mt19937 twister(3334);

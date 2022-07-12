@@ -419,10 +419,6 @@ class SDR {
         template<typename other>
         auto operator>>=(other&& o) { return shift(-o); }
         
-        template<typename other>
-        auto operator[](other&& o) const { return ande(o); }
-
-
         template<typename arg_t, typename c_arg_t>
         auto operator==(const SDR<arg_t, c_arg_t>& other) const {
             auto this_pos = this->cbegin();
