@@ -1,13 +1,17 @@
 #pragma once
 
-#include <functional>
 #include "SparseDistributedRepresentation/Templates.hpp"
+#include <functional>
+#include <iostream>
 
 namespace sparse_distributed_representation {
+
+class EmptyData;
 
 template<typename arith_t = float>
 class ArithData {
     public:
+        constexpr ArithData(EmptyData) : ArithData() {}
         constexpr ArithData() : value_(0) {}
         constexpr ArithData(float value) : value_(value) {}
 
@@ -22,11 +26,11 @@ class ArithData {
             return relevant();
         }
 
-        template<typename T>
-        constexpr ArithData ande(const T& o) const {
+        template<typename ret_t = ArithData, typename T>
+        constexpr ret_t ande(const T& o) const {
             ArithData r(*this);
             r.andi(o); // reusing andi
-            return r;
+            return ret_t(r);
         }
         
         template<typename T>
@@ -38,10 +42,17 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr ArithData ore(const T& o) const {
+        constexpr bool ands(const T& o) const {
+            // shortened from:
+            // return ande(o).relevant();
+            return relevant();
+        }
+
+        template<typename ret_t = ArithData, typename T>
+        constexpr ret_t ore(const T& o) const {
             ArithData r(*this);
             r.ori(o); // reusing ori
-            return r;
+            return ret_t(r);
         }
         
         template<typename T>
@@ -50,6 +61,11 @@ class ArithData {
                 value_ += o.value();
             }
             return *this;
+        }
+
+        template<typename T>
+        constexpr bool ors(const T& o) const {
+            return relevant();
         }
 
         // xor doesn't make sense in this context
@@ -61,11 +77,11 @@ class ArithData {
             return *this;
         }
 
-        template<typename T>
-        constexpr ArithData rme(const T& o) const {
+        template<typename ret_t = ArithData, typename T>
+        constexpr ret_t rme(const T& o) const {
             ArithData r(*this);
             r.rmi(o); // reusing rmi
-            return r;
+            return ret_t(r);
         }
         
         template<typename T>
@@ -74,6 +90,11 @@ class ArithData {
                 value_ -= o.value();
             }
             return *this;
+        }
+
+        template<typename T>
+        constexpr bool rms(const T& o) const {
+            return rm_relevant();
         }
 
         constexpr bool operator==(const ArithData& o) const {

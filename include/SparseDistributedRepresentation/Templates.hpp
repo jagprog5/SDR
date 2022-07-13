@@ -11,7 +11,7 @@ template<typename T, typename = void>
 struct hasValue : std::false_type {};
 
 template<typename T>
-struct hasValue<T, decltype((void)T().size(), void())> : std::true_type {};
+struct hasValue<T, decltype((void)T().value(), void())> : std::true_type {};
 
 // if the underlying container does not have a size, then declare a size member
 template<typename container_t, typename = void>
@@ -21,15 +21,6 @@ struct MaybeSize {
 
 template<typename container_t>
 struct MaybeSize<container_t, decltype((void)container_t().size(), void())> {};
-
-template<bool is_forward, typename T>
-struct lesser_or_greater;
-
-template<typename T>
-struct lesser_or_greater<true, T> : std::less<T> {};
-
-template<typename T>
-struct lesser_or_greater<false, T> : std::greater<T> {};
 
 // the below template is specific to stl containers only.
 // in an effort to keep things generic, the presence or lack of certain members is checked for instead
