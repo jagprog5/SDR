@@ -471,6 +471,10 @@ class SDR {
 
         template<typename friend_SDRElem_t, typename friend_container_t>
         friend class SDR;
+
+        // relevance is needed for interface compatability between SDRs and SDRElem::data_type
+        bool relevant() const { return !empty(); }
+        bool rm_relevant() const { return relevant(); }
 };
 
 template<typename SDRElem_t, typename container_t>
@@ -864,6 +868,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
         };
     } else {
         visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+            // TODO define AND between a column and EmptyData
             auto data = this_pos->data().template ande<typename ret_t::data_type>(arg_pos->data());
             if (data.relevant()) {
                 ret_t elem(this_pos->id(), std::move(data));

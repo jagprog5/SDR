@@ -68,15 +68,6 @@ class ArithData {
             return relevant();
         }
 
-        // xor doesn't make sense in this context
-        // instead we have divide
-        constexpr auto operator/(const ArithData& o) const { return value() / o.value(); }
-
-        constexpr ArithData& operator/=(const ArithData& o) {
-            value_ /= o.value();
-            return *this;
-        }
-
         template<typename ret_t = ArithData, typename T>
         constexpr ret_t rme(const T& o) const {
             ArithData r(*this);
@@ -136,7 +127,7 @@ SDR<SDRElem<ret_id_t, ArithData<ret_arith_t>>, c_ret_t> divide(const SDR<SDRElem
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // no relevance check since ArithData is always relevant
-            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data() / arg_pos->data());
+            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data().value() / arg_pos->data().value());
             it = r.insert_after(it, elem);
         };
 
@@ -147,7 +138,7 @@ SDR<SDRElem<ret_id_t, ArithData<ret_arith_t>>, c_ret_t> divide(const SDR<SDRElem
         };
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data() / arg_pos->data());
+            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data().value() / arg_pos->data().value());
             r.push_back(elem);
         };
     }
@@ -164,7 +155,7 @@ SDR<SDRElem<id_t, ArithData<arith_t>>, container_t> operator/(const SDR<SDRElem<
 template<typename id_t, typename container_t, typename arith_t, typename arg_id_t, typename c_arg_t, typename arg_arith_t>
 SDR<SDRElem<id_t, ArithData<arith_t>>, container_t>& operator/=(SDR<SDRElem<id_t, ArithData<arith_t>>, container_t>& a, const SDR<SDRElem<arg_id_t, ArithData<arg_arith_t>>, c_arg_t>& b) {
     auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-        this_pos->data() /= arg_pos->data();
+        this_pos->data().value(this_pos->data().value() / arg_pos->data().value());
     };
 
     a.andv(const_cast<SDR<SDRElem<arg_id_t, ArithData<arg_arith_t>>, c_arg_t>&>(b), visitor);

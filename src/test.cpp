@@ -286,4 +286,15 @@ BOOST_AUTO_TEST_CASE(test_printing) {
   std::cout.rdbuf(old_buffer); // restore
 }
 
+BOOST_AUTO_TEST_CASE(matrix_test) {
+  using Element = SDRElem<unsigned int, ArithData<>>;
+  using Column = SDRElem<unsigned int, SDR<Element>>;
+  auto column0 = Column(0, SDR<Element>{Element(0, 1.0f)});
+  auto column1 = Column(1, SDR<Element>{Element(1, 2.0f)});
+  SDR<Column> matrix{column0, column1};
+  std::cerr << matrix << '\n';
+  // std::cerr << (matrix & SDR{1}) << '\n';
+  // std::cerr << (matrix & SDR{}) << '\n';
+}
+
 BOOST_AUTO_TEST_SUITE_END()
