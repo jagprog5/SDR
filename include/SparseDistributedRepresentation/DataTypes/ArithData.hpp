@@ -42,7 +42,7 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr bool ands(const T& o) const {
+        constexpr bool ands(const T&) const {
             // shortened from:
             // return ande(o).relevant();
             return relevant();
@@ -64,7 +64,7 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr bool ors(const T& o) const {
+        constexpr bool ors(const T&) const {
             return relevant();
         }
 
@@ -84,7 +84,7 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr bool rms(const T& o) const {
+        constexpr bool rms(const T&) const {
             return rm_relevant();
         }
 

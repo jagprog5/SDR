@@ -389,6 +389,10 @@ class SDR {
         template<typename other>
         auto operator&=(other&& o) { return andi(o); }
         template<typename other>
+        auto operator*(other&& o) const { return ande(o); }
+        template<typename other>
+        auto operator*=(other&& o) { return andi(o); }
+        template<typename other>
         auto operator|(other&& o) const { return ore(o); }
         template<typename other>
         auto operator||(other&& o) const { return ors(o); }
@@ -398,6 +402,10 @@ class SDR {
         auto operator^(other&& o) const { return xore(o); }
         template<typename other>
         auto operator^=(other&& o) { return xori(o); }
+        template<typename other>
+        auto operator+(other&& o) const { return ore(o); }
+        template<typename other>
+        auto operator+=(other&& o) { return ori(o); }
         template<typename other>
         auto operator-(other&& o) const { return rme(o); }
         template<typename other>
@@ -447,22 +455,6 @@ class SDR {
         container_t v;
 
         void assert_ascending();
-
-        struct FormatText {
-            // NOLINTNEXTLINE
-            char arr[3 + (int)ceil(log10(sizeof(SDRElem_t) * 8 + 1))] = {0};
-            constexpr FormatText() {
-                int i = sizeof(arr) / sizeof(arr[0]) - 1;
-                int s = sizeof(SDRElem_t) * 8;
-                arr[i--] = '\0';
-                arr[i--] = '[';
-                do {
-                    arr[i--] = '0' + s % 10;
-                    s /= 10;
-                } while (s > 0);
-                arr[i--] = ((SDRElem_t)-1) >= 0 ? 'u' : 'i';
-            }
-        };
 
         MaybeSize<container_t> maybe_size;
 
@@ -1506,12 +1498,7 @@ typename container_t::const_iterator SDR<SDRElem_t, container_t>::insert_after(c
 
 template<typename SDRElem_t, typename container_t>
 std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t, container_t>& sdr) {
-    if constexpr(SDR<SDRElem_t, container_t>::print_type) {
-        static constexpr typename SDR<SDRElem_t, container_t>::FormatText beginning;
-        os << beginning.arr;
-    } else {
-        os << '[';
-    }
+    os << '[';
     for (auto it = sdr.cbegin(), end = sdr.cend(); it != end; ++it) { 
         const auto& i = *it;
         os << i;
