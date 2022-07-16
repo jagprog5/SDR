@@ -286,6 +286,30 @@ BOOST_AUTO_TEST_CASE(test_printing) {
   std::cout.rdbuf(old_buffer); // restore
 }
 
+BOOST_AUTO_TEST_CASE(test_dot) {
+  using Elem = SDRElem<int, ArithData<>>;
+  SDR<Elem> a{Elem(0, 0), Elem(1, 1), Elem(2, 2)};
+  SDR<Elem> b{Elem(0, 0), Elem(1, 2), Elem(2, 4)};
+  ArithData<> data = a.dot(b);
+  BOOST_REQUIRE_EQUAL(data.value(), 10);
+}
+
+BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
+  //  1 2    10   32
+  //  3 4  * 11 = 74
+
+  using Element = SDRElem<unsigned int, ArithData<>>;
+  using Column = SDRElem<unsigned int, SDR<Element>>;
+  using Matrix = SDR<Column>;
+  Column column0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
+  Column column1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
+  Matrix m{column0, column1};
+  Column input(0, SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)});
+
+  auto result = m * input;
+  std::cerr << result << '\n';
+}
+
 BOOST_AUTO_TEST_CASE(matrix_test) {
   using Element = SDRElem<unsigned int, ArithData<>>;
   using Column = SDRElem<unsigned int, SDR<Element>>;

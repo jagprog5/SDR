@@ -451,6 +451,24 @@ class SDR {
         template<typename arg_t, typename c_arg_t>
         auto operator<=(const SDR<arg_t, c_arg_t>& other) const { return !(*this > other); }
 
+        // dot product
+        template<typename arg_t, typename c_arg_t>
+        typename SDRElem_t::data_type dot(const SDR<arg_t, c_arg_t>& other) const;
+
+        /**
+         * and elements. multiply each element in this by some data.
+         */
+        SDR ande(const typename SDRElem_t::data_type& arg) const;
+        
+        /**
+         * and elements. multiply each element in this by some data.
+         */
+        SDR& andi(const typename SDRElem_t::data_type& arg);
+
+
+        // template<typename arg_t, typename c_arg_t>
+
+
     private:
         container_t v;
 
@@ -846,11 +864,11 @@ template<typename SDRElem_t, typename container_t>
 template<typename ret_t, typename c_ret_t, typename arg_t, typename c_arg_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> r;
-    std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> visitor;
+    std::function<void(iterator, typename c_arg_t::iterator)> visitor;
     [[maybe_unused]] typename c_ret_t::iterator it;
     if constexpr(isForwardList<c_ret_t>::value) {
         it = r.v.before_begin();
-        visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template ande<typename ret_t::data_type>(arg_pos->data());
             if (data.relevant()) {
                 ++r.maybe_size.size;
@@ -859,7 +877,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
             }
         };
     } else {
-        visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // TODO define AND between a column and EmptyData
             auto data = this_pos->data().template ande<typename ret_t::data_type>(arg_pos->data());
             if (data.relevant()) {
@@ -877,7 +895,7 @@ template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const SDR<arg_t, c_arg_t>& arg) {
     if constexpr(usesVector) {
         auto pos = this->v.begin();
-        auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const typename SDRElem_t::data_type& data = this_pos->data().andi(arg_pos->data());
             if (data.relevant()) {
                 SDRElem_t elem(this_pos->id(), std::move(data));
@@ -888,13 +906,13 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const SDR<arg_t, 
         this->v.resize(pos - this->v.begin());
     } else if constexpr(usesForwardList) {
         auto lagger = this->v.before_begin();
-        auto this_visitor = [&](typename container_t::iterator) {
+        auto this_visitor = [&](iterator) {
             // if the element only exists in this then it is removed
             this->v.erase_after(lagger);
             --this->maybe_size.size;
         };
         auto arg_visitor = [](typename c_arg_t::iterator) {};
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // const_cast is required since std::set::begin() returns a const iter
             // this is fine since the element is not being modified in a way that the std::set cares
             const typename SDRElem_t::data_type& data = this_pos->data().andi(arg_pos->data());
@@ -910,12 +928,12 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const SDR<arg_t, 
         };
         orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     } else {
-        auto this_visitor = [&](typename container_t::iterator this_pos) {
+        auto this_visitor = [&](iterator this_pos) {
             // if the element only exists in this then it is removed
             this->v.erase(this_pos);
         };
         auto arg_visitor = [](typename c_arg_t::iterator) {};
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const typename SDRElem_t::data_type& data = const_cast<typename SDRElem_t::data_type&>(this_pos->data()).andi(arg_pos->data());
             if (!data.relevant()) {
                 // the element is removed
@@ -931,13 +949,13 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::ands(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+    auto visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
         auto count = this_pos->data().ands(arg_pos->data());
         // if the SDRElem_t::data_type is an SDR, then the "size" is literally the SDR size, and an empty SDR is not relevant
         // if the SDRElem_t::data_type is a normal data type (UnitData, etc.) then the "size" is just an alias for relevance
         if (count) ++r;
     };
-    const_cast<SDR<SDRElem_t, container_t>&>(*this).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), visitor);
+    const_cast<SDR&>(*this).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), visitor);
     return r; // nrvo 
 }
 
@@ -1019,12 +1037,12 @@ template<typename SDRElem_t, typename container_t>
 template<typename ret_t, typename c_ret_t, typename arg_t, typename c_arg_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ore(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> r;
-    std::function<void(typename container_t::iterator)> this_visitor;
+    std::function<void(iterator)> this_visitor;
     std::function<void(typename c_arg_t::iterator)> arg_visitor;
-    std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> both_visitor;
+    std::function<void(iterator, typename c_arg_t::iterator)> both_visitor;
     if constexpr(isForwardList<c_ret_t>::value) {
         auto it = r.v.before_begin();
-        this_visitor = [&](typename container_t::iterator this_pos) {
+        this_visitor = [&](iterator this_pos) {
             it = r.v.insert_after(it, ret_t(*this_pos));
             ++r.maybe_size.size;
         };
@@ -1036,7 +1054,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ore(const SDR<arg_t, c_arg_t>& 
             it = r.v.insert_after(it, ret_t(*arg_pos));
             ++r.maybe_size.size;
         };
-        both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template ore<typename ret_t::data_type>(arg_pos->data());
             // there is no relevance check here, since it is assumed that elements which already exist in an SDR are relevant,
             // and that ore can only produce relevant elements from relevant elements
@@ -1044,20 +1062,20 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ore(const SDR<arg_t, c_arg_t>& 
             it = r.v.insert_after(it, std::move(elem));
             ++r.maybe_size.size;
         };
-        const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
+        const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     } else {
-        this_visitor = [&](typename container_t::iterator this_pos) {
+        this_visitor = [&](iterator this_pos) {
             r.push_back(ret_t(*this_pos));
         };
         arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
             r.push_back(ret_t(*arg_pos));
         };
-        both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template ore<typename ret_t::data_type>(arg_pos->data());
             ret_t elem(this_pos->id(), std::move(data));
             r.push_back(std::move(elem));
         };
-        const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
+        const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     }
     if constexpr(isVector<c_ret_t>::value) r.v.shrink_to_fit();
     return r; // nrvo 
@@ -1071,27 +1089,27 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::ori(const SDR<arg_t, c
         this->v = std::move(r.v);
     } else if constexpr(usesForwardList) {
         auto lagger = this->v.before_begin();
-        auto this_visitor = [&](typename container_t::iterator) {
+        auto this_visitor = [&](iterator) {
             ++lagger;
         };
         auto arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
             this->v.insert_after(lagger, SDRElem_t(*arg_pos));
             ++this->maybe_size.size;
         };
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             this_pos->data().ori(arg_pos->data());
             ++lagger;
         };
         this->orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     } else {
         auto pos = this->v.begin();
-        auto this_visitor = [&](typename container_t::iterator this_pos) {
+        auto this_visitor = [&](iterator this_pos) {
             pos = this_pos;
         };
         auto arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
             pos = this->v.insert(pos, SDRElem_t(*arg_pos));
         };
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const_cast<typename SDRElem_t::data_type&>(this_pos->data()).ori(arg_pos->data());
         };
         this->orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
@@ -1103,16 +1121,16 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::ors(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    auto this_visitor = [&](typename container_t::iterator) {
+    auto this_visitor = [&](iterator) {
         ++r;
     };
     auto arg_visitor = [&](typename c_arg_t::iterator) {
         ++r;
     };
-    auto both_visitor = [&](typename container_t::iterator, typename c_arg_t::iterator) {
+    auto both_visitor = [&](iterator, typename c_arg_t::iterator) {
         ++r;
     };
-    auto this_back_handler = [&](typename container_t::iterator pos) {
+    auto this_back_handler = [&](iterator pos) {
         if constexpr(usesVector) {
             r += this->cend() - pos;
         } else {
@@ -1132,7 +1150,7 @@ typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::ors
             }
         }
     };
-    const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_handler, arg_back_handler);
+    const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_handler, arg_back_handler);
     return r;
 }
 
@@ -1140,14 +1158,14 @@ template<typename SDRElem_t, typename container_t>
 template<typename ret_t, typename c_ret_t, typename arg_t, typename c_arg_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::xore(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> r;
-    std::function<void(typename container_t::iterator)> this_visitor;
+    std::function<void(iterator)> this_visitor;
     std::function<void(typename c_arg_t::iterator)> arg_visitor;
-    std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> both_visitor;
+    std::function<void(iterator, typename c_arg_t::iterator)> both_visitor;
     // scoping weirdness requires declaring 'it' here
     [[maybe_unused]] typename c_ret_t::iterator it;
     if constexpr(isForwardList<c_ret_t>::value) {
         it = r.v.before_begin();
-        this_visitor = [&](typename container_t::iterator this_pos) {
+        this_visitor = [&](iterator this_pos) {
             it = r.v.insert_after(it, ret_t(*this_pos));
             ++r.maybe_size.size;
         };
@@ -1156,7 +1174,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::xore(const SDR<arg_t, c_arg_t>&
             it = r.v.insert_after(it, ret_t(*arg_pos));
             ++r.maybe_size.size;
         };
-        both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template xore<typename ret_t::data_type>(arg_pos->data());
             if (data.rm_relevant()) {
                 ret_t elem(this_pos->id(), std::move(data));
@@ -1165,13 +1183,13 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::xore(const SDR<arg_t, c_arg_t>&
             }
         };
     } else {
-        this_visitor = [&](typename container_t::iterator this_pos) {
+        this_visitor = [&](iterator this_pos) {
             r.push_back(ret_t(*this_pos));
         };
         arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
             r.push_back(ret_t(*arg_pos));
         };
-        both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template xore<typename ret_t::data_type>(arg_pos->data());
             if (data.rm_relevant()) {
                 ret_t elem(this_pos->id(), std::move(data));
@@ -1179,7 +1197,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::xore(const SDR<arg_t, c_arg_t>&
             }
         };
     }
-    const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
+    const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     if constexpr(isVector<c_ret_t>::value) r.v.shrink_to_fit();
     return r; // nrvo 
 }
@@ -1192,14 +1210,14 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::xori(const SDR<arg_t, 
         this->v = std::move(r.v);
     } else if constexpr(usesForwardList) {
         auto lagger = this->v.before_begin();
-        auto this_visitor = [&](typename container_t::iterator) {
+        auto this_visitor = [&](iterator) {
             ++lagger;
         };
         auto arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
             lagger = this->v.insert_after(lagger, SDRElem_t(*arg_pos));
             ++this->maybe_size.size;
         };
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const typename SDRElem_t::data_type& data = this_pos->data().xori(arg_pos->data());
             if (data.rm_relevant()) {
                 // not removed. just modified (above)
@@ -1213,13 +1231,13 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::xori(const SDR<arg_t, 
         this->orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     } else {
         auto pos = this->v.begin();
-        auto this_visitor = [&](typename container_t::iterator this_pos) {
+        auto this_visitor = [&](iterator this_pos) {
             pos = this_pos;
         };
         auto arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
             pos = this->v.insert(pos, SDRElem_t(*arg_pos));
         };
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const typename SDRElem_t::data_type& data = const_cast<typename SDRElem_t::data_type&>(this_pos->data()).xori(arg_pos->data());
             if (!data.rm_relevant()) {
                 pos = this->v.erase(this_pos);
@@ -1234,17 +1252,17 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::xors(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    auto this_visitor = [&](typename container_t::iterator) {
+    auto this_visitor = [&](iterator) {
         ++r;
     };
     auto arg_visitor = [&](typename c_arg_t::iterator) {
         ++r;
     };
-    auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+    auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
         auto count = this_pos->data().xors(arg_pos->data());
         if (count) ++r;
     };
-    auto this_back_handler = [&](typename container_t::iterator pos) {
+    auto this_back_handler = [&](iterator pos) {
         if constexpr(usesVector) {
             r += this->cend() - pos;
         } else {
@@ -1264,7 +1282,7 @@ typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::xor
             }
         }
     };
-    const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_handler, arg_back_handler);
+    const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_handler, arg_back_handler);
     return r;
 }
 
@@ -1273,11 +1291,11 @@ template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::rmi(const SDR<arg_t, c_arg_t>& arg) {
     auto arg_visitor = [&](typename c_arg_t::iterator) {};
     if constexpr(usesVector) {
-        typename container_t::iterator insert_pos = this->v.begin();
-        auto this_visitor = [&](typename container_t::iterator this_pos) {
+        iterator insert_pos = this->v.begin();
+        auto this_visitor = [&](iterator this_pos) {
             *insert_pos++ = *this_pos;
         };
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const typename SDRElem_t::data_type& data = this_pos->data().rmi(arg_pos->data());
             if (data.rm_relevant()) {
                 // the element was modified above
@@ -1290,9 +1308,9 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::rmi(const SDR<arg_t, c
         this->v.resize(insert_pos - this->v.begin());
     } else if constexpr(usesForwardList) {
         // lagger is used to remove elements
-        typename container_t::iterator lagger = this->v.before_begin();
-        auto this_visitor = [&](typename container_t::iterator) { ++lagger; };
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        iterator lagger = this->v.before_begin();
+        auto this_visitor = [&](iterator) { ++lagger; };
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             const typename SDRElem_t::data_type& data = this_pos->data().rmi(arg_pos->data());
             if (data.rm_relevant()) {
                 // the element was modified above
@@ -1306,12 +1324,12 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::rmi(const SDR<arg_t, c
             do_not_increment_lagger:
                 (void)0;
         };
-        auto this_back_position = [](typename container_t::iterator) {};
+        auto this_back_position = [](iterator) {};
         auto arg_back_position = [](typename c_arg_t::iterator) {};
         this->orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_position, arg_back_position);
     } else {
-        auto this_visitor = [&](typename container_t::iterator) {};
-        auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        auto this_visitor = [&](iterator) {};
+        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = const_cast<typename SDRElem_t::data_type&>(this_pos->data()).rmi(arg_pos->data());
             if (data.rm_relevant()) {
                 // the element was modified above
@@ -1329,18 +1347,18 @@ template<typename SDRElem_t, typename container_t>
 template<typename ret_t, typename c_ret_t, typename arg_t, typename c_arg_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::rme(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> r;
-    std::function<void(typename container_t::iterator)> this_visitor;
+    std::function<void(iterator)> this_visitor;
     std::function<void(typename c_arg_t::iterator)> arg_visitor;
-    std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> both_visitor;
+    std::function<void(iterator, typename c_arg_t::iterator)> both_visitor;
     [[maybe_unused]] typename c_ret_t::iterator it;
     if constexpr(isForwardList<c_ret_t>::value) {
         it = r.v.before_begin();
-        this_visitor = [&](typename container_t::iterator this_pos) {
+        this_visitor = [&](iterator this_pos) {
             ++r.maybe_size.size;
             it = r.v.insert_after(it, ret_t(*this_pos));
         };
         arg_visitor = [&](typename c_arg_t::iterator) {};
-        both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template rme<typename ret_t::data_type>(arg_pos->data());
             if (data.rm_relevant()) {
                 ++r.maybe_size.size;
@@ -1349,11 +1367,11 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::rme(const SDR<arg_t, c_arg_t>& 
             }
         };
     } else {
-        this_visitor = [&](typename container_t::iterator this_pos) {
+        this_visitor = [&](iterator this_pos) {
             r.push_back(ret_t(*this_pos));
         };
         arg_visitor = [&](typename c_arg_t::iterator) {};
-        both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template rme<typename ret_t::data_type>(arg_pos->data());
             if (data.rm_relevant()) {
                 ret_t elem(this_pos->id(), std::move(data));
@@ -1361,7 +1379,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::rme(const SDR<arg_t, c_arg_t>& 
             }
         };
     }
-    const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
+    const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor);
     if constexpr(isVector<c_ret_t>::value) {
         r.v.shrink_to_fit();
     }
@@ -1372,15 +1390,15 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::rms(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
-    auto this_visitor = [&](typename container_t::iterator) {
+    auto this_visitor = [&](iterator) {
         ++r;
     };
     auto arg_visitor = [&](typename c_arg_t::iterator) {};
-    auto both_visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
+    auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
         auto count = this_pos->data().rms(arg_pos->data());
         if (count) ++r;
     };
-    auto this_back_handler = [&](typename container_t::iterator pos) {
+    auto this_back_handler = [&](iterator pos) {
         if constexpr(usesVector) {
             r += this->cend() - pos;
         } else {
@@ -1391,7 +1409,7 @@ typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::rms
         }
     };
     auto arg_back_handler = [](typename c_arg_t::iterator){};
-    const_cast<SDR<SDRElem_t, container_t>&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_handler, arg_back_handler);
+    const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_handler, arg_back_handler);
     return r; // nrvo
 }
 
@@ -1506,6 +1524,46 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t, container_t>& sd
     }
     os << ']';
     return os;
+}
+
+template<typename SDRElem_t, typename container_t>
+template<typename arg_t, typename c_arg_t>
+typename SDRElem_t::data_type SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
+    typename SDRElem_t::data_type ret;
+    auto this_visitor = [&](iterator this_pos) {
+        typename SDRElem_t::data_type elem = this_pos->data().ande(typename arg_t::data_type());
+        ret.ori(std::move(elem));
+    };
+
+    auto arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
+        typename SDRElem_t::data_type elem = typename SDRElem_t::data_type().ande(arg_pos->data());
+        ret.ori(std::move(elem));
+    };
+
+    auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
+        typename SDRElem_t::data_type elem = this_pos->data().ande(arg_pos->data());
+        ret.ori(std::move(elem));
+    };
+
+    const_cast<SDR&>(*this).orv(const_cast<SDR<arg_t, c_arg_t>&>(other), this_visitor, arg_visitor, both_visitor);
+    return ret;
+}
+
+template<typename SDRElem_t, typename container_t>
+SDR<SDRElem_t, container_t> SDR<SDRElem_t, container_t>::ande(const typename SDRElem_t::data_type& arg) const {
+    // make a copy and reuse andi
+    SDR ret(*this);
+    ret.andi(arg);
+    return ret;
+}
+
+template<typename SDRElem_t, typename container_t>
+SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const typename SDRElem_t::data_type& arg) {
+    auto increment_visitor = [&](iterator iter) {
+        iter->data().ande(arg);
+    };
+    this->visitor(increment_visitor);
+    return *this;
 }
 
 template <typename sv_t = float>
