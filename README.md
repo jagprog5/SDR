@@ -109,6 +109,7 @@ flowchart TB
     EmptyData["EmptyData\nDisables the data functionality"]
     UnitData["UnitData\nA float bounded from 0 to 1"]
     ArithData>"ArithData\nNormal arithmetic type"]
+    SDR2>"SDR\nNested SDRs form n-dimensional structures"]
     id("id\nThe position of an SDRElem in the dense representation")
     data("data\nSomething associated with the id")
 
@@ -128,7 +129,8 @@ flowchart TB
 
     data-->EmptyData
     data-->UnitData
-    data-->ArithData
+    data--->ArithData
+    data-->SDR2
 
     ArithData-->float
     ArithData-->double
@@ -148,6 +150,7 @@ style UnitData fill:#444
 style ArithData fill:#111
 style uint64_t fill:#444
 style etc... fill:#444
+style SDR2 fill:#111
 
 style std::vector fill:#888
 style EmptyData fill:#888

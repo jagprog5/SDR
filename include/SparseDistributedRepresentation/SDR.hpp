@@ -1519,17 +1519,17 @@ template<typename ret_t, typename arg_t, typename c_arg_t>
 ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
     ret_t ret;
     auto this_visitor = [&](iterator this_pos) {
-        typename SDRElem_t::data_type elem = this_pos->data().ande(typename arg_t::data_type());
+        auto elem = this_pos->data().template ande<ret_t>(typename arg_t::data_type());
         ret.ori(std::move(elem));
     };
 
     auto arg_visitor = [&](typename c_arg_t::iterator arg_pos) {
-        typename SDRElem_t::data_type elem = typename SDRElem_t::data_type().ande(arg_pos->data());
+        auto elem = typename SDRElem_t::data_type().template ande<ret_t>(arg_pos->data());
         ret.ori(std::move(elem));
     };
 
     auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
-        typename SDRElem_t::data_type elem = this_pos->data().ande(arg_pos->data());
+        auto elem = this_pos->data().template ande<ret_t>(arg_pos->data());
         ret.ori(std::move(elem));
     };
 
