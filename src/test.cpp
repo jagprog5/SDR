@@ -297,28 +297,15 @@ BOOST_AUTO_TEST_CASE(test_dot) {
 BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
   //  1 2    10   32
   //  3 4  * 11 = 74
-
   using Element = SDRElem<unsigned int, ArithData<>>;
   using Column = SDRElem<unsigned int, SDR<Element>>;
   using Matrix = SDR<Column>;
   Column column0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
   Column column1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{column0, column1};
-  Column input(0, SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)});
-
-  auto result = m * input;
-  std::cerr << result << '\n';
-}
-
-BOOST_AUTO_TEST_CASE(matrix_test) {
-  using Element = SDRElem<unsigned int, ArithData<>>;
-  using Column = SDRElem<unsigned int, SDR<Element>>;
-  auto column0 = Column(0, SDR<Element>{Element(0, 1.0f)});
-  auto column1 = Column(1, SDR<Element>{Element(1, 2.0f)});
-  SDR<Column> matrix{column0, column1};
-  std::cerr << matrix << '\n';
-  // std::cerr << (matrix & SDR{1}) << '\n';
-  // std::cerr << (matrix & SDR{}) << '\n';
+  auto input = SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)};
+  auto result = m.matrix_mul(input);
+  BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -452,23 +452,12 @@ class SDR {
         auto operator<=(const SDR<arg_t, c_arg_t>& other) const { return !(*this > other); }
 
         // dot product
-        template<typename arg_t, typename c_arg_t>
-        typename SDRElem_t::data_type dot(const SDR<arg_t, c_arg_t>& other) const;
+        template<typename ret_t = typename SDRElem_t::data_type, typename arg_t, typename c_arg_t>
+        ret_t dot(const SDR<arg_t, c_arg_t>& other) const;
 
-        /**
-         * and elements. multiply each element in this by some data.
-         */
-        SDR ande(const typename SDRElem_t::data_type& arg) const;
+        template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
+        SDR<ret_t, c_ret_t> matrix_mul(const SDR<arg_t, c_arg_t>& arg) const;
         
-        /**
-         * and elements. multiply each element in this by some data.
-         */
-        SDR& andi(const typename SDRElem_t::data_type& arg);
-
-
-        // template<typename arg_t, typename c_arg_t>
-
-
     private:
         container_t v;
 
@@ -878,7 +867,6 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
         };
     } else {
         visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            // TODO define AND between a column and EmptyData
             auto data = this_pos->data().template ande<typename ret_t::data_type>(arg_pos->data());
             if (data.relevant()) {
                 ret_t elem(this_pos->id(), std::move(data));
@@ -1527,9 +1515,9 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t, container_t>& sd
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename arg_t, typename c_arg_t>
-typename SDRElem_t::data_type SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
-    typename SDRElem_t::data_type ret;
+template<typename ret_t, typename arg_t, typename c_arg_t>
+ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
+    ret_t ret;
     auto this_visitor = [&](iterator this_pos) {
         typename SDRElem_t::data_type elem = this_pos->data().ande(typename arg_t::data_type());
         ret.ori(std::move(elem));
@@ -1550,23 +1538,16 @@ typename SDRElem_t::data_type SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, 
 }
 
 template<typename SDRElem_t, typename container_t>
-SDR<SDRElem_t, container_t> SDR<SDRElem_t, container_t>::ande(const typename SDRElem_t::data_type& arg) const {
-    // make a copy and reuse andi
-    SDR ret(*this);
-    ret.andi(arg);
+template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_mul(const SDR<arg_t, c_arg_t>& arg) const {
+    SDR<ret_t, c_ret_t> ret;
+    auto this_visitor = [&](iterator this_pos) {
+        auto data = this_pos->data().template dot<typename SDRElem_t::data_type::value_type::data_type>(arg);
+        typename SDRElem_t::data_type::value_type elem(this_pos->id(), std::move(data));
+        ret.push_back(std::move(elem));
+    };
+    const_cast<SDR&>(*this).visitor(this_visitor);
     return ret;
 }
-
-template<typename SDRElem_t, typename container_t>
-SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const typename SDRElem_t::data_type& arg) {
-    auto increment_visitor = [&](iterator iter) {
-        iter->data().ande(arg);
-    };
-    this->visitor(increment_visitor);
-    return *this;
-}
-
-template <typename sv_t = float>
-using SparseVector = SDR<SDRElem<unsigned int, sv_t>>;
 
 } // namespace sparse_distributed_representation
