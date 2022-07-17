@@ -298,11 +298,11 @@ BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
   //  1 2    10   32
   //  3 4  * 11 = 74
   using Element = SDRElem<unsigned int, ArithData<>>;
-  using Column = SDRElem<unsigned int, SDR<Element>>;
-  using Matrix = SDR<Column>;
-  Column column0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
-  Column column1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
-  Matrix m{column0, column1};
+  using Row = SDRElem<unsigned int, SDR<Element>>;
+  using Matrix = SDR<Row>;
+  Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
+  Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
+  Matrix m{row0, row1};
   auto input = SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)};
   auto result = m.matrix_mul(input);
   BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
