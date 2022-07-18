@@ -294,12 +294,38 @@ BOOST_AUTO_TEST_CASE(test_dot) {
   BOOST_REQUIRE_EQUAL(data.value(), 10);
 }
 
+BOOST_AUTO_TEST_CASE(test_single_element_ori) {
+  using Element = SDRElem<unsigned int, ArithData<>>;
+  {
+    SDR<Element> a;
+    a.ori(Element(0, ArithData<>(1)));
+    BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 1.0f)}));
+    a.ori(Element(0, ArithData<>(1)));
+    BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 2.0f)}));
+  }
+  {
+    SDR<Element, std::set<Element>> a;
+    a.ori(Element(0, ArithData<>(1)));
+    BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 1.0f)}));
+    a.ori(Element(0, ArithData<>(1)));
+    BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 2.0f)}));
+  }
+  {
+    SDR<Element, std::forward_list<Element>> a;
+    a.ori(Element(0, ArithData<>(1)));
+    BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 1.0f)}));
+    a.ori(Element(0, ArithData<>(1)));
+    BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 2.0f)}));
+  }
+}
+
+using Element = SDRElem<unsigned int, ArithData<>>;
+using Row = SDRElem<unsigned int, SDR<Element>>;
+using Matrix = SDR<Row>;
+
 BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
   //  1 2   10   32
   //  3 4 * 11 = 74
-  using Element = SDRElem<unsigned int, ArithData<>>;
-  using Row = SDRElem<unsigned int, SDR<Element>>;
-  using Matrix = SDR<Row>;
   Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
   Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{row0, row1};
@@ -308,21 +334,31 @@ BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
   BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
 }
 
-BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
-  //  1 2   5 6   19 22
-  //  3 4 * 7 8 = 43 50
-  using Element = SDRElem<unsigned int, ArithData<>>;
-  using Row = SDRElem<unsigned int, SDR<Element>>;
-  using Matrix = SDR<Row>;
-  Row row00(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
-  Row row01(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
-  Matrix m0{row00, row01};
-  Row row10(0, SDR<Element>{Element(0, 5.0f), Element(1, 6.0f)});
-  Row row11(1, SDR<Element>{Element(0, 7.0f), Element(1, 8.0f)});
-  Matrix m1{row10, row11};
-  auto result = m0.matrix_matrix_mul(m1);
-  std::cerr << result << '\n';
-  // BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
+BOOST_AUTO_TEST_CASE(matrix_transpose) {
+  //  1 2    1 3 
+  //  3 4 -> 2 4
+  Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
+  Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
+  Matrix m{row0, row1};
+  std::cerr << m.matrix_transpose() << '\n';
+  
 }
+
+// BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
+//   //  1 2   5 6   19 22
+//   //  3 4 * 7 8 = 43 50
+//   using Element = SDRElem<unsigned int, ArithData<>>;
+//   using Row = SDRElem<unsigned int, SDR<Element>>;
+//   using Matrix = SDR<Row>;
+//   Row row00(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
+//   Row row01(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
+//   Matrix m0{row00, row01};
+//   Row row10(0, SDR<Element>{Element(0, 5.0f), Element(1, 6.0f)});
+//   Row row11(1, SDR<Element>{Element(0, 7.0f), Element(1, 8.0f)});
+//   Matrix m1{row10, row11};
+//   auto result = m0.matrix_matrix_mul(m1);
+//   std::cerr << result << '\n';
+//   // BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
+// }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -170,6 +170,8 @@ class SDR {
         /**
          * and size.
          * 
+         * TODO reference SDRs, instead of ande(start, stop)
+         * 
          * @return the number of elements in this from start to stop.
          */
         template<typename arg_t>
@@ -186,6 +188,8 @@ class SDR {
         /**
          * or elements.
          * 
+         * TODO lvalue or rvalue for ore, xore
+         * 
          * @return The combined elements in this and the arg.
          */
         template<typename ret_t = SDRElem_t, typename c_ret_t = container_t, typename arg_t, typename c_arg_t>
@@ -198,6 +202,16 @@ class SDR {
          */
         template<typename arg_t, typename c_arg_t>
         SDR<SDRElem_t, container_t>& ori(const SDR<arg_t, c_arg_t>& arg);
+
+        /**
+         * TODO remove and put a ori hint inner function into transpose
+         * or inplace. Insert a single element into this.
+         * 
+         * If an element already exists in the insertion position, then it's data is combined with arg's data via ori.
+         * 
+         * @return const_iterator to insertion position.
+         */
+        void ori(const SDRElem_t&& arg);
 
         /**
          * or size
@@ -466,12 +480,18 @@ class SDR {
         SDR<ret_t, c_ret_t> matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
         /**
+         * matrix transpose
+         */
+        template<typename ret_t = SDRElem_t, typename c_ret_t = container_t>
+        SDR<ret_t, c_ret_t> matrix_transpose() const;
+
+        /**
          * matrix-matrix multiplication
          * 
          * this, the arg, and the output are row-major matrices
          */
-        template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
-        SDR<ret_t, c_ret_t> matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const;
+        // template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
+        // SDR<ret_t, c_ret_t> matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const;
         
     private:
         container_t v;
@@ -1121,6 +1141,37 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::ori(const SDR<arg_t, c
 }
 
 template<typename SDRElem_t, typename container_t>
+void SDR<SDRElem_t, container_t>::ori(const SDRElem_t&& arg) {
+    auto id = arg.id();
+    [[maybe_unused]] iterator lagger;
+    decltype(std::lower_bound(v.begin(), v.end(), id)) pos;
+    if constexpr(usesSet) {
+        pos = v.lower_bound(id);
+    } else if constexpr(usesForwardList) {
+        lagger = v.before_begin();
+        pos = v.begin();
+        while (pos != v.end()) {
+            if (pos->id() >= id) break;
+            ++pos;
+            ++lagger;
+        }
+    } else {
+        pos = std::lower_bound(v.begin(), v.end(), id);
+    }
+    if (pos == v.cend() || pos->id() != id) {
+        // the element does not yet exist. add it
+        if constexpr(usesForwardList) {
+            v.insert_after(lagger, arg);
+        } else {
+            v.insert(pos, arg);
+        }
+    } else {
+        // no relevance check since ori shouldn't make something not relevant
+        const_cast<typename SDRElem_t::data_type&>(pos->data()).ori(arg.data());
+    }
+}
+
+template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::ors(const SDR<arg_t, c_arg_t>& arg) const {
     size_type r = 0;
@@ -1558,113 +1609,120 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
     SDR<ret_t, c_ret_t> ret;
     auto this_visitor = [&](iterator this_pos) {
         auto data = this_pos->data().template dot<typename ret_t::data_type>(arg);
-        ret_t elem(this_pos->id(), std::move(data));
-        ret.push_back(std::move(elem));
+        if (data.relevant()) {
+            ret_t elem(this_pos->id(), std::move(data));
+            ret.push_back(std::move(elem));
+        }
     };
     const_cast<SDR&>(*this).visitor(this_visitor);
     return ret;
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
-SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const {
+template<typename ret_t, typename c_ret_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
     SDR<ret_t, c_ret_t> ret;
-
-    struct arg_row_info {
-        typename arg_t::id_type id;
-        typename arg_t::data_type::const_iterator pos;
-        typename arg_t::data_type::const_iterator end;
-    };
-    std::vector<arg_row_info> arg_row_infos(arg.size());
-
-    for (const auto& arg_pos : arg) {
-        const auto& arg_row = arg_pos.data();
-        arg_row_info i;
-        i.id = arg_pos.id();
-        i.pos = arg_row.cbegin();
-        i.end = arg_row.cend();
-        arg_row_infos.push_back(i);
-    }
-
-    const_iterator this_pos = this->cbegin();
-
-    while (1) {
-        // first, get the next lowest row output
-        // if there is nothing available, then return
-        bool row_output_id_set = false;
-        typename ret_t::id_type row_output_id;
-        if (this_pos != this->cend()) {
-            row_output_id_set = true;
-            row_output_id = this_pos->id();
+    for (const auto& this_row : *this) {
+        auto insert_column = this_row.id();
+        for (const auto& this_element : this_row.data()) {
+            auto insert_row = this_element.id();
+            typename ret_t::data_type::value_type ret_element(insert_column, std::move(this_element.data()));
+            typename ret_t::data_type ret_row;
+            ret_row.ori(std::move(ret_element));
+            ret_t val(insert_row, std::move(ret_row));
+            ret.ori(std::move(val));
         }
-
-        for (arg_row_info& arg_row_info : arg_row_infos) {
-            if (arg_row_info.pos == arg_row_info.end) continue;
-            if (row_output_id_set) {
-                if (row_output_id > arg_row_info.id) {
-                    row_output_id = arg_row_info.id;
-                }
-            } else {
-                row_output_id_set = true;
-                row_output_id = arg_row_info.id;
-            }
-        }
-
-        if (!row_output_id_set) return;
-
-        // now that we have obtained the lowest output row id, combine elements as neccessary
     }
-
-
-    // find the lowest row output
-    // if (this->size() == 0 || arg.size() == 0) return ret;
-
-    /*
-    // TODO not needed if arg is a vec. add constexpr switch
-    struct arg_row_info {
-        typename arg_t::id_type id;
-        typename arg_t::data_type::const_iterator pos;
-        typename arg_t::data_type::const_iterator end;
-    };
-    std::vector<arg_row_info> arg_row_infos(arg.size());
-
-    for (const auto& arg_pos : arg) {
-        const auto& arg_row = arg_pos.data();
-        arg_row_info i;
-        i.id = arg_pos.id();
-        i.pos = arg_row.cbegin();
-        i.end = arg_row.cend();
-        arg_row_infos.push_back(i);
-    }
-
-    for (const SDRElem_t& this_elem : *this) {
-        typename ret_t::data_type this_row_data;
-        const typename SDRElem_t::id_type& this_row_num = this_elem.id();
-        const typename SDRElem_t::data_type& this_row = this_elem.data();
-        for (const typename SDRElem_t::data_type::value_type& this_row_element : this_row) {
-            const typename SDRElem_t::data_type::value_type::id_type& this_column_num = this_row_element.id();
-            const typename SDRElem_t::data_type::value_type::data_type& this_element = this_row_element.data();
-            // for every row in the arg, see if the column number exists which equals this_row_number
-            for (arg_row_info& arg_row_info : arg_row_infos) {
-                while (1) {
-                    if (arg_row_info.pos == arg_row_info.end) break;
-                    const typename arg_t::id_type& arg_column_num = arg_row_info.id;
-                    if (arg_column_num < this_row_num) {
-                        
-                    } else if (arg_column_num == this_row_num) {
-
-                    } else {
-
-                    }
-                }
-            }
-            // this_row_data
-
-        }
-        ret_t ret_row(this_row_num, std::move(this_row_data));
-        ret.push_back(std::move(ret_row));
-    }
-    */
+    return ret;
 }
+
+// template<typename SDRElem_t, typename container_t>
+// template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
+// SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const {
+//     SDR<ret_t, c_ret_t> ret;
+
+//     struct arg_row_info {
+//         typename arg_t::id_type id;
+//         typename arg_t::data_type::const_iterator pos;
+//         typename arg_t::data_type::const_iterator end;
+//     };
+//     std::vector<arg_row_info> arg_row_infos(arg.size());
+
+//     for (const auto& arg_pos : arg) {
+//         const auto& arg_row = arg_pos.data();
+//         arg_row_info i;
+//         i.id = arg_pos.id();
+//         i.pos = arg_row.cbegin();
+//         i.end = arg_row.cend();
+//         arg_row_infos.push_back(i);
+//     }
+
+//     const_iterator this_pos = this->cbegin();
+
+//     while (1) {
+//         // first, get the next lowest row output
+//         // this is determined by either the row in this, or the column in the arg
+//         bool row_output_id_set = false;
+//         typename ret_t::id_type row_output_id;
+//         if (this_pos != this->cend()) {
+//             row_output_id_set = true;
+//             row_output_id = this_pos->id();
+//         }
+
+//         for (arg_row_info& arg_row_info : arg_row_infos) {
+//             if (arg_row_info.pos == arg_row_info.end) continue;
+//             if (row_output_id_set) {
+//                 if (row_output_id > arg_row_info.id) {
+//                     row_output_id = arg_row_info.id;
+//                 }
+//             } else {
+//                 row_output_id_set = true;
+//                 row_output_id = arg_row_info.id;
+//             }
+//         }
+
+//         // if there is nothing available, then return
+//         if (!row_output_id_set) return ret;
+
+//         typename ret_t::data_type row_output_data;
+
+//         // does the next lowest row exist in this?
+//         if (this_pos != this->cend() && this_pos->id() == row_output_id) {
+//             // it does!
+
+//             // row information
+//             typename SDRElem_t::id_type this_row_id = this_pos->id();
+//             const typename SDRElem_t::data_type& this_row_data = this_pos->data();
+//             this_pos++;
+
+//             // row element
+//             typename SDRElem_t::data_type::const_iterator this_row_pos = this_row_data.cbegin();
+
+//             typename ret_t::data_type::value_type::data_type data_accumulate;
+
+//             // iter through and find if the column exists in each row in the arg
+//             for (arg_row_info& arg_row_info : arg_row_infos) {
+//                 if (arg_row_info.pos == arg_row_info.end) continue;
+//                 if (arg_row_info.pos->id() != row_output_id) continue;
+//                 // it does for this row
+
+//                 if (this_row_id == arg_row_info.pos->id()) {
+//                     auto data = this_row_pos->data().template ande<typename ret_t::data_type::value_type::data_type>(arg_row_info.pos->data());
+//                     data_accumulate.ori(data);
+//                     ++this_row_pos;
+//                     ++arg_row_info.pos;
+//                 }
+//             }
+//             typename ret_t::data_type::value_type val(this_row_id, std::move(data_accumulate));
+//             row_output_data.push_back(std::move(val));
+//         } else {
+//             // it does not!
+//         }
+//         std::cerr <<row_output_data <<'\n';
+//         exit(0);
+//         ret_t val(row_output_id, std::move(row_output_data));
+//         ret.push_back(std::move(val));
+//     }
+// }
 
 } // namespace sparse_distributed_representation
