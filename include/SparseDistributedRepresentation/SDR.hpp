@@ -211,8 +211,8 @@ class SDR {
          * @arg start_point Attempt to insert the arg at this position first, then try proceeding positions.
          * @return The insertion position.
          */
-        template<typename T = container_t, typename Combine>
-        typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T::const_iterator>::type ori(SDRElem_t&& arg, Combine combine, const_iterator start_point);
+        template<typename T = container_t, typename Combine, typename id_t, typename data_t>
+        typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T::const_iterator>::type ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator start_point);
 
         template<typename T = container_t>
         typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, void>::type ori(SDRElem_t&& arg);
@@ -226,8 +226,8 @@ class SDR {
          * @arg start_point Attempt to insert the arg after this position, then try proceeding positions.
          * @return The insertion position.
          */
-        template<typename T = container_t, typename Combine>
-        typename std::enable_if<isForwardList<T>::value, typename T::const_iterator>::type ori(SDRElem_t&& arg, Combine combine, const_iterator start_point);
+        template<typename T = container_t, typename Combine, typename id_t, typename data_t>
+        typename std::enable_if<isForwardList<T>::value, typename T::const_iterator>::type ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator start_point);
 
         template<typename T = container_t>
         typename std::enable_if<isForwardList<T>::value, void>::type ori(SDRElem_t&& arg);
@@ -238,8 +238,8 @@ class SDR {
          * If an element already exists in the insertion position, then its data is combined with arg's data via ori.
          * @arg combine How is the arg combined with a pre-existing element.
          */
-        template<typename T = container_t, typename Combine>
-        typename std::enable_if<isSet<T>::value, void>::type ori(SDRElem_t&& arg, Combine combine);
+        template<typename T = container_t, typename Combine, typename id_t, typename data_t>
+        typename std::enable_if<isSet<T>::value, void>::type ori(SDRElem<id_t, data_t>&& arg, Combine combine);
 
         template<typename T = container_t>
         typename std::enable_if<isSet<T>::value, void>::type ori(SDRElem_t&& arg);
@@ -1178,8 +1178,8 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::ori(const SDR<arg_t, c
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename T, typename Combine>
-typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T::const_iterator>::type SDR<SDRElem_t, container_t>::ori(SDRElem_t&& arg, Combine combine, const_iterator pos) {
+template<typename T, typename Combine, typename id_t, typename data_t>
+typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T::const_iterator>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator pos) {
     auto id = arg.id();
     pos = std::lower_bound(pos, v.cend(), id);
     if (pos == v.cend() || pos->id() != id) {
@@ -1201,8 +1201,8 @@ typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, void>::typ
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename T, typename Combine>
-typename std::enable_if<isForwardList<T>::value, typename T::const_iterator>::type SDR<SDRElem_t, container_t>::ori(SDRElem_t&& arg, Combine combine, const_iterator start_point) {
+template<typename T, typename Combine, typename id_t, typename data_t>
+typename std::enable_if<isForwardList<T>::value, typename T::const_iterator>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator start_point) {
     auto id = arg.id();
     const_iterator lagger = start_point;
     const_iterator pos = std::next(lagger);
@@ -1230,8 +1230,8 @@ typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDRElem_t, cont
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename T, typename Combine>
-typename std::enable_if<isSet<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem_t&& arg, Combine combine) {
+template<typename T, typename Combine, typename id_t, typename data_t>
+typename std::enable_if<isSet<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine) {
     auto id = arg.id();
     auto pos = v.lower_bound(id);
     if (pos == v.cend() || pos->id() != id) {
@@ -1724,12 +1724,13 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
         for (const auto& this_element : this_row.data()) {
             auto insert_row = this_element.id();
             typename ret_t::data_type::value_type ret_element(insert_column, this_element.data()); // copy
-            typename ret_t::data_type ret_row; // use an array here instead of whatever it would be before
+            SDR<typename ret_t::data_type::value_type, ArrayAdaptor<typename ret_t::data_type::value_type, 1>> ret_row; // use an array here instead of whatever it would be before
             ret_row.push_back(std::move(ret_element));
-            ret_t val(insert_row, std::move(ret_row));
+            SDRElem<typename ret_t::id_type, decltype(ret_row)> val(insert_row, std::move(ret_row));
             if constexpr(usesSet) {
                 ret.ori(std::move(val), row_append);
             } else {
+                // make ori templated to accept more stuffz
                 row_insertion_hint = ret.ori(std::move(val), row_append, row_insertion_hint);
                 if constexpr(!usesForwardList) {
                     ++row_insertion_hint;
