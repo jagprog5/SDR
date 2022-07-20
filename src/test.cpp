@@ -341,6 +341,7 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
   Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{row0, row1};
   std::cerr << m.matrix_transpose() << '\n';
+  std::cerr << m << '\n';
   
 }
 
