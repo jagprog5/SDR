@@ -340,9 +340,10 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
   Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
   Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{row0, row1};
-  std::cerr << m.matrix_transpose() << '\n';
-  std::cerr << m << '\n';
-  
+  Row row2(0, SDR<Element>{Element(0, 1.0f), Element(1, 3.0f)});
+  Row row3(1, SDR<Element>{Element(0, 2.0f), Element(1, 4.0f)});
+  Matrix result{row0, row1};
+  BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
 }
 
 // BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {

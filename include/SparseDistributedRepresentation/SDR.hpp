@@ -205,7 +205,7 @@ class SDR {
         /**
          * or inplace. Insert a single element into this (vector/generic specialization).
          * 
-         * If an element already exists in the insertion position, then its data is combined with arg's data via ori.
+         * If an element already exists in the insertion position, then its data is combined with arg's data.
          * 
          * @arg combine How is the arg combined with a pre-existing element.
          * @arg start_point Attempt to insert the arg at this position first, then try proceeding positions.
@@ -220,7 +220,7 @@ class SDR {
         /**
          * or inplace. Insert a single element into this (forward_list specialization).
          * 
-         * If an element already exists in the insertion position, then its data is combined with arg's data via ori.
+         * If an element already exists in the insertion position, then its data is combined with arg's data.
          * 
          * @arg combine How is the arg combined with a pre-existing element.
          * @arg start_point Attempt to insert the arg after this position, then try proceeding positions.
@@ -235,7 +235,7 @@ class SDR {
         /**
          * or inplace. Insert a single element into this (set specialization).
          * 
-         * If an element already exists in the insertion position, then its data is combined with arg's data via ori.
+         * If an element already exists in the insertion position, then its data is combined with arg's data.
          * @arg combine How is the arg combined with a pre-existing element.
          */
         template<typename T = container_t, typename Combine, typename id_t, typename data_t>
@@ -1184,7 +1184,18 @@ typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T
     pos = std::lower_bound(pos, v.cend(), id);
     if (pos == v.cend() || pos->id() != id) {
         // the element does not yet exist. add it
-        pos = v.insert(pos, arg);
+        if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
+            // in matrix_transpose, we might be allocating as an array. convert it if necessary
+            SDRElem_t correct(arg.id());
+            auto arg_pos = std::make_move_iterator(arg.data().begin());
+            auto arg_end = std::make_move_iterator(arg.data().end());
+            while (arg_pos != arg_end) {
+                correct.data().push_back(*arg_pos++);
+            }
+            pos = v.insert(pos, std::move(correct));
+        } else {
+            pos = v.insert(pos, std::move(arg));
+        }
     } else {
         combine(pos, std::move(arg));
     }
@@ -1213,7 +1224,18 @@ typename std::enable_if<isForwardList<T>::value, typename T::const_iterator>::ty
     }
     if (pos == v.cend() || pos->id() != id) {
         ++maybe_size.size;
-        return v.insert_after(lagger, arg);
+        if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
+            // in matrix_transpose, we might be allocating as an array. convert it if necessary
+            SDRElem_t correct(arg.id());
+            auto arg_pos = std::make_move_iterator(arg.data().begin());
+            auto arg_end = std::make_move_iterator(arg.data().end());
+            while (arg_pos != arg_end) {
+                correct.data().push_back(*arg_pos++);
+            }
+            return v.insert_after(lagger, std::move(correct));
+        } else {
+            return v.insert_after(lagger, std::move(arg));
+        }
     } else {
         combine(pos, std::move(arg));
         return pos;
@@ -1236,7 +1258,18 @@ typename std::enable_if<isSet<T>::value, void>::type SDR<SDRElem_t, container_t>
     auto pos = v.lower_bound(id);
     if (pos == v.cend() || pos->id() != id) {
         // the element does not yet exist. add it
-        pos = v.insert(pos, arg);
+        if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
+            // in matrix_transpose, we might be allocating as an array. convert it if necessary
+            SDRElem_t correct(arg.id());
+            auto arg_pos = std::make_move_iterator(arg.data().begin());
+            auto arg_end = std::make_move_iterator(arg.data().end());
+            while (arg_pos != arg_end) {
+                correct.data().push_back(*arg_pos++);
+            }
+            pos = v.insert(pos, std::move(correct));
+        } else {
+            pos = v.insert(pos, std::move(arg));
+        }
     } else {
         // no relevance check since ori shouldn't make something not relevant
         combine(pos, std::move(arg));
@@ -1707,7 +1740,10 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
     // the way I'm doing this is wack af, however:
     // - it melds well with the existing api
     // - its efficient (maybe some uneccessary stack allocation? hopefully ommitted during compilation)
-    auto row_append = [](decltype(ret.cbegin()) existing_element, ret_t&& arg) {
+
+    using InsertionTempRowType = SDRElem<typename ret_t::id_type, SDR<typename ret_t::data_type::value_type, ArrayAdaptor<typename ret_t::data_type::value_type, 1>>>;
+
+    auto row_append = [](decltype(ret.cbegin()) existing_element, InsertionTempRowType&& arg) {
         const_cast<typename ret_t::data_type&>(existing_element->data()).push_back(std::move(*arg.data().begin()));
     };
 
@@ -1724,13 +1760,13 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
         for (const auto& this_element : this_row.data()) {
             auto insert_row = this_element.id();
             typename ret_t::data_type::value_type ret_element(insert_column, this_element.data()); // copy
-            SDR<typename ret_t::data_type::value_type, ArrayAdaptor<typename ret_t::data_type::value_type, 1>> ret_row; // use an array here instead of whatever it would be before
+            // use an array here to allocate on the stack for this temporary SDR
+            SDR<typename ret_t::data_type::value_type, ArrayAdaptor<typename ret_t::data_type::value_type, 1>> ret_row;
             ret_row.push_back(std::move(ret_element));
-            SDRElem<typename ret_t::id_type, decltype(ret_row)> val(insert_row, std::move(ret_row));
+            InsertionTempRowType val(insert_row, std::move(ret_row));
             if constexpr(usesSet) {
                 ret.ori(std::move(val), row_append);
             } else {
-                // make ori templated to accept more stuffz
                 row_insertion_hint = ret.ori(std::move(val), row_append, row_insertion_hint);
                 if constexpr(!usesForwardList) {
                     ++row_insertion_hint;
@@ -1741,93 +1777,5 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
     return ret;
 }
 
-// template<typename SDRElem_t, typename container_t>
-// template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
-// SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const {
-//     SDR<ret_t, c_ret_t> ret;
-
-//     struct arg_row_info {
-//         typename arg_t::id_type id;
-//         typename arg_t::data_type::const_iterator pos;
-//         typename arg_t::data_type::const_iterator end;
-//     };
-//     std::vector<arg_row_info> arg_row_infos(arg.size());
-
-//     for (const auto& arg_pos : arg) {
-//         const auto& arg_row = arg_pos.data();
-//         arg_row_info i;
-//         i.id = arg_pos.id();
-//         i.pos = arg_row.cbegin();
-//         i.end = arg_row.cend();
-//         arg_row_infos.push_back(i);
-//     }
-
-//     const_iterator this_pos = this->cbegin();
-
-//     while (1) {
-//         // first, get the next lowest row output
-//         // this is determined by either the row in this, or the column in the arg
-//         bool row_output_id_set = false;
-//         typename ret_t::id_type row_output_id;
-//         if (this_pos != this->cend()) {
-//             row_output_id_set = true;
-//             row_output_id = this_pos->id();
-//         }
-
-//         for (arg_row_info& arg_row_info : arg_row_infos) {
-//             if (arg_row_info.pos == arg_row_info.end) continue;
-//             if (row_output_id_set) {
-//                 if (row_output_id > arg_row_info.id) {
-//                     row_output_id = arg_row_info.id;
-//                 }
-//             } else {
-//                 row_output_id_set = true;
-//                 row_output_id = arg_row_info.id;
-//             }
-//         }
-
-//         // if there is nothing available, then return
-//         if (!row_output_id_set) return ret;
-
-//         typename ret_t::data_type row_output_data;
-
-//         // does the next lowest row exist in this?
-//         if (this_pos != this->cend() && this_pos->id() == row_output_id) {
-//             // it does!
-
-//             // row information
-//             typename SDRElem_t::id_type this_row_id = this_pos->id();
-//             const typename SDRElem_t::data_type& this_row_data = this_pos->data();
-//             this_pos++;
-
-//             // row element
-//             typename SDRElem_t::data_type::const_iterator this_row_pos = this_row_data.cbegin();
-
-//             typename ret_t::data_type::value_type::data_type data_accumulate;
-
-//             // iter through and find if the column exists in each row in the arg
-//             for (arg_row_info& arg_row_info : arg_row_infos) {
-//                 if (arg_row_info.pos == arg_row_info.end) continue;
-//                 if (arg_row_info.pos->id() != row_output_id) continue;
-//                 // it does for this row
-
-//                 if (this_row_id == arg_row_info.pos->id()) {
-//                     auto data = this_row_pos->data().template ande<typename ret_t::data_type::value_type::data_type>(arg_row_info.pos->data());
-//                     data_accumulate.ori(data);
-//                     ++this_row_pos;
-//                     ++arg_row_info.pos;
-//                 }
-//             }
-//             typename ret_t::data_type::value_type val(this_row_id, std::move(data_accumulate));
-//             row_output_data.push_back(std::move(val));
-//         } else {
-//             // it does not!
-//         }
-//         std::cerr <<row_output_data <<'\n';
-//         exit(0);
-//         ret_t val(row_output_id, std::move(row_output_data));
-//         ret.push_back(std::move(val));
-//     }
-// }
 
 } // namespace sparse_distributed_representation
