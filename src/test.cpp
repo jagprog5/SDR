@@ -346,6 +346,13 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
   BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
 }
 
+BOOST_AUTO_TEST_CASE(matrix_trace) {
+  Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
+  Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
+  Matrix m{row0, row1};
+  BOOST_REQUIRE_EQUAL(m.matrix_trace(), 5);
+}
+
 // BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
 //   //  1 2   5 6   19 22
 //   //  3 4 * 7 8 = 43 50

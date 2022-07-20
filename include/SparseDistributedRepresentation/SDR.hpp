@@ -171,8 +171,6 @@ class SDR {
         /**
          * and size.
          * 
-         * TODO reference SDRs, instead of ande(start, stop)
-         * 
          * @return the number of elements in this from start to stop.
          */
         template<typename arg_t>
@@ -518,11 +516,13 @@ class SDR {
         template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
         SDR<ret_t, c_ret_t> matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
-        /**
-         * matrix transpose
-         */
         template<typename ret_t = SDRElem_t, typename c_ret_t = container_t>
         SDR<ret_t, c_ret_t> matrix_transpose() const;
+
+        // SDR& matrix_transpose_inplace();
+
+        template<typename T = SDRElem_t>
+        typename T::data_type::value_type::data_type matrix_trace() const;
 
         /**
          * matrix-matrix multiplication
@@ -1739,7 +1739,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
 
     // the way I'm doing this is wack af, however:
     // - it melds well with the existing api
-    // - its efficient (maybe some uneccessary stack allocation? hopefully ommitted during compilation)
+    // - its efficient (maybe some unnecessary stack allocation? hopefully ommitted during compilation)
 
     using InsertionTempRowType = SDRElem<typename ret_t::id_type, SDR<typename ret_t::data_type::value_type, ArrayAdaptor<typename ret_t::data_type::value_type, 1>>>;
 
@@ -1777,5 +1777,24 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
     return ret;
 }
 
+// template<typename SDRElem_t, typename container_t>
+// SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::matrix_transpose_inplace() {
+    
+//     return *this;
+// }
+
+template<typename SDRElem_t, typename container_t>
+template<typename T>
+typename T::data_type::value_type::data_type SDR<SDRElem_t, container_t>::matrix_trace() const {
+    typename T::data_type::value_type::data_type ret;
+    for (const auto& row : *this) {
+        auto row_num = row.id();
+        auto elems = row.data();
+        if (auto ptr = elems.ande(row_num)) {
+            ret.value(ret.value() + ptr->value());
+        }
+    }
+    return ret;
+}
 
 } // namespace sparse_distributed_representation
