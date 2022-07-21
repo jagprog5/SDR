@@ -1260,7 +1260,7 @@ template<typename SDRElem_t, typename container_t>
 template<typename T, typename Combine, typename id_t, typename data_t>
 typename std::enable_if<isSet<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine) {
     auto id = arg.id();
-    auto pos = v.lower_bound(id);
+    auto pos = v.lower_bound(id); // TODO use a std::find here  
     if (pos == v.cend() || pos->id() != id) {
         // the element does not yet exist. add it
         if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
