@@ -77,7 +77,7 @@ class SDRElem {
     
     private:
         const id_t id_;
-        data_t data_; // mutable?
+        mutable data_t data_;
 };
 
 template<typename id_t,

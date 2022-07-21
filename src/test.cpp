@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE(move_assign_ctor) {
 BOOST_AUTO_TEST_CASE(iter_ctor) {
   std::vector<int> v{1, 2, 3};
   BOOST_REQUIRE_EQUAL(SDR(v.begin(), v.end()), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>(v.begin(), v.end())), (SDR{1, 2, 3}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>(v.begin(), v.end())), (SDR{1, 2, 3}));
   auto a = SDR<SDRElem<>, std::forward_list<SDRElem<>>>(v.begin(), v.end());
   BOOST_REQUIRE_EQUAL(a.size(), 3);
   BOOST_REQUIRE_EQUAL(a, (SDR{1, 2, 3}));
@@ -56,12 +56,12 @@ BOOST_AUTO_TEST_CASE(test_encode) {
   BOOST_REQUIRE_EQUAL(SDR(0.8, 1, 3, 10), (SDR{0, 8, 9}));
   BOOST_REQUIRE_EQUAL(SDR(0, 1, 3, 10), (SDR{0, 1, 2}));
 
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>(0, 3, 100)), (SDR{0, 1, 2}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>(1, 3, 100)), (SDR{97, 98, 99}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>(0, 3, 100)), (SDR{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>(1, 3, 100)), (SDR{97, 98, 99}));
 
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>(0.8, 1, 3, 10)), (SDR<>{0, 8, 9}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>(0, 1, 3, 10)), (SDR{0, 1, 2}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>(0.8, 1, 3, 10)), (SDR<>{0, 8, 9}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>(0, 1, 3, 10)), (SDR{0, 1, 2}));
 
   BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::forward_list<SDRElem<>>>(0, 3, 100)), (SDR{0, 1, 2}));
   BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::forward_list<SDRElem<>>>(0.5, 3, 100)), (SDR{49, 50, 51}));
@@ -83,14 +83,14 @@ BOOST_AUTO_TEST_CASE(andop_range) {
   BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
   BOOST_REQUIRE_EQUAL((SDR{1, 2, 3, 5, 20}.ands(0, 0)), 0);
   
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ande(2, 5)), (SDR{2, 3}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ands(2, 5)), 2);
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ande(20, 70)), (SDR{20}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ands(20, 70)), 1);
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
-  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ande(2, 5)), (SDR{2, 3}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ands(2, 5)), 2);
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ande(20, 70)), (SDR{20}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ands(20, 70)), 1);
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ande(0, 0)), (SDR{}));
+  BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>{1, 2, 3, 5, 20}.ands(0, 0)), 0);
 
   BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::forward_list<SDRElem<>>>{1, 2, 3, 5, 20}.ande(2, 7)), (SDR{2, 3, 5}));
   BOOST_REQUIRE_EQUAL((SDR<SDRElem<>, std::forward_list<SDRElem<>>>{1, 2, 3, 5, 20}.ands(2, 7)), 3);
@@ -121,8 +121,8 @@ BOOST_AUTO_TEST_CASE(append) {
   a0.append(std::move(b0));
   BOOST_REQUIRE_EQUAL(a0, (SDR{1, 2, 3, 4, 5, 6}));
 
-  SDR<SDRElem<>, std::set<SDRElem<>>> a1{1, 2, 3};
-  SDR<SDRElem<>, std::set<SDRElem<>>> b1{4, 5, 6};
+  SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>> a1{1, 2, 3};
+  SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>> b1{4, 5, 6};
   a1.append(std::move(b1));
   BOOST_REQUIRE_EQUAL(a1, (SDR{1, 2, 3, 4, 5, 6}));
 
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(sample) {
     ++ita;
   }
 
-  SDR<SDRElem<>, std::set<SDRElem<>>> b{1, 2, 3};
+  SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>> b{1, 2, 3};
   b.sample(0.8, twister);
   BOOST_REQUIRE(b.size() <= 3);
   auto itb = b.cbegin();
@@ -252,13 +252,13 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDRElem<long>, std::set<SDRElem<long>>> r_and = a.ande<SDRElem<long>, std::set<SDRElem<long>>>(b);
+    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_and = a.ande<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
-    SDR<SDRElem<long>, std::set<SDRElem<long>>> r_or = a.ore<SDRElem<long>, std::set<SDRElem<long>>>(b);
+    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_or = a.ore<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
-    SDR<SDRElem<long>, std::set<SDRElem<long>>> r_xor = a.xore<SDRElem<long>, std::set<SDRElem<long>>>(b);
+    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_xor = a.xore<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
-    SDR<SDRElem<long>, std::set<SDRElem<long>>> r_rm = a.rme<SDRElem<long>, std::set<SDRElem<long>>>(b);
+    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_rm = a.rme<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
 }
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(test_single_element_ori) {
     BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 2.0f)}));
   }
   {
-    SDR<Element, std::set<Element>> a;
+    SDR<Element, std::set<Element, std::less<>>> a;
     a.ori(Element(0, ArithData<>(1)));
     BOOST_REQUIRE_EQUAL(a, (SDR<Element>{Element(0, 1.0f)}));
     a.ori(Element(0, ArithData<>(1)));
@@ -329,7 +329,7 @@ BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
   Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
   Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{row0, row1};
-  auto input = SDR<Element, std::set<Element>>{Element(0, 10.0f), Element(1, 11.0f)};
+  auto input = SDR<Element, std::set<Element, std::less<>>>{Element(0, 10.0f), Element(1, 11.0f)};
   auto result = m.matrix_vector_mul(input);
   BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
 }

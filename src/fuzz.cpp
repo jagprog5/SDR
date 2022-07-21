@@ -393,15 +393,15 @@ int main(int argc, char** argv) {
     // but no. realistically, nobody will make nearly this many specializations
 
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
-    series<SDR<SDRElem<>, std::set<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::set<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::set<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     if (fuzz_amount == DEFAULT_FUZZ_AMOUNT) {
@@ -413,28 +413,28 @@ int main(int argc, char** argv) {
     std::cout << "======With data elements======" << std::endl;
 
     series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
 
-    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>, std::less<>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>, std::less<>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>, std::less<>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
 
     series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
 
     std::cout << "======Mixed with and without data======" << std::endl;
 
     series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
-    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 }

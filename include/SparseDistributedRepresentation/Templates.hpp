@@ -46,4 +46,10 @@ struct isSet : std::false_type {};
 template<typename T>
 struct isSet<T, decltype((void)T().lower_bound(typename T::value_type()), void())> : std::true_type {};
 
+template<typename T, typename = void>
+struct setComparatorCheck : std::false_type {};
+
+template<typename T>
+struct setComparatorCheck<T, decltype((void)T().lower_bound(typename T::value_type::id_type()), void())> : std::true_type {};
+
 } // namespace

@@ -24,8 +24,6 @@ namespace sparse_distributed_representation {
  */
 template<typename SDRElem_t = SDRElem<>, typename container_t = std::vector<SDRElem_t>>
 class SDR {
-    static_assert(!std::is_fundamental<SDRElem_t>::value, "Instead of SDR<fundamental_type_here>, use SDR<SDRElem_t<fundamental_type_here>>");
-    
     public:
         using value_type = SDRElem_t;
         using container_type = container_t;
@@ -36,6 +34,9 @@ class SDR {
         static constexpr bool usesVector = isVector<container_t>::value;
         static constexpr bool usesForwardList = isForwardList<container_t>::value;
         static constexpr bool usesSet = isSet<container_t>::value;
+
+        static_assert(!std::is_fundamental<SDRElem_t>::value, "Instead of SDR<fundamental_type_here>, use SDR<SDRElem_t<fundamental_type_here>>");
+        static_assert(!usesSet || setComparatorCheck<container_t>::value, "Bad comparator for std::set! instead of std::less<T>, use std::less<>");
 
         // default ctor
         SDR() {
@@ -580,21 +581,21 @@ SDR<SDRElem_t, container_t>::SDR(Iterator begin, Iterator end) {
         this->maybe_size.size = 0;
         auto insert_it = this->v.before_begin();
         while (begin != end) {
-            insert_it = this->v.insert_after(insert_it, *begin++);
+            insert_it = this->v.insert_after(insert_it, SDRElem_t(*begin++)); // ctor here since the iters might point to id_type elements
             ++this->maybe_size.size;
         }
     } else if constexpr(usesVector && std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category>::value) {
         auto count = end - begin;
         this->v.resize(count);
         for (decltype(count) i = 0; i < count; ++i) {
-            this->v[i] = *begin++; 
+            this->v[i] = SDRElem_t(*begin++); 
         }
     } else {
         while (begin != end) {
             if constexpr(usesVector) {
                 v.push_back(*begin++);
             } else {
-                v.insert(v.end(), *begin++);
+                v.insert(v.end(), SDRElem_t(*begin++));
             }
         }
     }
@@ -617,7 +618,7 @@ SDR<SDRElem_t, container_t>::SDR(std::initializer_list<T> list) {
                 relevant = elem.data().relevant();
             }
             if (relevant) {
-                insert_it = this->v.insert_after(insert_it, SDRElem_t(elem));
+                insert_it = this->v.insert_after(insert_it, SDRElem_t(elem));  // ctor here since the iters might point to id_type elements
                 ++this->maybe_size.size;
             }
         }
@@ -715,7 +716,7 @@ SDR<SDRElem_t, container_t>::SDR(float input, size_type size, size_type underlyi
     if constexpr(usesForwardList) {
         auto insert_it = v.before_begin();
         for (size_type i = 0; i < size; ++i) {
-            insert_it = v.insert_after(insert_it, start_index + i);
+            insert_it = v.insert_after(insert_it, SDRElem_t(start_index + i));
         }
     } else if constexpr(usesVector) {
         for (size_type i = 0; i < size; ++i) {
