@@ -25,9 +25,9 @@ class SDRElem {
 
         constexpr SDRElem(id_t id, const data_t& data) : id_(id), data_(data) {}
         constexpr SDRElem(id_t id, data_t&& data) : id_(id), data_(data) {}
-        constexpr SDRElem(id_t id) : id_(id), data_() {}
+        constexpr explicit SDRElem(id_t id) : id_(id), data_() {}
         constexpr SDRElem() : id_(), data_() {}
-        constexpr SDRElem(const SDRElem& o) : id_(o.id()), data_(o.data()) {}
+        constexpr explicit SDRElem(const SDRElem& o) : id_(o.id()), data_(o.data()) {}
 
         template<typename o_id_t, typename o_data_t>
         constexpr SDRElem(const SDRElem<o_id_t, o_data_t>& o) : id_(o.id()), data_(o.data()) {}
@@ -77,7 +77,7 @@ class SDRElem {
     
     private:
         const id_t id_;
-        data_t data_;
+        data_t data_; // mutable?
 };
 
 template<typename id_t,

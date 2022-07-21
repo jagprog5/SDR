@@ -195,6 +195,8 @@ class SDR {
         /**
          * or inplace. Insert elements into this, or combine elements if they are already in this.
          * 
+         * TODO add const lval and rval overload, iters?
+         * 
          * @return Ref to this.
          */
         template<typename arg_t, typename c_arg_t>
@@ -506,6 +508,8 @@ class SDR {
         template<typename ret_t = typename SDRElem_t::data_type, typename arg_t, typename c_arg_t>
         ret_t dot(const SDR<arg_t, c_arg_t>& other) const;
 
+        enum MatrixFormat { ROW_MAJOR, COLUMN_MAJOR };
+
         /**
          * matrix-vector multiplication
          * 
@@ -513,7 +517,7 @@ class SDR {
          * @param arg a column vector input.
          * @return a row vector result.
          */
-        template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
+        template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t, MatrixFormat format = ROW_MAJOR>
         SDR<ret_t, c_ret_t> matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
         template<typename ret_t = SDRElem_t, typename c_ret_t = container_t>
@@ -1718,17 +1722,21 @@ ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
+template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t, typename SDR<SDRElem_t, container_t>::MatrixFormat format>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> ret;
-    auto this_visitor = [&](iterator this_pos) {
-        auto data = this_pos->data().template dot<typename ret_t::data_type>(arg);
-        if (data.relevant()) {
-            ret_t elem(this_pos->id(), std::move(data));
-            ret.push_back(std::move(elem));
-        }
-    };
-    const_cast<SDR&>(*this).visitor(this_visitor);
+    if constexpr(format == ROW_MAJOR) {
+        auto this_visitor = [&](iterator this_pos) {
+            auto data = this_pos->data().template dot<typename ret_t::data_type>(arg);
+            if (data.relevant()) {
+                ret_t elem(this_pos->id(), std::move(data));
+                ret.push_back(std::move(elem));
+            }
+        };
+        const_cast<SDR&>(*this).visitor(this_visitor);
+    } else {
+        // TODOs
+    }
     return ret;
 }
 
