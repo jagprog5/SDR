@@ -326,12 +326,31 @@ using Matrix = SDR<Row>;
 BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
   //  1 2   10   32
   //  3 4 * 11 = 74
-  Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
-  Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
-  Matrix m{row0, row1};
-  auto input = SDR<Element, std::set<Element, std::less<>>>{Element(0, 10.0f), Element(1, 11.0f)};
-  auto result = m.matrix_vector_mul(input);
-  BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
+  {
+    Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
+    Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
+    Matrix m{row0, row1};
+    {
+      auto input = SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)};
+      auto result = m.matrix_vector_mul(input); 
+      BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
+    }
+    {
+      auto input = SDR<Element, std::set<Element, std::less<>>>{Element(0, 10.0f), Element(1, 11.0f)};
+      auto result = m.matrix_vector_mul(input); 
+      BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
+    }
+    // f-list ?
+  }
+  {
+    using Column = Row;
+    Column column0(0, SDR<Element>{Element(0, 1.0f), Element(1, 3.0f)});
+    Column column1(1, SDR<Element>{Element(0, 2.0f), Element(1, 4.0f)});
+    Matrix m{column0, column1};
+    auto input = SDR<Element, std::set<Element, std::less<>>>{Element(0, 10.0f), Element(1, 11.0f)};
+    auto result = m.matrix_vector_mul<Matrix::COLUMN_MAJOR>(input);
+    BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));
+  }
 }
 
 BOOST_AUTO_TEST_CASE(matrix_transpose) {

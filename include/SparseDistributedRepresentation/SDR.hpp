@@ -5,6 +5,8 @@
 #include <cmath>
 #include <algorithm>
 #include <functional>
+#include <queue>
+#include <limits>
 
 #include "SparseDistributedRepresentation/Templates.hpp"
 #include "SparseDistributedRepresentation/SDRElem.hpp" 
@@ -204,7 +206,7 @@ class SDR {
         SDR<SDRElem_t, container_t>& ori(const SDR<arg_t, c_arg_t>& arg);
 
         /**
-         * or inplace. Insert a single element into this (vector/generic specialization).
+         * or inplace. Insert a single element into this (generic specialization).
          * 
          * If an element already exists in the insertion position, then its data is combined with arg's data.
          * 
@@ -213,10 +215,10 @@ class SDR {
          * @return The insertion position.
          */
         template<typename T = container_t, typename Combine, typename id_t, typename data_t>
-        typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T::const_iterator>::type ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator start_point);
+        typename std::enable_if<!isForwardList<T>::value, typename T::const_iterator>::type ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator start_point);
 
         template<typename T = container_t>
-        typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, void>::type ori(SDRElem_t&& arg);
+        typename std::enable_if<!isForwardList<T>::value, void>::type ori(SDRElem_t&& arg);
 
         /**
          * or inplace. Insert a single element into this (forward_list specialization).
@@ -232,18 +234,6 @@ class SDR {
 
         template<typename T = container_t>
         typename std::enable_if<isForwardList<T>::value, void>::type ori(SDRElem_t&& arg);
-
-        /**
-         * or inplace. Insert a single element into this (set specialization).
-         * 
-         * If an element already exists in the insertion position, then its data is combined with arg's data.
-         * @arg combine How is the arg combined with a pre-existing element.
-         */
-        template<typename T = container_t, typename Combine, typename id_t, typename data_t>
-        typename std::enable_if<isSet<T>::value, void>::type ori(SDRElem<id_t, data_t>&& arg, Combine combine);
-
-        template<typename T = container_t>
-        typename std::enable_if<isSet<T>::value, void>::type ori(SDRElem_t&& arg);
 
         /**
          * or size
@@ -518,7 +508,7 @@ class SDR {
          * @param arg a column vector input.
          * @return a row vector result.
          */
-        template<typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t, MatrixFormat format = ROW_MAJOR>
+        template<MatrixFormat format = ROW_MAJOR, typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
         SDR<ret_t, c_ret_t> matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
         template<typename ret_t = SDRElem_t, typename c_ret_t = container_t>
@@ -1182,38 +1172,78 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::ori(const SDR<arg_t, c
     return *this;
 }
 
+// auto id = arg.id();
+// auto pos = v.lower_bound(id); // TODO use a std::find here  
+// if (pos == v.cend() || pos->id() != id) {
+//     // the element does not yet exist. add it
+//     if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
+//         // in matrix_transpose, we might be allocating as an array. convert it if necessary
+//         SDRElem_t correct(arg.id());
+//         auto arg_pos = std::make_move_iterator(arg.data().begin());
+//         auto arg_end = std::make_move_iterator(arg.data().end());
+//         while (arg_pos != arg_end) {
+//             correct.data().push_back(*arg_pos++);
+//         }
+//         pos = v.insert(pos, std::move(correct));
+//     } else {
+//         pos = v.insert(pos, std::move(arg));
+//     }
+// } else {
+//     // no relevance check since ori shouldn't make something not relevant
+//     combine(pos, std::move(arg));
+// }
+
 template<typename SDRElem_t, typename container_t>
 template<typename T, typename Combine, typename id_t, typename data_t>
-typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, typename T::const_iterator>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator pos) {
+typename std::enable_if<!isForwardList<T>::value, typename T::const_iterator>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine, const_iterator pos) {
     auto id = arg.id();
-    pos = std::lower_bound(pos, v.cend(), id);
-    if (pos == v.cend() || pos->id() != id) {
-        // the element does not yet exist. add it
-        if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
-            // in matrix_transpose, we might be allocating as an array. convert it if necessary
-            SDRElem_t correct(arg.id());
-            auto arg_pos = std::make_move_iterator(arg.data().begin());
-            auto arg_end = std::make_move_iterator(arg.data().end());
-            while (arg_pos != arg_end) {
-                correct.data().push_back(*arg_pos++);
-            }
-            pos = v.insert(pos, std::move(correct));
+    if constexpr(usesSet) {
+        if (pos == v.cend() || pos->id() != id) {
+            pos = this->v.insert(pos, std::move(arg));
         } else {
-            pos = v.insert(pos, std::move(arg));
+            const_cast<typename SDRElem_t::data_type&>(pos->data()).ori(arg.data());
         }
+        return pos;
     } else {
-        combine(pos, std::move(arg));
+        pos = std::lower_bound(pos, v.cend(), id);
+        if (pos == v.cend() || pos->id() != id) {
+            // the element does not yet exist. add it
+            if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
+                // in matrix_transpose, we might be allocating as an array. convert it if necessary
+                SDRElem_t correct(arg.id());
+                auto arg_pos = std::make_move_iterator(arg.data().begin());
+                auto arg_end = std::make_move_iterator(arg.data().end());
+                while (arg_pos != arg_end) {
+                    correct.data().push_back(*arg_pos++);
+                }
+                pos = v.insert(pos, std::move(correct));
+            } else {
+                pos = v.insert(pos, std::move(arg));
+            }
+        } else {
+            combine(pos, std::move(arg));
+        }
+        return pos;
     }
-    return pos;
 }
 
 template<typename SDRElem_t, typename container_t>
 template<typename T>
-typename std::enable_if<!isForwardList<T>::value && !isSet<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem_t&& arg) {
-    auto combine = [](const_iterator existing_element, SDRElem_t&& arg) {
-        const_cast<typename SDRElem_t::data_type&>(existing_element->data()).ori(arg.data());
-    };
-    this->ori(std::move(arg), combine, this->cbegin());
+typename std::enable_if<!isForwardList<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem_t&& arg) {
+    if constexpr(usesSet) {
+        auto pos = v.lower_bound(arg.id());
+        if (pos == v.cend() || pos->id() != arg.id()) {
+            this->v.insert(pos, std::move(arg));
+        } else {
+            const_cast<typename SDRElem_t::data_type&>(pos->data()).ori(arg.data());
+        }
+    } else {
+        // forward to the other overload
+        auto combine = [](const_iterator existing_element, SDRElem_t&& arg) {
+            const_cast<typename SDRElem_t::data_type&>(existing_element->data()).ori(arg.data());
+        };
+        this->ori(std::move(arg), combine, this->cbegin());
+    }
 }
 
 template<typename SDRElem_t, typename container_t>
@@ -1254,40 +1284,6 @@ typename std::enable_if<isForwardList<T>::value, void>::type SDR<SDRElem_t, cont
         const_cast<typename SDRElem_t::data_type&>(existing_element->data()).ori(arg.data());
     };
     this->ori(std::move(arg), combine, this->v.cbefore_begin());
-}
-
-template<typename SDRElem_t, typename container_t>
-template<typename T, typename Combine, typename id_t, typename data_t>
-typename std::enable_if<isSet<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem<id_t, data_t>&& arg, Combine combine) {
-    auto id = arg.id();
-    auto pos = v.lower_bound(id); // TODO use a std::find here  
-    if (pos == v.cend() || pos->id() != id) {
-        // the element does not yet exist. add it
-        if constexpr(!std::is_same_v<SDRElem<id_t, data_t>, SDRElem_t>) {
-            // in matrix_transpose, we might be allocating as an array. convert it if necessary
-            SDRElem_t correct(arg.id());
-            auto arg_pos = std::make_move_iterator(arg.data().begin());
-            auto arg_end = std::make_move_iterator(arg.data().end());
-            while (arg_pos != arg_end) {
-                correct.data().push_back(*arg_pos++);
-            }
-            pos = v.insert(pos, std::move(correct));
-        } else {
-            pos = v.insert(pos, std::move(arg));
-        }
-    } else {
-        // no relevance check since ori shouldn't make something not relevant
-        combine(pos, std::move(arg));
-    }
-}
-
-template<typename SDRElem_t, typename container_t>
-template<typename T>
-typename std::enable_if<isSet<T>::value, void>::type SDR<SDRElem_t, container_t>::ori(SDRElem_t&& arg) {
-    auto combine = [](const_iterator existing_element, SDRElem_t&& arg) {
-        const_cast<typename SDRElem_t::data_type&>(existing_element->data()).ori(arg.data());
-    };
-    this->ori(std::move(arg), combine);
 }
 
 template<typename SDRElem_t, typename container_t>
@@ -1723,7 +1719,7 @@ ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t, typename SDR<SDRElem_t, container_t>::MatrixFormat format>
+template<typename SDR<SDRElem_t, container_t>::MatrixFormat format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> ret;
     if constexpr(format == ROW_MAJOR) {
@@ -1736,7 +1732,83 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
         };
         const_cast<SDR&>(*this).visitor(this_visitor);
     } else {
-        // TODOs
+        // points to the current iteration position
+        struct column_information {
+            // pos must always be valid
+            typename SDRElem_t::data_type::const_iterator pos;
+            typename SDRElem_t::data_type::const_iterator end;
+            bool operator>(const column_information& other) const {
+                return pos->id() < other.pos->id();
+            }
+        };
+
+        auto get_heap = []() {
+            // use the same-ish data structure as whoever made this matrix
+            // (they have more context)
+            if constexpr(usesVector) {
+                return std::priority_queue<column_information, std::vector<column_information>, std::greater<column_information>>();
+            } else {
+                return std::priority_queue<column_information,  std::deque<column_information>,  std::greater<column_information>>();
+            }
+        };
+
+        // initialize the heap
+        auto column_infos = get_heap();
+        
+        for (const auto& col : *this) {
+            // should never happen since an SDR that is empty is irrelevant, and should have been ommitted
+            assert(!col.data().empty());
+            column_infos.push(column_information{col.data().cbegin(), col.data().cend()});
+        }
+
+        auto arg_pos = arg.cbegin();
+        auto arg_end = arg.cend();
+
+        // I'm using a min value as the id initialization, to represent it not being set yet
+        // even if the arg or this have the min value, everything is still fine (just slightly less efficient)
+        ret_t output_elem(std::numeric_limits<typename ret_t::id_type>::min());
+
+        while (!column_infos.empty()) {
+            // the top of the heap points to the lowest row number
+            column_information elem = column_infos.top();
+
+            if (arg_pos != arg_end) {
+                // both elems are available for combination
+                // but are the id's the same?
+                if (arg_pos->id() == elem.pos->id()) {
+                    // the ids are the same. combine the elements
+                    auto data = elem.pos->data().template ande<ret_t>(arg_pos++->data());
+                    // send the output_element to the output if necessary
+                    if (output_elem.id() == std::numeric_limits<typename ret_t::id_type>::min()) {
+                        // const_cast here
+                    }//limits?
+
+                    // if (!ret.empty() && output_elem.id() != elem.pos->id()) {
+                    //     ret.push_back(output_elem);
+                    // }
+                    // output_elem.data().ori(data);
+                } else if (arg_pos.id() > elem.pos->id()) {
+                    goto only_this;
+                } else {
+                    
+                }
+            } else {
+                only_this:
+                // only this is available
+                auto data = elem.pos->data().template ande<ret_t>(arg_pos++->data());
+                output_elem.data().ori(data);
+            }
+
+            ++elem.pos; // increment to the next element in that row
+            column_infos.pop();
+            if (elem.pos != elem.end) {
+                column_infos.push(elem);
+            }
+        }
+
+        while (arg_pos != arg_end) {
+            // only the arg is available
+        }
     }
     return ret;
 }
