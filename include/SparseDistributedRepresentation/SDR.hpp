@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <functional>
 #include <queue>
-#include <limits>
 
 #include "SparseDistributedRepresentation/Templates.hpp"
 #include "SparseDistributedRepresentation/SDRElem.hpp" 
@@ -1752,9 +1751,8 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
             }
         };
 
-        // initialize the heap
-        auto column_infos = get_heap();
-        
+        auto column_infos = get_heap();        
+
         for (const auto& col : *this) {
             // should never happen since an SDR that is empty is irrelevant, and should have been ommitted
             assert(!col.data().empty());
@@ -1764,9 +1762,24 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
         auto arg_pos = arg.cbegin();
         auto arg_end = arg.cend();
 
-        // I'm using a min value as the id initialization, to represent it not being set yet
-        // even if the arg or this have the min value, everything is still fine (just slightly less efficient)
-        ret_t output_elem(std::numeric_limits<typename ret_t::id_type>::min());
+        // helper functions for brevity, sanity, clarity
+
+        bool accumulated_output_valid = false;
+        ret_t accumulated_output; // init with garbage id, guarded by valid bool
+        auto send_to_output = [&accumulated_output_valid, &accumulated_output](ret_t&& out) -> void {
+            if (out.id() != accumulated_output.id()) {
+                if (accumulated_output_valid) {
+                    ret.push_back(std::move(accumulated_output));
+                    // no pre-conditions on moved-from object
+                    accumulated_output = out;
+
+                }
+            } else {
+                // this is fine even if the garbage id happens to be the same as the output id
+            }
+        };
+
+        // TODOODODODO
 
         while (!column_infos.empty()) {
             // the top of the heap points to the lowest row number
@@ -1778,15 +1791,8 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
                 if (arg_pos->id() == elem.pos->id()) {
                     // the ids are the same. combine the elements
                     auto data = elem.pos->data().template ande<ret_t>(arg_pos++->data());
-                    // send the output_element to the output if necessary
-                    if (output_elem.id() == std::numeric_limits<typename ret_t::id_type>::min()) {
-                        // const_cast here
-                    }//limits?
-
-                    // if (!ret.empty() && output_elem.id() != elem.pos->id()) {
-                    //     ret.push_back(output_elem);
-                    // }
-                    // output_elem.data().ori(data);
+                    // if the output_elem is valid, send it off, before freshly 
+                    
                 } else if (arg_pos.id() > elem.pos->id()) {
                     goto only_this;
                 } else {
