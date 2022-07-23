@@ -285,13 +285,13 @@ class SDR {
          *      the element is in both: both_visitor(iterator this_position, c_arg_t::iterator arg_position)
          *
          * while applying the visitors, this function will reach a point where there doesn't exist any more elements in the arg.
-         * at this point, this_back_position(iterator) is called with the curent position in this, and then this function exits.
-         * similarly, if there are no more elements in this, then arg_back_position(c_arg_t::iterator) is called, followed by an exit.
+         * at this point, this_only_position(iterator) is called with the curent position in this, and then this function exits.
+         * similarly, if there are no more elements in this, then arg_only_position(c_arg_t::iterator) is called, followed by an exit.
          * 
          * the visitors must not invalidate proceeding iterators (one this_position or one arg_position)
          */
-        template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor, typename ThisBackPosition, typename ArgBackPosition>
-        void orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor, ThisBackPosition this_back_position, ArgBackPosition arg_back_position);
+        template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor, typename ThisOnlyPosition, typename ArgOnlyPosition>
+        void orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor, ThisOnlyPosition this_only_position, ArgOnlyPosition arg_only_position);
 
         /**
          * remove elements.
@@ -1016,22 +1016,22 @@ typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::and
 template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor>
 void SDR<SDRElem_t, container_t>::orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor) {
-    auto this_back_position = [&](iterator pos) {
-        while (pos != this->cend()) {
+    auto this_only_position = [&](iterator pos) {
+        while (pos != this->cend()) { // do while?
             this_visitor(pos++);
         }
     };
-    auto arg_back_position = [&](typename c_arg_t::iterator pos) {
+    auto arg_only_position = [&](typename c_arg_t::iterator pos) {
         while (pos != arg.cend()) {
             arg_visitor(pos++);
         }
     };
-    orv(arg, this_visitor, arg_visitor, both_visitor, this_back_position, arg_back_position);
+    orv(arg, this_visitor, arg_visitor, both_visitor, this_only_position, arg_only_position);
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor, typename ThisBackPosition, typename ArgBackPosition>
-void SDR<SDRElem_t, container_t>::orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor, ThisBackPosition this_back_position, ArgBackPosition arg_back_position) {
+template<typename arg_t, typename c_arg_t, typename ThisVisitor, typename QueryVisitor, typename BothVisitor, typename ThisOnlyPosition, typename ArgOnlyPosition>
+void SDR<SDRElem_t, container_t>::orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this_visitor, QueryVisitor arg_visitor, BothVisitor both_visitor, ThisOnlyPosition this_only_position, ArgOnlyPosition arg_only_position) {
     auto this_pos = this->v.begin();
     auto this_end = this->v.end();
     typename SDRElem_t::id_type this_val;
@@ -1045,7 +1045,7 @@ void SDR<SDRElem_t, container_t>::orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this
         if (this_pos != this_end) {
             this_val = this_pos->id();
         } else {
-            arg_back_position(arg_pos);
+            arg_only_position(arg_pos);
             return false;
         }
         return true;
@@ -1055,7 +1055,7 @@ void SDR<SDRElem_t, container_t>::orv(SDR<arg_t, c_arg_t>& arg, ThisVisitor this
         if (arg_pos != arg_end) {
             arg_val = arg_pos->id();
         } else {
-            this_back_position(this_pos);
+            this_only_position(this_pos);
             return false;
         }
         return true;
@@ -1492,9 +1492,9 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::rmi(const SDR<arg_t, c
             do_not_increment_lagger:
                 (void)0;
         };
-        auto this_back_position = [](iterator) {};
-        auto arg_back_position = [](typename c_arg_t::iterator) {};
-        this->orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_back_position, arg_back_position);
+        auto this_only_position = [](iterator) {};
+        auto arg_only_position = [](typename c_arg_t::iterator) {};
+        this->orv(const_cast<SDR<arg_t, c_arg_t>&>(arg), this_visitor, arg_visitor, both_visitor, this_only_position, arg_only_position);
     } else {
         auto this_visitor = [&](iterator) {};
         auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
@@ -1731,13 +1731,28 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
         };
         const_cast<SDR&>(*this).visitor(this_visitor);
     } else {
+        /**
+         * There's two sources of inputs. This (vector of columns), and the arg (vector).
+         * We're pulling from both of these inputs, and combining matching ids.
+         * 
+         * Getting elements from the arg is trivial, we just have a begin and an end, and the ids are sorted.
+         * Getting elements from this is difficult. Since we are actually pulling from each of the columns.
+         * Each column is sorted, but the elements across columns have no relation.
+         * We store references to each of the columns in this into a heap, so we always get the lowest row.
+         * 
+         * The output function accumulates these output elements. It "accumulates" same id elements via ori.
+         * If it's a new id, then it send the current accumulation to the output and starts fresh.
+         */
+
+        // =============================== setup data structures =================================
+
         // points to the current iteration position
         struct column_information {
             // pos must always be valid
             typename SDRElem_t::data_type::const_iterator pos;
             typename SDRElem_t::data_type::const_iterator end;
             bool operator>(const column_information& other) const {
-                return pos->id() < other.pos->id();
+                return pos->id() > other.pos->id();
             }
         };
 
@@ -1762,11 +1777,12 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
         auto arg_pos = arg.cbegin();
         auto arg_end = arg.cend();
 
-        // helper functions for sanity, brevity, clarity
+        // =============================== output functions =================================
 
         bool accumulated_output_valid = false;
         ret_t accumulated_output; // init with garbage id, guarded by valid bool
-        auto send_to_output = [&ret, &accumulated_output_valid, &accumulated_output](ret_t&& out) -> void {
+        auto send_to_output = [&](ret_t&& out) -> void {
+            std::cerr << "OUTPUT" << out << '\n';
             // this function emulates a bucket being filled, before being sent to the output
             // the "bucket" is variable accumulated_output
             // if new id comes in, then it send off the old data to the output
@@ -1776,7 +1792,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
                     // no pre-conditions on moved-from object
                     accumulated_output = out;
                 }
-                const_cast<typename ret_t::id_type&>(accumulated_output.id()) = out.id();
+                accumulated_output = out;
             } else {
                 // this is fine even if the garbage id happens to be the same as the output id
                 // since the data is an initialized blank slate
@@ -1785,61 +1801,108 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
             accumulated_output_valid = true;
         };
 
-        auto flush_output = [&ret, &accumulated_output_valid, &accumulated_output]() -> void {
+        auto flush_output = [&]() -> void {
+            // called only once at the end
             if (accumulated_output_valid) {
                 ret.push_back(std::move(accumulated_output));
             }
         };
 
-        send_to_output(ret_t(0, 0));
-        send_to_output(ret_t(0, 1));
-        send_to_output(ret_t(0, 2));
-        send_to_output(ret_t(1, 0));
-        send_to_output(ret_t(1, 1));
-        send_to_output(ret_t(1, 2));
+        // =============================== getter functions =================================
+        // following the same pattern seen in orv
+        // (pulling from two sources, handling what happens if one source runs out, etc.)
+        typename SDRElem_t::id_type this_val;
+        typename arg_t::id_type arg_val;
+
+        auto arg_visitor = [&]() {
+            auto data = typename SDRElem_t::data_type::value_type::data_type().template ande<typename ret_t::data_type>(arg_pos->data());
+            typename ret_t::id_type id = arg_pos->id();
+            ret_t output_elem(id, std::move(data));
+            send_to_output(std::move(output_elem));
+            arg_pos++;
+        };
+
+        auto this_visitor = [&]() {
+            // the top of the heap points to the lowest row number
+            column_information elem = column_infos.top();
+            auto data = elem.pos->data().template ande<typename ret_t::data_type>(typename arg_t::data_type());
+            typename ret_t::id_type id = elem.pos->id();
+            ret_t output_elem(id, std::move(data));
+            send_to_output(std::move(output_elem));
+
+            ++elem.pos;
+            column_infos.pop();
+            if (elem.pos != elem.end) {
+                column_infos.push(elem);
+            }
+        };
+
+        auto arg_only_position = [&]() {
+            // no more elements in this
+            while (arg_pos != arg_end) {
+                arg_visitor();
+            }
+        };
+
+        auto this_only_position = [&]() {
+            // no more elements in arg
+            while (!column_infos.empty()) {
+                this_visitor();
+            }
+        };
+
+        // returns false if the function should exit
+        auto get_this = [&]() {
+            if (!column_infos.empty()) {
+                this_val = column_infos.top().pos->id();
+            } else {
+                arg_only_position();
+                return false;
+            }
+            return true;
+        };
+
+        // returns false if the function should exit
+        auto get_arg = [&]() {
+            if (arg_pos != arg_end) {
+                arg_val = arg_pos->id();
+            } else {
+                this_only_position();
+                return false;
+            }
+            return true;
+        };
+
+        if (!get_this()) { goto get_out; }
+        if (!get_arg()) { goto get_out; }
+
+        while (true) {
+            if (this_val < arg_val) {
+                this_visitor();
+                if (!get_this()) { goto get_out; }
+            } else if (this_val > arg_val) {
+                arg_visitor();
+                if (!get_arg()) { goto get_out; }
+            } else {
+                // both_visitor
+                column_information elem = column_infos.top();
+                auto data = elem.pos->data().template ande<typename ret_t::data_type>(arg_pos->data());
+                typename ret_t::id_type id = elem.pos->id();
+                ret_t output_elem(id, std::move(data));
+                send_to_output(std::move(output_elem));
+
+                ++elem.pos;
+                column_infos.pop();
+                if (elem.pos != elem.end) {
+                    column_infos.push(elem);
+                }
+
+                if (!get_this()) { goto get_out; }
+            }
+        }
+
+        get_out:
         flush_output();
-
-
-        // while (!column_infos.empty()) {
-        //     // the top of the heap points to the lowest row number
-        //     column_information elem = column_infos.top();
-
-        //     if (arg_pos != arg_end) {
-        //         // both elems are available for combination
-        //         // but are the id's the same?
-        //         if (arg_pos->id() == elem.pos->id()) {
-        //             // the ids are the same. combine the elements
-        //             auto a = elem.pos->data();
-        //             auto b = arg_pos->data();
-        //             std::cerr << a.ande(b) << '\n';
-        //             auto data = elem.pos->data().template ande<typename ret_t::data_type>(arg_pos++->data());
-        //             typename ret_t::id_type id = elem.pos->id();
-        //             ret_t output_elem(id, std::move(data));
-        //             send_to_output(std::move(output_elem));
-        //         } else if (arg_pos->id() > elem.pos->id()) {
-        //             goto only_this;
-        //         } else {
-        //             // only arg
-        //         }
-        //     } else {
-        //         only_this:
-        //         // only this is available
-        //         auto data = elem.pos->data().template ande<typename ret_t::data_type>(typename arg_t::data_type());
-        //         typename ret_t::id_type id = elem.pos->id();
-        //         ret_t output_elem(id, std::move(data));
-        //         send_to_output(std::move(output_elem));
-        //     }
-
-        //     ++elem.pos; // increment to the next element in that row
-        //     column_infos.pop();
-        //     if (elem.pos != elem.end) {
-        //         column_infos.push(elem);
-        //     }
-        // }
-
-        // while (arg_pos != arg_end) {
-        //     // only the arg is available
-        // }
     }
     return ret;
 }
