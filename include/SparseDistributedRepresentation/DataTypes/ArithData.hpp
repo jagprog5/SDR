@@ -35,7 +35,7 @@ class ArithData {
         
         template<typename T>
         constexpr ArithData& andi(const T& o) {
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ *= o.value();
             }
             return *this;
@@ -57,7 +57,7 @@ class ArithData {
         
         template<typename T>
         constexpr ArithData& ori(const T& o) {
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ += o.value();
             }
             return *this;
@@ -77,7 +77,7 @@ class ArithData {
         
         template<typename T>
         constexpr ArithData& rmi(const T& o) {
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ -= o.value();
             }
             return *this;
@@ -90,6 +90,18 @@ class ArithData {
 
         constexpr bool operator==(const ArithData& o) const {
             return value() == o.value();
+        }
+
+        constexpr bool operator!=(const ArithData& o) const {
+            return value() != o.value();
+        }
+
+        constexpr bool operator==(const EmptyData&) const {
+            return true;
+        }
+
+        constexpr bool operator!=(const EmptyData&) const {
+            return false;
         }
 
     private:

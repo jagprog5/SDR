@@ -37,7 +37,7 @@ class UnitData {
         template<typename T>
         constexpr UnitData& andi(const T& o) {
             // EmptyData lacks a value() function
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ *= o.value();
             }
             return *this;
@@ -57,7 +57,7 @@ class UnitData {
 
         template<typename T>
         constexpr UnitData& ori(const T& o) {
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ = value_ > o.value() ? value_ : o.value();
             }
             return *this;
@@ -77,7 +77,7 @@ class UnitData {
 
         template<typename T>
         constexpr UnitData& xori(const T& o) {
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ = std::abs(value_ - o.value());
             }
             return *this;
@@ -97,7 +97,7 @@ class UnitData {
 
         template<typename T>
         constexpr UnitData& rmi(const T& o) {
-            if constexpr(hasValue<T>::value) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ = value_ * (1 - o.value());
             }
             return *this;
@@ -110,6 +110,18 @@ class UnitData {
 
         constexpr bool operator==(const UnitData& o) const {
             return value() == o.value();
+        }
+
+        constexpr bool operator!=(const UnitData& o) const {
+            return value() != o.value();
+        }
+
+        constexpr bool operator==(const EmptyData&) const {
+            return true;
+        }
+
+        constexpr bool operator!=(const EmptyData&) const {
+            return false;
         }
 
     private:

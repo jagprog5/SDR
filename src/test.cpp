@@ -361,7 +361,7 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
   Matrix m{row0, row1};
   Row row2(0, SDR<Element>{Element(0, 1.0f), Element(1, 3.0f)});
   Row row3(1, SDR<Element>{Element(0, 2.0f), Element(1, 4.0f)});
-  Matrix result{row0, row1};
+  Matrix result{row2, row3};
   BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
 }
 

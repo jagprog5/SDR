@@ -76,6 +76,7 @@ class EmptyData {
         constexpr bool rms(const T&) const { return rm_relevant(); }
 
         constexpr bool operator==(const EmptyData&) const { return true; }
+        constexpr bool operator!=(const EmptyData&) const { return false; }
 
     private:
         // if this member wasn't here, the EmptyData size would be 1, instead of 0.

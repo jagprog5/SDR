@@ -63,6 +63,8 @@ class SDRElem {
 
         template<typename id_other, typename data_other>
         constexpr bool operator==(const SDRElem<id_other, data_other>& o) const {
+            // equality of SDRElem disregards the data equality
+            // this make sense since the elements should be ordered by id
             return id() == o.id();
         }
 

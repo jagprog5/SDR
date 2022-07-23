@@ -6,13 +6,6 @@ namespace sparse_distributed_representation {
 
 // ========== helper templates ===============
 
-// does the data have a value() member?
-template<typename T, typename = void>
-struct hasValue : std::false_type {};
-
-template<typename T>
-struct hasValue<T, decltype((void)T().value(), void())> : std::true_type {};
-
 // if the underlying container does not have a size, then declare a size member
 template<typename container_t, typename = void>
 struct MaybeSize {
