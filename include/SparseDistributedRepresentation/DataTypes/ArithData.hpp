@@ -1,13 +1,17 @@
 #pragma once
 
-#include <functional>
 #include "SparseDistributedRepresentation/Templates.hpp"
+#include <functional>
+#include <iostream>
 
 namespace sparse_distributed_representation {
+
+class EmptyData;
 
 template<typename arith_t = float>
 class ArithData {
     public:
+        constexpr ArithData(EmptyData) : ArithData() {}
         constexpr ArithData() : value_(0) {}
         constexpr ArithData(float value) : value_(value) {}
 
@@ -22,34 +26,82 @@ class ArithData {
             return relevant();
         }
 
-        // for compatibility with other data types
+        template<typename ret_t = ArithData, typename T>
+        constexpr ret_t ande(const T& o) const {
+            ArithData r(*this);
+            r.andi(o); // reusing andi
+            return ret_t(r);
+        }
+        
         template<typename T>
-        explicit constexpr operator T() const { return T(value); }
-
-        constexpr ArithData ande(const ArithData& o) const {
-            return ArithData(this->value() * o.value());
-        }
-
-        constexpr ArithData ore(const ArithData& o) const {
-            return ArithData(this->value() + o.value());
-        }
-
-        // xor doesn't make sense in this context
-        // instead we have divide
-        constexpr auto operator/(const ArithData& o) const { return value() / o.value(); }
-
-        constexpr ArithData& operator/=(const ArithData& o) {
-            value_ /= o.value();
+        constexpr ArithData& andi(const T& o) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
+                value_ *= o.value();
+            }
             return *this;
         }
 
-        constexpr ArithData rme(const ArithData& o) const {
-            return ArithData(value() - o.value());
+        template<typename T>
+        constexpr bool ands(const T&) const {
+            // shortened from:
+            // return ande(o).relevant();
+            return relevant();
+        }
+
+        template<typename ret_t = ArithData, typename T>
+        constexpr ret_t ore(const T& o) const {
+            ArithData r(*this);
+            r.ori(o); // reusing ori
+            return ret_t(r);
+        }
+        
+        template<typename T>
+        constexpr ArithData& ori(const T& o) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
+                value_ += o.value();
+            }
+            return *this;
         }
 
         template<typename T>
-        constexpr bool operator==(const T& o) const {
-            return value() == ((ArithData)o).value();
+        constexpr bool ors(const T&) const {
+            return relevant();
+        }
+
+        template<typename ret_t = ArithData, typename T>
+        constexpr ret_t rme(const T& o) const {
+            ArithData r(*this);
+            r.rmi(o); // reusing rmi
+            return ret_t(r);
+        }
+        
+        template<typename T>
+        constexpr ArithData& rmi(const T& o) {
+            if constexpr(!std::is_base_of_v<EmptyData, T>) {
+                value_ -= o.value();
+            }
+            return *this;
+        }
+
+        template<typename T>
+        constexpr bool rms(const T&) const {
+            return rm_relevant();
+        }
+
+        constexpr bool operator==(const ArithData& o) const {
+            return value() == o.value();
+        }
+
+        constexpr bool operator!=(const ArithData& o) const {
+            return value() != o.value();
+        }
+
+        constexpr bool operator==(const EmptyData&) const {
+            return true;
+        }
+
+        constexpr bool operator!=(const EmptyData&) const {
+            return false;
         }
 
     private:
@@ -78,7 +130,7 @@ SDR<SDRElem<ret_id_t, ArithData<ret_arith_t>>, c_ret_t> divide(const SDR<SDRElem
     std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> visitor_both;
     [[maybe_unused]] typename c_ret_t::const_iterator it;
 
-    if constexpr(isForwardList<c_ret_t>::value) {
+    if constexpr(flistLike<c_ret_t>::value) {
         it = r.before_begin();
         visitor_this = [&](typename container_t::iterator this_pos) {
             // pass through
@@ -87,7 +139,7 @@ SDR<SDRElem<ret_id_t, ArithData<ret_arith_t>>, c_ret_t> divide(const SDR<SDRElem
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
             // no relevance check since ArithData is always relevant
-            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data() / arg_pos->data());
+            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data().value() / arg_pos->data().value());
             it = r.insert_after(it, elem);
         };
 
@@ -98,7 +150,7 @@ SDR<SDRElem<ret_id_t, ArithData<ret_arith_t>>, c_ret_t> divide(const SDR<SDRElem
         };
 
         visitor_both = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data() / arg_pos->data());
+            SDRElem<ret_id_t, ArithData<ret_arith_t>> elem(this_pos->id(), this_pos->data().value() / arg_pos->data().value());
             r.push_back(elem);
         };
     }
@@ -115,7 +167,7 @@ SDR<SDRElem<id_t, ArithData<arith_t>>, container_t> operator/(const SDR<SDRElem<
 template<typename id_t, typename container_t, typename arith_t, typename arg_id_t, typename c_arg_t, typename arg_arith_t>
 SDR<SDRElem<id_t, ArithData<arith_t>>, container_t>& operator/=(SDR<SDRElem<id_t, ArithData<arith_t>>, container_t>& a, const SDR<SDRElem<arg_id_t, ArithData<arg_arith_t>>, c_arg_t>& b) {
     auto visitor = [&](typename container_t::iterator this_pos, typename c_arg_t::iterator arg_pos) {
-        this_pos->data() /= arg_pos->data();
+        this_pos->data().value(this_pos->data().value() / arg_pos->data().value());
     };
 
     a.andv(const_cast<SDR<SDRElem<arg_id_t, ArithData<arg_arith_t>>, c_arg_t>&>(b), visitor);

@@ -1,11 +1,14 @@
 #pragma once
 #include <array>
 
+namespace sparse_distributed_representation {
+
 /**
  * An ArrayAdaptor provides a vector-like interface so an array can be used in an SDR.
  * This is needed for statically allocated SDRs.
  * 
- * Ensure that the size if sufficient. e.g. or elements can produce an output with a size only up to (inclusively) the sum of the arguments' sizes
+ * Ensure that the capacity is always sufficient.
+ * e.g. or elements can produce an output with a size only up to (inclusively) the sum of the arguments' sizes
  */
 template<typename SDRElem_t, std::size_t N>
 class ArrayAdaptor {
@@ -18,8 +21,30 @@ class ArrayAdaptor {
         [[maybe_unused]] SDRElem_t r = std::move(*pos);
     }
 
+    template<typename Iterator>
+    void replace(Iterator begin, Iterator end) {
+        SDRElem_t* previous_end = end_;
+        construct(begin, end); // sets end_
+        if (end_ < previous_end) {
+            do {
+                drop_content(--previous_end);
+            } while (previous_end != end_);
+        }
+    }
+
+    // self assignment / move is ok. However, it is the responsability of SDRElem_t to check for self assignment / move at the element level.
+    template<typename Iterator>
+    void construct(Iterator begin, Iterator end) {
+        auto this_pos = &arr_[0];
+        while (begin != end) {
+            *this_pos++ = *begin++;
+        }
+        end_ = this_pos;
+    }
+
     public:
         using value_type = SDRElem_t;
+        static constexpr std::size_t capacity = N;
         using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
         using reference = SDRElem_t&;
@@ -33,35 +58,27 @@ class ArrayAdaptor {
 
         ArrayAdaptor() : arr_(), end_(&arr_[0]) {}
 
-        // NOLINTNEXTLINE(bugprone-unhandled-self-assignment) self assignment is no-op
-        ArrayAdaptor& operator=(const ArrayAdaptor& o) noexcept {
-            auto o_pos = o.cbegin();
-            auto o_end = o.cend();
-            auto this_pos = begin();
-            while (o_pos != o_end) {
-                *this_pos++ = *o_pos++;
-            }
-            end_ = this_pos;
+        template<typename Iterator>
+        ArrayAdaptor(Iterator begin, Iterator end) {
+            construct(begin, end);
+        }
+
+        ArrayAdaptor& operator=(const ArrayAdaptor& o) {
+            replace(o.cbegin(), o.cend());
             return *this;
         }
 
         ArrayAdaptor(const ArrayAdaptor& o) {
-            *this = o;
+            construct(o.cbegin(), o.cend());
         }
 
         ArrayAdaptor& operator=(ArrayAdaptor&& o) noexcept {
-            auto o_pos = std::make_move_iterator(o.begin());
-            auto o_end = std::make_move_iterator(o.end());
-            auto this_pos = begin();
-            while (o_pos != o_end) {
-                *this_pos++ = *o_pos++;
-            }
-            end_ = this_pos;
+            replace(std::make_move_iterator(o.begin()), std::make_move_iterator(o.end()));
             return *this;
         }
 
         ArrayAdaptor(ArrayAdaptor&& o) noexcept {
-            *this = o;
+            construct(std::make_move_iterator(o.begin()), std::make_move_iterator(o.end()));
         }
 
         size_t size() const { return end_ - &arr_[0]; }
@@ -79,25 +96,42 @@ class ArrayAdaptor {
         const_reverse_iterator crbegin() const { return std::reverse_iterator(cend()); }
         const_reverse_iterator crend() const { return std::reverse_iterator(cbegin()); }
 
+        const_reference front() const {
+            assert(!empty());
+            return arr_[0];
+        }
+
+        reference front() {
+            assert(!empty());
+            return arr_[0];
+        }
+
         template<typename E>
         void push_back(E&& val) {
             assert(size() < N);
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            *end_++ = val;
+            *end_++ = std::forward<E>(val);
         }
 
-        void erase(iterator pos) {
+        void pop_back() {
+            assert(!empty());
+            --end_;
+            drop_content(end_);
+        }
+
+        iterator erase(const_iterator arg) {
+            iterator pos = &const_cast<SDRElem_t&>(*arg);
+            auto ret = pos;
             assert(!empty());
             while (++pos != end_) {
                 *(pos - 1) = std::move(*pos);
             }
             --end_;
             drop_content(end_);
+            return ret;
         }
 
         void resize(size_t size) {
             assert(size <= this->size() && "resize can only shrink an ArrayAdaptor");
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             SDRElem_t* new_end = &arr_[0] + size;
             SDRElem_t* pos = new_end;
             while (pos != end()) {
@@ -116,3 +150,5 @@ class ArrayAdaptor {
 
         void shrink_to_fit() {}
 };
+
+} // namespace

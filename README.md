@@ -109,7 +109,8 @@ flowchart TB
     EmptyData["EmptyData\nDisables the data functionality"]
     UnitData["UnitData\nA float bounded from 0 to 1"]
     ArithData>"ArithData\nNormal arithmetic type"]
-    id("id\nThe position of an SDRElem in the dense representation")
+    SDR2>"SDR\nNested SDRs form n-dimensional structures"]
+    id("id\nThe position of an SDRElem's data in the dense representation")
     data("data\nSomething associated with the id")
 
     SDR-->SDRElem
@@ -128,7 +129,8 @@ flowchart TB
 
     data-->EmptyData
     data-->UnitData
-    data-->ArithData
+    data--->ArithData
+    data-->SDR2
 
     ArithData-->float
     ArithData-->double
@@ -148,6 +150,7 @@ style UnitData fill:#444
 style ArithData fill:#111
 style uint64_t fill:#444
 style etc... fill:#444
+style SDR2 fill:#111
 
 style std::vector fill:#888
 style EmptyData fill:#888
@@ -161,7 +164,8 @@ style etc2 fill:#444
 
 ## SDRElem with Data
 
-SDRs are composed of SDRElem elements. By default, an SDRElem has an `int` identifier and an `EmptyData` data.  
+SDRs are composed of SDRElem elements.  
+By default, an SDRElem has an `int` identifier and an `EmptyData` data.  
 This means that each index in the dense representation is identified by an int,  
 and that each index has no data (aka EmptyData) associated with it.
 

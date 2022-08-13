@@ -23,13 +23,15 @@ class SDRElem {
         using id_type = id_t;
         using data_type = data_t;
 
-        constexpr SDRElem(id_t id, data_t data) : id_(id), data_(data) {}
-        constexpr SDRElem(id_t id) : id_(id), data_() {}
+        template<typename dat>
+        constexpr SDRElem(id_t id, dat&& data) : id_(id), data_(std::forward<dat>(data)) {}
+        constexpr explicit SDRElem(id_t id) : id_(id), data_() {}
         constexpr SDRElem() : id_(), data_() {}
+
         constexpr SDRElem(const SDRElem& o) : id_(o.id()), data_(o.data()) {}
 
         template<typename o_id_t, typename o_data_t>
-        constexpr SDRElem(const SDRElem<o_id_t, o_data_t>& o) : id_(o.id()), data_(o.data()) {}
+        constexpr explicit SDRElem(const SDRElem<o_id_t, o_data_t>& o) : id_(o.id()), data_(o.data()) {}
 
         constexpr SDRElem& operator=(const SDRElem& o) {
             const_cast<id_t&>(id_) = o.id();
@@ -40,7 +42,7 @@ class SDRElem {
         constexpr SDRElem(SDRElem&& o) noexcept : id_(std::move(o.id())), data_(std::move(o.data())) {}
 
         constexpr SDRElem& operator=(SDRElem&& o) noexcept {
-            const_cast<id_t&>(id_) = std::move(const_cast<id_t&>(o.id()));
+            const_cast<id_t&>(id_) = o.id();
             data_ = std::move(o.data());
             return *this;
         }
@@ -62,6 +64,8 @@ class SDRElem {
 
         template<typename id_other, typename data_other>
         constexpr bool operator==(const SDRElem<id_other, data_other>& o) const {
+            // equality of SDRElem disregards the data equality
+            // this make sense since the elements should be ordered by id
             return id() == o.id();
         }
 

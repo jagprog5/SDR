@@ -12,6 +12,7 @@ using namespace std::chrono;
 static constexpr size_t DEFAULT_FUZZ_AMOUNT = 250;
 using ArrDefault = ArrayAdaptor<SDRElem<>, DEFAULT_FUZZ_AMOUNT * 2>;
 
+// 20 is the default for "ctest"
 static constexpr size_t TEST_FUZZ_AMOUNT = 20;
 using ArrTest = ArrayAdaptor<SDRElem<>, TEST_FUZZ_AMOUNT * 2>;
 
@@ -28,7 +29,7 @@ bool validate_andop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem);
         if (b_pos != b.cend()) {
-            auto data = a_elem.data().ande(typename SDRElem_t::data_type(b_pos->data()));
+            auto data = a_elem.data().ande(b_pos->data());
             // check data correct in result
             auto pos = r & a_elem.id();
             if (data.relevant()) {
@@ -48,7 +49,7 @@ bool validate_andop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem);
         if (a_pos != a.cend()) {
             // b element is in a
-            auto data = a_pos->data().ande(typename SDRElem_t::data_type(b_elem.data()));
+            auto data = a_pos->data().ande(b_elem.data());
             // check data correct in result
             auto pos = r & b_elem.id();
             if (data.relevant()) {
@@ -73,6 +74,7 @@ bool validate_andop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
     }
     // ensure the size is correct
     REQUIRE_TRUE(i == r.size());
+    REQUIRE_TRUE(r.is_ascending());
     return true;
 }
 
@@ -96,7 +98,7 @@ bool validate_orop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg_
         REQUIRE_TRUE(a_pos != a.cend() || b_pos != b.cend());
         // data correctness
         if (a_pos != a.cend() && b_pos != b.cend()) {
-            REQUIRE_TRUE(r_elem.data() == a_pos->data().ore(typename SDRElem_t::data_type(b_pos->data())));
+            REQUIRE_TRUE(r_elem.data() == a_pos->data().ore(b_pos->data()));
         } else if (a_pos != a.cend()) {
             REQUIRE_TRUE(r_elem.data() == a_pos->data());
         } else {
@@ -105,6 +107,7 @@ bool validate_orop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg_
     }
     // ensure the size is correct
     REQUIRE_TRUE(i == r.size());
+    REQUIRE_TRUE(r.is_ascending());
     return true;
 }
 
@@ -114,7 +117,7 @@ bool validate_xorop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
     for(auto a_pos = a.cbegin(); a_pos != a.cend(); ++a_pos) {
         auto a_elem = *a_pos;
         auto b_pos = std::find(b.cbegin(), b.cend(), a_elem.id());
-        if (b_pos == b.cend() || a_elem.data().xore(typename SDRElem_t::data_type(b_pos->data())).rm_relevant()) {
+        if (b_pos == b.cend() || a_elem.data().xore(b_pos->data()).rm_relevant()) {
             // a elem is not in b
             REQUIRE_TRUE(r & a_elem.id())
         }
@@ -123,7 +126,7 @@ bool validate_xorop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
     for(auto b_pos = b.cbegin(); b_pos != b.cend(); ++b_pos) {
         auto b_elem = *b_pos;
         auto a_pos = std::find(a.cbegin(), a.cend(), b_elem.id());
-        if (a_pos == a.cend() || a_pos->data().xore(typename SDRElem_t::data_type(b_elem.data())).rm_relevant()) {
+        if (a_pos == a.cend() || a_pos->data().xore(b_elem.data()).rm_relevant()) {
             // b elem is not in a
             REQUIRE_TRUE(r & b_elem.id());
         }
@@ -138,7 +141,7 @@ bool validate_xorop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
         REQUIRE_TRUE(a_pos != a.cend() || b_pos != b.cend());
         // data correctness
         if (a_pos != a.cend() && b_pos != b.cend()) {
-            REQUIRE_TRUE(r_elem.data() == a_pos->data().xore(typename SDRElem_t::data_type(b_pos->data())));
+            REQUIRE_TRUE(r_elem.data() == a_pos->data().xore(b_pos->data()));
         } else if (a_pos != a.cend()) {
             REQUIRE_TRUE(r_elem.data() == a_pos->data());
         } else {
@@ -147,6 +150,7 @@ bool validate_xorop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg
     }
     // ensure the size is correct
     REQUIRE_TRUE(i == r.size());
+    REQUIRE_TRUE(r.is_ascending());
     return true;
 }
 
@@ -161,7 +165,7 @@ bool validate_rmop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg_
         if (b_pos == b.cend()) {
             data = a_elem.data();
         } else {
-            data = a_elem.data().rme(typename SDRElem_t::data_type(b_pos->data()));
+            data = a_elem.data().rme(b_pos->data());
         }
         if (b_pos == b.cend() || data.rm_relevant()) {
             // a elem is not in b
@@ -173,6 +177,7 @@ bool validate_rmop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg_
     }
     // the result can't contain any other elements
     REQUIRE_TRUE(i == r.size());
+    REQUIRE_TRUE(r.is_ascending());
     return true;
 }
 
@@ -185,29 +190,29 @@ template<typename SDR>
 SDR get_sdr(int val) {
     SDR ret;
     long start;
-    if constexpr(SDR::usesForwardList) {
+    if constexpr(SDR::usesFlistLike) {
         start = sizeof(decltype(val)) * 8 - 1;
     } else {
         start = 0;
     }
     long stop; // exclusive
-    if constexpr(SDR::usesForwardList) {
+    if constexpr(SDR::usesFlistLike) {
         stop = -1;
     } else {
         stop = sizeof(decltype(val)) * 8;
     }
     long change;
-    if constexpr(SDR::usesForwardList) {
+    if constexpr(SDR::usesFlistLike) {
         change = -1;
     } else {
         change = 1;
     }
     for (long i = start; i != stop; i += change) {
         if ((1 << i) & val) {
-            // only sets value if UnitData
             typename SDR::value_type::data_type data((float)twister() / (float)twister.max());
+            // if (!data.relevant()) continue;
             typename SDR::value_type elem(i, data);
-            if constexpr(SDR::usesForwardList) {
+            if constexpr(SDR::usesFlistLike) {
                 ret.push_front(elem);
             } else {
                 ret.push_back(elem);
@@ -217,21 +222,15 @@ SDR get_sdr(int val) {
     return ret;
 }
 
-template<typename T>
-struct isArrayAdaptor : std::false_type {};
-
-template<typename T, size_t N>
-struct isArrayAdaptor<ArrayAdaptor<T, N>> : std::true_type {};
-
 template<typename SDR>
 std::string get_template_name() {
     if constexpr(isArrayAdaptor<typename SDR::container_type>::value) {
         return "arr";
-    } else if constexpr(SDR::usesVector) {
+    } else if constexpr(SDR::usesVectorLike) {
         return "vec";
-    } else if constexpr(SDR::usesSet) {
+    } else if constexpr(SDR::usesSetLike) {
         return "set";
-    } else if constexpr(SDR::usesForwardList) {
+    } else if constexpr(SDR::usesFlistLike) {
         return "lst";
     } else {
         return "???";
@@ -392,15 +391,15 @@ int main(int argc, char** argv) {
     // but no. realistically, nobody will make nearly this many specializations
 
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
-    series<SDR<SDRElem<>, std::set<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::set<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::set<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     if (fuzz_amount == DEFAULT_FUZZ_AMOUNT) {
@@ -412,28 +411,28 @@ int main(int argc, char** argv) {
     std::cout << "======With data elements======" << std::endl;
 
     series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<long, UnitData>, std::vector<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
 
-    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>, std::less<>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>, std::less<>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::set<SDRElem<long, UnitData>, std::less<>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
 
     series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
-    series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<long, UnitData>, std::forward_list<SDRElem<long, UnitData>>>, SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>>(fuzz_amount);
 
     std::cout << "======Mixed with and without data======" << std::endl;
 
     series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
-    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::set<SDRElem<int, UnitData>, std::less<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
-    series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 }

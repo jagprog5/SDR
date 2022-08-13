@@ -29,6 +29,7 @@ if (STATIC_ANALYSIS)
         portability-*,\
         -*-magic-numbers,\
         -cppcoreguidelines-special-member-functions,\
+        -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
         -cppcoreguidelines-avoid-c-arrays,\
         -cppcoreguidelines-pro-type-const-cast,\
         -cppcoreguidelines-avoid-goto,\

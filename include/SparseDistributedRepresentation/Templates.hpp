@@ -15,15 +15,6 @@ struct MaybeSize {
 template<typename container_t>
 struct MaybeSize<container_t, decltype((void)container_t().size(), void())> {};
 
-template<bool is_forward, typename T>
-struct lesser_or_greater;
-
-template<typename T>
-struct lesser_or_greater<true, T> : std::less<T> {};
-
-template<typename T>
-struct lesser_or_greater<false, T> : std::greater<T> {};
-
 // the below template is specific to stl containers only.
 // in an effort to keep things generic, the presence or lack of certain members is checked for instead
 
@@ -34,18 +25,33 @@ struct lesser_or_greater<false, T> : std::greater<T> {};
 // struct isForwardList<std::forward_list<T, A>> : std::true_type {};
 
 template<typename T, typename = void>
-struct isForwardList : std::true_type {};
+struct flistLike : std::true_type {};
 
 template<typename T>
-struct isForwardList<T, decltype((void)T().size(), void())> : std::false_type {};
+struct flistLike<T, decltype((void)T().size(), void())> : std::false_type {};
 
 template<typename T>
-struct isVector : std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category> {};
+struct vectorLike : std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category> {};
 
 template<typename T, typename = void>
-struct isSet : std::false_type {};
+struct setLike : std::false_type {};
 
 template<typename T>
-struct isSet<T, decltype((void)T().lower_bound(typename T::value_type()), void())> : std::true_type {};
+struct setLike<T, decltype((void)T().lower_bound(typename T::value_type()), void())> : std::true_type {};
+
+template<typename SDRElem_t, std::size_t N>
+class ArrayAdaptor;
+
+template<typename T>
+struct isArrayAdaptor : std::false_type {};
+
+template<typename T, size_t N>
+struct isArrayAdaptor<ArrayAdaptor<T, N>> : std::true_type {};
+
+template<typename T, typename = void>
+struct setComparatorCheck : std::false_type {};
+
+template<typename T>
+struct setComparatorCheck<T, decltype((void)T().lower_bound(typename T::value_type::id_type()), void())> : std::true_type {};
 
 } // namespace
