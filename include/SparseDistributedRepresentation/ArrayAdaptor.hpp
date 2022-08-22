@@ -63,6 +63,7 @@ class ArrayAdaptor {
             construct(begin, end);
         }
 
+        // NOLINTNEXTLINE(bugprone-unhandled-self-assignment)
         ArrayAdaptor& operator=(const ArrayAdaptor& o) {
             replace(o.cbegin(), o.cend());
             return *this;

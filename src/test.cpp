@@ -313,6 +313,7 @@ BOOST_AUTO_TEST_CASE(test_printing) {
   std::cout.rdbuf(old_buffer); // restore
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 int copy_count;
 struct MoveDetector {
   MoveDetector() {}
@@ -324,9 +325,9 @@ struct MoveDetector {
     return *this;
   }
 
-  MoveDetector(MoveDetector&&) {}
+  MoveDetector(MoveDetector&&) noexcept {}
 
-  MoveDetector& operator=(MoveDetector&&) {
+  MoveDetector& operator=(MoveDetector&&) noexcept {
     return *this;
   }
 

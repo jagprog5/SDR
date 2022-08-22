@@ -119,6 +119,7 @@ flowchart TB
     container-->std::set
     container-->std::forward_list
     container--->ArrayAdaptor
+    container--->boost::container::static_vector
 
     SDRElem--->data
     SDRElem-->id
@@ -144,6 +145,7 @@ style id fill:#111
 style data fill:#111
 
 style ArrayAdaptor fill:#444
+style boost::container::static_vector fill:#444
 style std::set fill:#444
 style std::forward_list fill:#444
 style UnitData fill:#444

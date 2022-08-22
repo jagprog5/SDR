@@ -18,6 +18,7 @@ template<typename T>
 class OtherMajorView {
     // for variable naming, assume this provides a column-wise view of a row-major matrix
     private:
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
         struct row_information {
             // this stores information about each row
             typename T::value_type::id_type id;
@@ -123,9 +124,9 @@ class BucketOutputAccumulator {
         decltype(get_output_it(T())) output_it;
 
     public:
-        BucketOutputAccumulator(T& output) : output(output) {
-            output_it = get_output_it(output);
-        }
+        BucketOutputAccumulator(T& output) : output(output),
+                                             bucket(),
+                                             output_it(get_output_it(output)) {}
 
         void operator()(typename T::value_type&& elem) {
             if (bucket.id() == elem.id()) {
@@ -173,10 +174,10 @@ class BucketOutputAppender {
         decltype(get_output_it(typename T::value_type::data_type())) bucket_it;
 
     public:
-        BucketOutputAppender(T& output) :   output(output) {
-            output_it = get_output_it(output);
-            bucket_it = get_output_it(bucket.data());
-        }
+        BucketOutputAppender(T& output) : output(output),
+                                          bucket(),
+                                          output_it(get_output_it(output)),
+                                          bucket_it(get_output_it(bucket.data())) {}
 
         void send(typename T::value_type::id_type id, typename T::value_type::data_type::value_type&& data) {
             if (id != bucket.id()) {

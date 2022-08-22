@@ -33,7 +33,8 @@ if (STATIC_ANALYSIS)
         -cppcoreguidelines-avoid-c-arrays,\
         -cppcoreguidelines-pro-type-const-cast,\
         -cppcoreguidelines-avoid-goto,\
-        -cppcoreguidelines-init-variables"
+        -cppcoreguidelines-init-variables,\
+        -misc-non-private-member-variables-in-classes"
     --header-filter=${CMAKE_CURRENT_SOURCE_DIR}/include
     )
   else()

@@ -11,6 +11,7 @@ class EmptyData;
 template<typename arith_t = float>
 class ArithData {
     public:
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
         constexpr ArithData(EmptyData) : ArithData() {}
         constexpr ArithData() : value_(0) {}
         constexpr ArithData(float value) : value_(value) {}
