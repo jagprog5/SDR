@@ -1,0 +1,15 @@
+// a sane launch.json file for debugging
+{
+    // cd build && cmake .. -DBUILD_TESTING=true -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-O0
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb", // CodeLLDB extension
+            "request": "launch",
+            "name": "Debug",
+            "program": "${workspaceFolder}/build/fuzz_sdr",
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

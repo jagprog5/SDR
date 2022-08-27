@@ -12,7 +12,7 @@ using namespace std::chrono;
 static constexpr size_t DEFAULT_FUZZ_AMOUNT = 250;
 using ArrDefault = ArrayAdaptor<SDRElem<>, DEFAULT_FUZZ_AMOUNT * 2>;
 
-// 20 is the default for "ctest"
+// 20 is the default for "ctest", specified in cmakelists
 static constexpr size_t TEST_FUZZ_AMOUNT = 20;
 using ArrTest = ArrayAdaptor<SDRElem<>, TEST_FUZZ_AMOUNT * 2>;
 

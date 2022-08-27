@@ -197,6 +197,14 @@ BOOST_AUTO_TEST_CASE(test_readme_visitor) {
   BOOST_REQUIRE_EQUAL(result, 2);
 }
 
+BOOST_AUTO_TEST_CASE(test_readme_container) {
+  SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>> a{1, 2, 3};
+  SDR<SDRElem<>, std::forward_list<SDRElem<>>> b{4, 5, 6};
+  auto result = a.ore<SDRElem<>, std::list<SDRElem<>>>(b);
+  BOOST_REQUIRE_EQUAL(result, (SDR{1, 2, 3, 4, 5, 6}));
+}
+
+
 BOOST_AUTO_TEST_CASE(test_readme_walled_garden) {
   SDR a{1, 2, 3};
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
@@ -234,25 +242,25 @@ BOOST_AUTO_TEST_CASE(test_ret_type) {
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDRElem<long>, std::forward_list<SDRElem<long>>> r_and = a.ande<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
+    auto r_and = a.ande<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
-    SDR<SDRElem<long>, std::forward_list<SDRElem<long>>> r_or = a.ore<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
+    auto r_or = a.ore<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
-    SDR<SDRElem<long>, std::forward_list<SDRElem<long>>> r_xor = a.xore<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
+    auto r_xor = a.xore<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
-    SDR<SDRElem<long>, std::forward_list<SDRElem<long>>> r_rm = a.rme<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
+    auto r_rm = a.rme<SDRElem<long>, std::forward_list<SDRElem<long>>>(b);
     BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
   {
     SDR a {1, 2, 3};
     SDR b {2, 3, 4};
-    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_and = a.ande<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
+    auto r_and = a.ande<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_and, a.ande(b));
-    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_or = a.ore<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
+    auto r_or = a.ore<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_or, a.ore(b));
-    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_xor = a.xore<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
+    auto r_xor = a.xore<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_xor, a.xore(b));
-    SDR<SDRElem<long>, std::set<SDRElem<long>, std::less<>>> r_rm = a.rme<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
+    auto r_rm = a.rme<SDRElem<long>, std::set<SDRElem<long>, std::less<>>>(b);
     BOOST_REQUIRE_EQUAL(r_rm, a.rme(b));
   }
 }
@@ -315,33 +323,33 @@ BOOST_AUTO_TEST_CASE(test_printing) {
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 int copy_count;
-struct MoveDetector {
-  MoveDetector() {}
-  MoveDetector(const MoveDetector&) {
+struct CopyDetector {
+  CopyDetector() {}
+  CopyDetector(const CopyDetector&) {
     ++copy_count;
   }
-  MoveDetector& operator=(const MoveDetector&) {
+  CopyDetector& operator=(const CopyDetector&) {
     ++copy_count;
     return *this;
   }
 
-  MoveDetector(MoveDetector&&) noexcept {}
+  CopyDetector(CopyDetector&&) noexcept {}
 
-  MoveDetector& operator=(MoveDetector&&) noexcept {
+  CopyDetector& operator=(CopyDetector&&) noexcept {
     return *this;
   }
 
   template<typename T>
-  MoveDetector ore(const MoveDetector&) const {
-    return MoveDetector();
+  CopyDetector ore(const CopyDetector&) const {
+    return CopyDetector();
   }
 
   template<typename T>
-  MoveDetector xore(const MoveDetector&) const {
-    return MoveDetector();
+  CopyDetector xore(const CopyDetector&) const {
+    return CopyDetector();
   }
 
-  bool operator!=(const MoveDetector&) const {
+  bool operator!=(const CopyDetector&) const {
     return false;
   }
 
@@ -350,15 +358,15 @@ struct MoveDetector {
   }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const MoveDetector&) {
-    os << "MOVEDETECTOR";
+inline std::ostream& operator<<(std::ostream& os, const CopyDetector&) {
+    os << "COPYDETECTOR";
     return os;
 }
 
 BOOST_AUTO_TEST_CASE(test_move) {
   // ensure that the rvalue overloads actually move the data
   // (there's a lot going on there, so its best to check)
-  using E = SDRElem<int, MoveDetector>;
+  using E = SDRElem<int, CopyDetector>;
 
   // or rval overloads
   {
@@ -634,6 +642,110 @@ BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
 
     BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
   }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(arrayadaptor)
+
+struct MoveIndicator {
+  bool moved_from;
+  int i;
+
+  // allows moving from a moved from object
+  // in which case both the caller and callee are move from
+
+  MoveIndicator() : moved_from(false), i() {}
+
+  explicit MoveIndicator(int i) : moved_from(false), i(i) {}
+
+  MoveIndicator(const MoveIndicator& o) : moved_from(o.moved_from), i(o.i) {}
+  
+  MoveIndicator& operator=(const MoveIndicator& o) {
+    moved_from = o.moved_from;
+    i = o.i;
+    return *this;
+  }
+
+  MoveIndicator(MoveIndicator&& o) noexcept : moved_from(o.moved_from) {
+    o.moved_from = true;
+    i = o.i;
+  }
+
+  MoveIndicator& operator=(MoveIndicator&& o) noexcept {
+    moved_from = o.moved_from;
+    o.moved_from = true;
+    i = o.i;
+    return *this;
+  }
+};
+
+BOOST_AUTO_TEST_CASE(default_init) {
+  ArrayAdaptor<MoveIndicator, 3> a;
+  BOOST_REQUIRE_EQUAL(a.size(), 0);
+  a.push_back(MoveIndicator(0));
+  a.push_back(MoveIndicator(1));
+  a.push_back(MoveIndicator(2));
+  BOOST_REQUIRE_EQUAL(a.size(), 3);
+  for (decltype(a)::size_type i = 0; i < a.size(); ++i) {
+    BOOST_REQUIRE_EQUAL(a[i].i, i);
+    BOOST_REQUIRE(!a[i].moved_from);
+  }
+
+  auto b = a;
+  BOOST_REQUIRE_EQUAL(b.size(), 3);
+  for (decltype(b)::size_type i = 0; i < b.size(); ++i) {
+    BOOST_REQUIRE_EQUAL(b[i].i, i);
+    BOOST_REQUIRE(!b[i].moved_from);
+  }
+
+  // we have a and b which are 1 2 3 each
+
+  // test erase
+  b.erase(b.begin() + 1);
+  BOOST_REQUIRE_EQUAL(b.size(), 2);
+  BOOST_REQUIRE_EQUAL(b[0].i, 0);
+  BOOST_REQUIRE(!b[0].moved_from);
+  BOOST_REQUIRE_EQUAL(b[1].i, 2);
+  BOOST_REQUIRE(!b[1].moved_from);
+  BOOST_REQUIRE_EQUAL(b[2].i, 2);
+  BOOST_REQUIRE(b[2].moved_from);
+
+  // test resize
+  b = a;
+  b.resize(1);
+  BOOST_REQUIRE_EQUAL(b.size(), 1);
+  BOOST_REQUIRE_EQUAL(b[0].i, 0);
+  BOOST_REQUIRE(!b[0].moved_from);
+  BOOST_REQUIRE_EQUAL(b[1].i, 1);
+  BOOST_REQUIRE(b[1].moved_from);
+  BOOST_REQUIRE_EQUAL(b[2].i, 2);
+  BOOST_REQUIRE(b[2].moved_from);
+
+  // test clear
+  b.clear();
+  for (decltype(b)::size_type i = 0; i < b.size(); ++i) {
+    BOOST_REQUIRE_EQUAL(b[i].i, i);
+    BOOST_REQUIRE(b[i].moved_from);
+  }
+
+  b = a;
+  b[2].i = 50;
+  a.resize(2);
+  // test move
+  b = std::move(a);
+  for (decltype(a)::size_type i = 0; i < a.size(); ++i) {
+    BOOST_REQUIRE_EQUAL(a[i].i, i);
+    BOOST_REQUIRE(a[i].moved_from);
+  }
+
+  BOOST_REQUIRE_EQUAL(b.size(), 2);
+  BOOST_REQUIRE_EQUAL(b[0].i, 0);
+  BOOST_REQUIRE(!b[0].moved_from);
+  BOOST_REQUIRE_EQUAL(b[1].i, 1);
+  BOOST_REQUIRE(!b[1].moved_from);
+  BOOST_REQUIRE_EQUAL(b[2].i, 50);
+  BOOST_REQUIRE(b[2].moved_from);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

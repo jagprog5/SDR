@@ -21,20 +21,20 @@ if (STATIC_ANALYSIS)
     set(CMAKE_CXX_CLANG_TIDY 
     clang-tidy;
     "-checks=boost-*,\
-        bugprone-*,\
-        clang-analyzer-*,\
-        cppcoreguidelines-*,\
-        misc-*,\
-        performance-*,\
-        portability-*,\
-        -*-magic-numbers,\
-        -cppcoreguidelines-special-member-functions,\
-        -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
-        -cppcoreguidelines-avoid-c-arrays,\
-        -cppcoreguidelines-pro-type-const-cast,\
-        -cppcoreguidelines-avoid-goto,\
-        -cppcoreguidelines-init-variables,\
-        -misc-non-private-member-variables-in-classes"
+      bugprone-*,\
+      clang-analyzer-*,\
+      cppcoreguidelines-*,\
+      misc-*,\
+      performance-*,\
+      portability-*,\
+      -*-magic-numbers,\
+      -cppcoreguidelines-special-member-functions,\
+      -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
+      -cppcoreguidelines-avoid-c-arrays,\
+      -cppcoreguidelines-pro-type-const-cast,\
+      -cppcoreguidelines-avoid-goto,\
+      -cppcoreguidelines-init-variables,\
+      -misc-non-private-member-variables-in-classes"
     --header-filter=${CMAKE_CURRENT_SOURCE_DIR}/include
     )
   else()

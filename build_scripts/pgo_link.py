@@ -10,6 +10,7 @@ def link(link_command_path: str):
     '''
     with open(link_command_path, "r") as f:
         command = f.read()
+    # /usr/bin/g++-7     CMakeFiles/fuzz_sdr.dir/src/fuzz.cpp.o  -o fuzz_sdr  -fprofile-generate
     command = shlex.split(command)
     for i in reversed(range(len(command))):
         if command[i] == "-fprofile-generate":

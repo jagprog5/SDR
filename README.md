@@ -23,14 +23,30 @@ int main() {
 
 ## Building
 
+### Display Code Coverage
+
+```bash
+apt-get install lcov # and llvm if using clang
+cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && cmake --build . -j --target cov-show
+```
+
+### Display CPU Profile
+
+```bash
+apt-get install libgoogle-perftools-dev  
+cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && cmake --build . -j --target perf-show
+```
+
 ### Tests and Fuzzing
+
+The unit tests and [fuzzing](https://en.wikipedia.org/wiki/Fuzzing) help catch any regressions in correctness or speed. For the binary ops (AND, OR, etc.), every possible combination of inputs is fuzzed, up to a specified stopping point.
 
 ```bash
 # dependencies
 apt-get install cmake g++ libboost-test-dev
 
 # build
-cd build && cmake .. -DBUILD_TESTING=true && cmake --build .
+cd build && cmake .. -DBUILD_TESTING=true && cmake --build . -j
 
 # test
 ctest
@@ -38,20 +54,6 @@ ctest
 # or run each test manually
 ./test_sdr # tests
 ./fuzz_sdr [<fuzz_amount>] # fuzzy tests
-```
-
-### Display Code Coverage
-
-```bash
-apt-get install lcov # and llvm if using clang
-cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && make cov-show
-```
-
-### Display CPU Profile
-
-```bash
-apt-get install libgoogle-perftools-dev  
-cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && make perf-show
 ```
 
 # Guide
@@ -119,7 +121,6 @@ flowchart TB
     container-->std::set
     container-->std::forward_list
     container--->ArrayAdaptor
-    container--->boost::container::static_vector
 
     SDRElem--->data
     SDRElem-->id
@@ -145,7 +146,6 @@ style id fill:#111
 style data fill:#111
 
 style ArrayAdaptor fill:#444
-style boost::container::static_vector fill:#444
 style std::set fill:#444
 style std::forward_list fill:#444
 style UnitData fill:#444
@@ -225,8 +225,19 @@ auto increment_visitor = [&result](typename decltype(a)::container_type::iterato
     ++result;
 };
 
-a.andv(b, increment_visitor); // apply the visitor
+a.andv(b, increment_visitor); // apply the visitor (probably inlined at compile-time)
 std::cout << result << std::endl; // 2 elements in commmon
+```
+
+## Different Containers
+
+This library is unique compared to other sparse libraries such as [Eigen::Sparse](https://eigen.tuxfamily.org/dox/group__TutorialSparse.html) or [blaze](https://bitbucket.org/blaze-lib/blaze/src/master/) because elements can be stored in different types of containers (not just a static or dynamic array). For example:
+
+```cpp
+SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>> a{1, 2, 3}; // stores elements in a set
+SDR<SDRElem<>, std::forward_list<SDRElem<>>> b{4, 5, 6}; // stores elements in a forward_list
+auto result = a.ore<SDRElem<>, std::list<SDRElem<>>>(b); // places the result in a list
+std::cout << result << std::endl; // prints: [1,2,3,4,5,6]
 ```
 
 ## Escaping the Walled Garden
@@ -243,5 +254,9 @@ const_cast<int&>((*brute_force_ptr)[1].id()) = 17;
 // SDRs have ascending elements, with no duplicates
 // this is not a valid SDR since it has [1,17,3]
 // it will give strange values but not UB
-std::cout << a;
+std::cout << a << std::endl;
 ```
+
+## TODO
+
+Some matrix operations have been implemented, but matrices in general are very WIP.

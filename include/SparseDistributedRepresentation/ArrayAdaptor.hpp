@@ -7,6 +7,8 @@ namespace sparse_distributed_representation {
  * An ArrayAdaptor provides a vector-like interface so an array can be used in an SDR.
  * This is needed for statically allocated SDRs.
  * 
+ * It's like a boost::container::static_vector
+ * 
  * Ensure that the capacity is always sufficient.
  * e.g. or elements can produce an output with a size only up to (inclusively) the sum of the arguments' sizes
  */
@@ -97,6 +99,9 @@ class ArrayAdaptor {
         const_reverse_iterator crbegin() const { return std::reverse_iterator(cend()); }
         const_reverse_iterator crend() const { return std::reverse_iterator(cbegin()); }
 
+        reference operator[](size_type pos) { return arr_[pos]; }
+        const_reference operator[](size_type pos) const { return arr_[pos]; }
+
         const_reference front() const {
             assert(!empty());
             return arr_[0];
@@ -115,14 +120,13 @@ class ArrayAdaptor {
 
         void pop_back() {
             assert(!empty());
-            --end_;
-            drop_content(end_);
+            drop_content(--end_);
         }
 
         iterator erase(const_iterator arg) {
+            assert(!empty());
             iterator pos = &const_cast<SDRElem_t&>(*arg);
             auto ret = pos;
-            assert(!empty());
             while (++pos != end_) {
                 *(pos - 1) = std::move(*pos);
             }
