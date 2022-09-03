@@ -23,20 +23,6 @@ int main() {
 
 ## Building
 
-### Display Code Coverage
-
-```bash
-apt-get install lcov # and llvm if using clang
-cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && cmake --build . -j --target cov-show
-```
-
-### Display CPU Profile
-
-```bash
-apt-get install libgoogle-perftools-dev  
-cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && cmake --build . -j --target perf-show
-```
-
 ### Tests and Fuzzing
 
 The unit tests and [fuzzing](https://en.wikipedia.org/wiki/Fuzzing) help catch any regressions in correctness or speed. For the binary ops (AND, OR, etc.), every possible combination of inputs is fuzzed, up to a specified stopping point.
@@ -54,6 +40,20 @@ ctest
 # or run each test manually
 ./test_sdr # tests
 ./fuzz_sdr [<fuzz_amount>] # fuzzy tests
+```
+
+### Display Code Coverage
+
+```bash
+apt-get install lcov # and llvm if using clang
+cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && cmake --build . -j --target cov-show
+```
+
+### Display CPU Profile
+
+```bash
+apt-get install libgoogle-perftools-dev  
+cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && cmake --build . -j --target perf-show
 ```
 
 # Guide
@@ -231,7 +231,7 @@ std::cout << result << std::endl; // 2 elements in commmon
 
 ## Different Containers
 
-This library is unique compared to other sparse libraries such as [Eigen::Sparse](https://eigen.tuxfamily.org/dox/group__TutorialSparse.html) or [blaze](https://bitbucket.org/blaze-lib/blaze/src/master/) because elements can be stored in different types of containers (not just a static or dynamic array). For example:
+This library is unique compared to other sparse libraries such as [Eigen::Sparse](https://eigen.tuxfamily.org/dox/group__TutorialSparse.html) or [blaze](https://bitbucket.org/blaze-lib/blaze/src/master/) because elements can be stored in different types of containers (not just a static or dynamic array). Additional, it chooses specialized algorithms which are suited for the container. For example:
 
 ```cpp
 SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>> a{1, 2, 3}; // stores elements in a set
