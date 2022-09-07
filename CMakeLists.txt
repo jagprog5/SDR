@@ -137,8 +137,9 @@ if(BUILD_TESTING)
 
     add_custom_target(cov-show
       DEPENDS cov-proc
-      COMMAND genhtml "${CMAKE_CURRENT_BINARY_DIR}/coverage.info"
-      COMMAND sensible-browser "${CMAKE_CURRENT_BINARY_DIR}/index.html"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR} # sensible-browser doesn't like path names in wsl for some reason
+      COMMAND genhtml coverage.info
+      COMMAND sensible-browser index.html
     )
 
   endif()

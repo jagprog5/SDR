@@ -755,7 +755,6 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::sample(float amount, R
 
 template<typename SDRElem_t, typename container_t>
 const typename SDRElem_t::data_type* SDR<SDRElem_t, container_t>::ande(typename SDRElem_t::id_type val) const {
-    // the "dat" tparam is here because
     decltype(std::lower_bound(v.cbegin(), v.cend(), val)) pos;
     if constexpr(usesSetLike) {
         pos = v.lower_bound(val);
