@@ -22,7 +22,7 @@ install:
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR} && cd build
-  - cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=`[ "$TRAVIS_COMPILER" = "gcc" ] && echo true || echo false`
+  - cmake .. -DBUILD_TESTING=true -DFUZZ_FULL=true -DCODE_COVERAGE=`[ "$TRAVIS_COMPILER" = "gcc" ] && echo true || echo false`
   - cmake --build .
 
 script:

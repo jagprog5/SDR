@@ -52,7 +52,7 @@ cd build && cmake .. -DBUILD_TESTING=true -DCODE_COVERAGE=true && cmake --build 
 ### Display CPU Profile
 
 ```bash
-apt-get install libgoogle-perftools-dev  
+apt-get install google-perftools libgoogle-perftools-dev
 cd build && cmake .. -DBUILD_TESTING=true -DPERF=CPU && cmake --build . -j --target perf-show
 ```
 

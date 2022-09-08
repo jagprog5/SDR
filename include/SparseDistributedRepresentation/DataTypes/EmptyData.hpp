@@ -23,7 +23,7 @@ class EmptyData {
         constexpr EmptyData() : unused() {}
 
         template<typename T>
-        // NOLINTNEXTLINE(bugprone-forwarding-reference-overload)
+        // NOLINTNEXTLINE
         constexpr explicit EmptyData(T&&) : unused() {}
 
         constexpr bool relevant() const {

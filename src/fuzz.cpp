@@ -391,17 +391,26 @@ int main(int argc, char** argv) {
     // but no. realistically, nobody will make nearly this many specializations
 
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
+    #ifdef FUZZ_FULL
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<>, std::vector<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    #endif
 
+    #ifdef FUZZ_FULL
     series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
+    #endif
     series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
+    #ifdef FUZZ_FULL
     series<SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    #endif
 
+    #ifdef FUZZ_FULL
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
+    #endif
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
+    #ifdef FUZZ_FULL
     if (fuzz_amount == DEFAULT_FUZZ_AMOUNT) {
         series<SDR<SDRElem<>, ArrDefault>, SDR<SDRElem<>, ArrDefault>>(fuzz_amount);
     } else if (fuzz_amount == TEST_FUZZ_AMOUNT) {
@@ -435,4 +444,5 @@ int main(int argc, char** argv) {
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+    #endif
 }

@@ -6,6 +6,7 @@ project(sparse_distributed_representation)
 
 option(STATIC_ANALYSIS "Run static code analysis" OFF)
 option(BUILD_TESTING "Build tests and fuzzing" OFF)
+OPTION(FUZZ_FULL "More fuzzing" OFF)
 option(CODE_COVERAGE "Create coverage stats. Needs lcov and (for clang) llvm-cov. Invoke with \"make cov-show\"" OFF)
 set(PERF OFF CACHE STRING "Profile \"CPU\" or check the \"HEAP\". Needs libgoogle-perftools-dev. Invoke with \"make perf-show\"")
 set_property(CACHE PERF PROPERTY STRINGS OFF CPU HEAP)
@@ -30,6 +31,7 @@ if (STATIC_ANALYSIS)
       -*-magic-numbers,\
       -cppcoreguidelines-special-member-functions,\
       -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
+      -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
       -cppcoreguidelines-avoid-c-arrays,\
       -cppcoreguidelines-pro-type-const-cast,\
       -cppcoreguidelines-avoid-goto,\
@@ -47,6 +49,12 @@ if(BUILD_TESTING)
   add_executable(fuzz_sdr src/fuzz.cpp)
   target_compile_options(fuzz_sdr PRIVATE -Wall -Wextra -Ofast)
   target_link_libraries(fuzz_sdr PRIVATE ${PROJECT_NAME}_lib)
+
+  if (FUZZ_FULL)
+    target_compile_definitions(fuzz_sdr PRIVATE
+      FUZZ_FULL
+    )
+  endif()
   
   if (CODE_COVERAGE AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # prevent a crash with clang ¯\_(ツ)_/¯

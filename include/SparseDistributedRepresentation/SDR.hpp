@@ -1478,6 +1478,7 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::shift(int amount) {
         #ifdef NDEBUG
         const_cast<typename SDRElem_t::id_type*>(&elem.id()) += amount;
         #else
+        // NOLINTNEXTLINE
         assert(!__builtin_add_overflow(amount, elem.id(), const_cast<typename SDRElem_t::id_type*>(&elem.id())));
         #endif
     }

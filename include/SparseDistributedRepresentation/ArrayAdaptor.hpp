@@ -11,6 +11,8 @@ namespace sparse_distributed_representation {
  * 
  * Ensure that the capacity is always sufficient.
  * e.g. or elements can produce an output with a size only up to (inclusively) the sum of the arguments' sizes
+ * 
+ * Note that only the neccessary functions are implemented here (for use in SDR).
  */
 template<typename SDRElem_t, std::size_t N>
 class ArrayAdaptor {

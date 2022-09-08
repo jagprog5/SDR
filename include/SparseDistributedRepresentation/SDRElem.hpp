@@ -50,7 +50,7 @@ class SDRElem {
         constexpr const id_t& id() const { return id_; }
         constexpr data_t& data() { return data_; }
         constexpr const data_t& data() const { return data_; }
-        constexpr void date(data_t data) { data_ = data; }
+        constexpr void data(data_t data) { data_ = data; }
 
         template<typename id_t_inner, 
                 typename data_t_inner>
@@ -87,7 +87,7 @@ template<typename id_t,
          typename data_t>
 std::ostream& operator<<(std::ostream& os, const SDRElem<id_t, data_t>& o) {
   os << o.id();
-  // NOLINTNEXTLINE(bugprone-sizeof-expression)
+  // NOLINTNEXTLINE
   if constexpr(sizeof(data_t) > 0) {
       os << "(" << o.data() << ")";
   }
