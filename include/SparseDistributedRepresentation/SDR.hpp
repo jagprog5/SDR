@@ -1489,7 +1489,8 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::append(SDR<arg_t, c_arg_t>&& arg) {
     // this function doesn't work for flist sdrs. no good way of providing an efficient specialization
-    assert(empty() || arg.empty() || *v.crbegin() < *arg.v.cbegin());
+    assert(empty() || arg.empty() || *--v.end() < *arg.v.cbegin());
+    // assert(empty() || arg.empty() || *v.crbegin() < *arg.v.cbegin());
     if constexpr(usesVectorLike) {
         auto old_size = this->v.size();
         this->v.resize(this->v.size() + arg.v.size());
@@ -1511,7 +1512,10 @@ template<typename SDRElem_t, typename container_t>
 template<typename T, typename E>
 void SDR<SDRElem_t, container_t>::push_back(E&& i) {
     SDRElem_t elem = SDRElem_t(std::forward<E>(i));
-    assert(v.empty() || v.crbegin()->id() < elem.id());
+    auto last_elem_iter = v.end();
+    --last_elem_iter;
+    assert(v.empty() || last_elem_iter->id() < elem.id());
+    // assert(v.empty() || v.crbegin()->id() < elem.id());
     if constexpr(usesVectorLike) {
         v.push_back(std::move(elem));
     } else {

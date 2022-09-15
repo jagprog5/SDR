@@ -19,7 +19,6 @@ template<typename id_t = int,
          typename data_t = EmptyData>
 class SDRElem {
     public:
-        static_assert(std::is_integral<id_t>::value);
         using id_type = id_t;
         using data_type = data_t;
 
