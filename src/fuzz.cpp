@@ -1,6 +1,7 @@
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
+#include "SparseDistributedRepresentation/IDContiguousContainer.hpp"
 #include <cstring>
 #include <chrono>
 #include <unistd.h>
@@ -20,7 +21,7 @@ using ArrTest = ArrayAdaptor<SDRElem<>, TEST_FUZZ_AMOUNT * 2>;
 #define REQUIRE_TRUE(x) if (!(x)) return false;
 
 // only do a speed test, don't check for correctness
-static constexpr bool disable_validation = true;
+static constexpr bool disable_validation = false;
 
 template<typename SDRElem_t, typename container_t, typename arg_t, typename c_arg_t>
 bool validate_andop(const SDR<SDRElem_t, container_t>& a, const SDR<arg_t, c_arg_t>& b, const SDR<SDRElem_t, container_t>& r) {
@@ -372,8 +373,6 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" rms", rms, fuzz_amount);    
 }
-
-#include "SparseDistributedRepresentation/IDContiguousVector.hpp"
 
 int main(int argc, char** argv) {
     int fuzz_amount;

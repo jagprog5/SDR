@@ -73,9 +73,9 @@ class SDRElem {
             return id() > o.id();
         }
 
-        constexpr bool operator<(const id_t& o) const { return id() < o; }
-        constexpr bool operator==(const id_t& o) const { return id() == o; }
-        constexpr bool operator>(const id_t& o) const { return id() > o; }
+        constexpr bool operator<(id_t o) const { return id() < o; }
+        constexpr bool operator==(id_t o) const { return id() == o; }
+        constexpr bool operator>(id_t o) const { return id() > o; }
     
     private:
         const id_t id_;
