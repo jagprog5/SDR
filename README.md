@@ -240,9 +240,25 @@ auto result = a.ore<SDRElem<>, std::list<SDRElem<>>>(b); // places the result in
 std::cout << result << std::endl; // prints: [1,2,3,4,5,6]
 ```
 
+### ID Contiguous Container
+
+Given that each `SDRElem` has an id and data, the layout for a vector or array based SDR would look like:
+
+```
+id0 data0 id1 data1 id2 data2
+```
+
+The container adaptor `IDContiguousContainer` instead orders the memory like this:
+
+```
+id0 id1 id2 data0 data1 data2
+```
+
+where the id segment and data segment can themselves be vectors or arrays. This gives better cache access on ops which require the id right away, but may or may not look at the data until later.
+
 ## Escaping the Walled Garden
 
-If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cast`ed to its underlying container.
+If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cast`ed to its underlying container (in most cases).
 
 ```cpp
 SDR a{1, 2, 3};

@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
+#include "SparseDistributedRepresentation/IDContiguousContainer.hpp"
 #include "SparseDistributedRepresentation/DataTypes/ArithData.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include <random>
@@ -409,6 +410,44 @@ BOOST_AUTO_TEST_CASE(test_move) {
 
     BOOST_REQUIRE_EQUAL(copy_count, 0);
     BOOST_REQUIRE_EQUAL(a, (SDR<E>{1, 2}));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(testIDContiguousMove) {
+  using E = SDRElem<int, CopyDetector>;
+  using SDRIDC = SDR<E, IDContiguousContainer<E>>;
+  // exact same as test above, but with different types
+  {
+    SDRIDC a{1, 3};
+    SDRIDC b{2, 3};
+    copy_count = 0;
+    auto r = a.ore(std::move(b));
+    BOOST_REQUIRE_EQUAL(copy_count, 1);
+    BOOST_REQUIRE_EQUAL(r, (SDRIDC{1, 2, 3}));
+  }
+  {
+    SDRIDC a{1, 3};
+    SDRIDC b{2, 3};
+    copy_count = 0;
+    a.ori(std::move(b));
+    BOOST_REQUIRE_EQUAL(copy_count, 0);
+    BOOST_REQUIRE_EQUAL(a, (SDRIDC{1, 2, 3}));
+  }
+  {
+    SDRIDC a{1, 3};
+    SDRIDC b{2, 3};
+    copy_count = 0;
+    auto r = a.xore(std::move(b));
+    BOOST_REQUIRE_EQUAL(copy_count, 1);
+    BOOST_REQUIRE_EQUAL(r, (SDRIDC{1, 2}));
+  }
+  {
+    SDRIDC a{1, 3};
+    SDRIDC b{2, 3};
+    copy_count = 0;
+    a.xori(std::move(b));
+    BOOST_REQUIRE_EQUAL(copy_count, 0);
+    BOOST_REQUIRE_EQUAL(a, (SDRIDC{1, 2}));
   }
 }
 

@@ -154,7 +154,7 @@ if(BUILD_TESTING)
 
   if (PGO)
     if(CODE_COVERAGE OR NOT PERF STREQUAL "OFF")
-      message(FATAL_ERROR "PGO must be run without other profiling options")
+      message(FATAL_ERROR "PGO should be run without other profiling options")
     endif()
 
     # for pgo, the executable needs to be build twice. once for getting the profile, the other for building with the profile
@@ -168,9 +168,10 @@ if(BUILD_TESTING)
       COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.gcda' -delete
       COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.profdata' -delete
       COMMAND find "${CMAKE_CURRENT_BINARY_DIR}" -type f -name '*.profraw' -delete
+      COMMAND rm -f "${CMAKE_CURRENT_BINARY_DIR}/fuzz_sdr"
     )
 
-    # override previous optimization level
+    # overrides previous stated optimization level
     target_compile_options(fuzz_sdr PRIVATE -fprofile-generate)
     target_link_libraries(fuzz_sdr PRIVATE -fprofile-generate)
 
@@ -188,6 +189,8 @@ if(BUILD_TESTING)
 
       # same as above but for linking
       COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_scripts/pgo_link.py" "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/fuzz_sdr.dir/link.txt"
+
+      COMMAND "echo" "===== fuzz_sdr has been replaced with the pgo version ====="
     )
 
   endif()

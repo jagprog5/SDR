@@ -1,6 +1,8 @@
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
+#include "SparseDistributedRepresentation/DataTypes/ArithData.hpp"
 #include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
+#include "SparseDistributedRepresentation/IDContiguousContainer.hpp"
 #include <cstring>
 #include <chrono>
 #include <unistd.h>
@@ -444,5 +446,15 @@ int main(int argc, char** argv) {
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::vector<SDRElem<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>>(fuzz_amount);
     series<SDR<SDRElem<int, UnitData>, std::forward_list<SDRElem<int, UnitData>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
+
+    std::cout << "======ID contiguous Comparison======" << std::endl;
+
+    std::cout << "idc" << std::endl;
+    series<SDR<SDRElem<int, UnitData>, IDContiguousContainer<SDRElem<int, UnitData>>>, SDR<SDRElem<int, UnitData>, IDContiguousContainer<SDRElem<int, UnitData>>>>(fuzz_amount);
+
+    std::cout << "vec" << std::endl;
+    series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
+
     #endif
+
 }
