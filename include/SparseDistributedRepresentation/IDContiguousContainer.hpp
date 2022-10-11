@@ -19,30 +19,30 @@ class SDRElemConstReference {
 
         explicit operator SDRElem_t() const { return SDRElem_t(id(), data()); }
 
-        constexpr id_type& id() const { return *id_; }
-        constexpr data_type& data() const { return *data_; }
+        id_type& id() const { return *id_; }
+        data_type& data() const { return *data_; }
 
-        constexpr bool operator<(id_type o) const { return id() < o; }
-        constexpr bool operator==(id_type o) const { return id() == o; }
-        constexpr bool operator>(id_type o) const { return id() > o; }
+        bool operator<(id_type o) const { return id() < o; }
+        bool operator==(id_type o) const { return id() == o; }
+        bool operator>(id_type o) const { return id() > o; }
 
-        constexpr bool operator<(const SDRElemConstReference& o) const { return id() < o.id(); }
-        constexpr bool operator==(const SDRElemConstReference& o) const { return id() == o.id(); }
-        constexpr bool operator>(const SDRElemConstReference& o) const { return id() > o.id(); }
-
-        template<typename id_other, typename data_other>
-        constexpr bool operator<(const SDRElem<id_other, data_other>& o) const { return id() < o.id(); }
-        template<typename id_other, typename data_other>
-        constexpr bool operator==(const SDRElem<id_other, data_other>& o) const { return id() == o.id(); }
-        template<typename id_other, typename data_other>
-        constexpr bool operator>(const SDRElem<id_other, data_other>& o) const { return id() > o.id(); }
+        bool operator<(const SDRElemConstReference& o) const { return id() < o.id(); }
+        bool operator==(const SDRElemConstReference& o) const { return id() == o.id(); }
+        bool operator>(const SDRElemConstReference& o) const { return id() > o.id(); }
 
         template<typename id_other, typename data_other>
-        friend constexpr bool operator<(const SDRElem<id_other, data_other>& a, const SDRElemConstReference& b) { return a.id() < b.id(); }
+        bool operator<(const SDRElem<id_other, data_other>& o) const { return id() < o.id(); }
         template<typename id_other, typename data_other>
-        friend constexpr bool operator==(const SDRElem<id_other, data_other>& a, const SDRElemConstReference& b) { return a.id() == b.id(); }
+        bool operator==(const SDRElem<id_other, data_other>& o) const { return id() == o.id(); }
         template<typename id_other, typename data_other>
-        friend constexpr bool operator>(const SDRElem<id_other, data_other>& a, const SDRElemConstReference& b) { return a.id() > b.id(); }
+        bool operator>(const SDRElem<id_other, data_other>& o) const { return id() > o.id(); }
+
+        template<typename id_other, typename data_other>
+        friend bool operator<(const SDRElem<id_other, data_other>& a, const SDRElemConstReference& b) { return a.id() < b.id(); }
+        template<typename id_other, typename data_other>
+        friend bool operator==(const SDRElem<id_other, data_other>& a, const SDRElemConstReference& b) { return a.id() == b.id(); }
+        template<typename id_other, typename data_other>
+        friend bool operator>(const SDRElem<id_other, data_other>& a, const SDRElemConstReference& b) { return a.id() > b.id(); }
 
         friend std::ostream& operator<<(std::ostream& os, const SDRElemConstReference& o) {
             os << '*' << o.id();
@@ -79,56 +79,56 @@ class SDRElemReference {
             return std::move(ret);
         }
 
-        constexpr id_type& id() const { return *id_; }
-        constexpr data_type& data() { return *data_; }
-        constexpr const data_type& data() const { return *data_; }
-        constexpr void data(data_type data) { *data_ = data; }
+        id_type& id() const { return *id_; }
+        data_type& data() { return *data_; }
+        const data_type& data() const { return *data_; }
+        void data(data_type data) { *data_ = data; }
 
-        constexpr SDRElemReference& operator=(const SDRElem_t& o) {
+        SDRElemReference& operator=(const SDRElem_t& o) {
             const_cast<typename SDRElem_t::id_type&>(id()) = o.id();
             data() = o.data();
             return *this;
         }
 
-        constexpr SDRElemReference& operator=(SDRElem_t&& o) noexcept {
+        SDRElemReference& operator=(SDRElem_t&& o) noexcept {
             const_cast<typename SDRElem_t::id_type&>(id()) = o.id();
             data() = std::move(o.data());
             return *this;
         }
 
-        constexpr SDRElemReference& operator=(const SDRElemConstReference<SDRElem_t>& o) {
+        SDRElemReference& operator=(const SDRElemConstReference<SDRElem_t>& o) {
             const_cast<typename SDRElem_t::id_type&>(id()) = o.id();
             data() = o.data();
             return *this;
         }
 
-        constexpr SDRElemReference& operator=(SDRElemConstReference<SDRElem_t>&& o) noexcept {
+        SDRElemReference& operator=(SDRElemConstReference<SDRElem_t>&& o) noexcept {
             const_cast<typename SDRElem_t::id_type&>(id()) = o.id();
             data() = std::move(o.data());
             return *this;
         }
 
-        constexpr bool operator<(id_type o) const { return id() < o; }
-        constexpr bool operator==(id_type o) const { return id() == o; }
-        constexpr bool operator>(id_type o) const { return id() > o; }
+        bool operator<(id_type o) const { return id() < o; }
+        bool operator==(id_type o) const { return id() == o; }
+        bool operator>(id_type o) const { return id() > o; }
 
-        constexpr bool operator<(const SDRElemReference& o) const { return id() < o.id(); }
-        constexpr bool operator==(const SDRElemReference& o) const { return id() == o.id(); }
-        constexpr bool operator>(const SDRElemReference& o) const { return id() > o.id(); }
-
-        template<typename id_other, typename data_other>
-        constexpr bool operator<(const SDRElem<id_other, data_other>& o) const { return id() < o.id(); }
-        template<typename id_other, typename data_other>
-        constexpr bool operator==(const SDRElem<id_other, data_other>& o) const { return id() == o.id(); }
-        template<typename id_other, typename data_other>
-        constexpr bool operator>(const SDRElem<id_other, data_other>& o) const { return id() > o.id(); }
+        bool operator<(const SDRElemReference& o) const { return id() < o.id(); }
+        bool operator==(const SDRElemReference& o) const { return id() == o.id(); }
+        bool operator>(const SDRElemReference& o) const { return id() > o.id(); }
 
         template<typename id_other, typename data_other>
-        friend constexpr bool operator<(const SDRElem<id_other, data_other>& a, const SDRElemReference& b) { return a.id() < b.id(); }
+        bool operator<(const SDRElem<id_other, data_other>& o) const { return id() < o.id(); }
         template<typename id_other, typename data_other>
-        friend constexpr bool operator==(const SDRElem<id_other, data_other>& a, const SDRElemReference& b) { return a.id() == b.id(); }
+        bool operator==(const SDRElem<id_other, data_other>& o) const { return id() == o.id(); }
         template<typename id_other, typename data_other>
-        friend constexpr bool operator>(const SDRElem<id_other, data_other>& a, const SDRElemReference& b) { return a.id() > b.id(); }
+        bool operator>(const SDRElem<id_other, data_other>& o) const { return id() > o.id(); }
+
+        template<typename id_other, typename data_other>
+        friend bool operator<(const SDRElem<id_other, data_other>& a, const SDRElemReference& b) { return a.id() < b.id(); }
+        template<typename id_other, typename data_other>
+        friend bool operator==(const SDRElem<id_other, data_other>& a, const SDRElemReference& b) { return a.id() == b.id(); }
+        template<typename id_other, typename data_other>
+        friend bool operator>(const SDRElem<id_other, data_other>& a, const SDRElemReference& b) { return a.id() > b.id(); }
 
         friend std::ostream& operator<<(std::ostream& os, const SDRElemReference& o) {
             os << '*' << o.id();
@@ -257,6 +257,8 @@ class IDContiguousContainer {
         using pointer = id_contiguous_container_objs::Iterator<SDRElem_t, ids_t, datas_t>;
         using const_pointer = id_contiguous_container_objs::ConstIterator<SDRElem_t, ids_t, datas_t>;
         using value_type = SDRElem_t;
+        using ids_type = ids_t;
+        using datas_type = datas_t;
 
         size_type size() const { return ids.size(); }
         bool empty() const { return size() == 0; }

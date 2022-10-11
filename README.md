@@ -107,7 +107,6 @@ flowchart TB
     SDR>"SDR\nHas a container of SDRElem elements"]
     SDRElem>"SDRElem\nHas an id and (optionally) data"]
     container("container\nSDR is a container adaptor that can use various containers\nIt is best suited for a std::vector or std::set")
-    ArrayAdaptor["ArrayAdaptor\nWraps std::array in a vector-like interface"]
     EmptyData["EmptyData\nDisables the data functionality"]
     UnitData["UnitData\nA float bounded from 0 to 1"]
     ArithData>"ArithData\nNormal arithmetic type"]
@@ -120,7 +119,6 @@ flowchart TB
     container-->std::vector
     container-->std::set
     container-->std::forward_list
-    container--->ArrayAdaptor
 
     SDRElem--->data
     SDRElem-->id
@@ -145,7 +143,6 @@ style SDRElem fill:#111
 style id fill:#111
 style data fill:#111
 
-style ArrayAdaptor fill:#444
 style std::set fill:#444
 style std::forward_list fill:#444
 style UnitData fill:#444

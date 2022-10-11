@@ -23,33 +23,33 @@ class SDRElem {
         using data_type = data_t;
 
         template<typename dat>
-        constexpr SDRElem(id_t id, dat&& data) : id_(id), data_(std::forward<dat>(data)) {}
-        constexpr explicit SDRElem(id_t id) : id_(id), data_() {}
-        constexpr SDRElem() : id_(), data_() {}
+        SDRElem(id_t id, dat&& data) : id_(id), data_(std::forward<dat>(data)) {}
+        explicit SDRElem(id_t id) : id_(id), data_() {}
+        SDRElem() : id_(), data_() {}
 
-        constexpr SDRElem(const SDRElem& o) : id_(o.id()), data_(o.data()) {}
+        SDRElem(const SDRElem& o) : id_(o.id()), data_(o.data()) {}
 
         template<typename o_id_t, typename o_data_t>
-        constexpr explicit SDRElem(const SDRElem<o_id_t, o_data_t>& o) : id_(o.id()), data_(o.data()) {}
+        explicit SDRElem(const SDRElem<o_id_t, o_data_t>& o) : id_(o.id()), data_(o.data()) {}
 
-        constexpr SDRElem& operator=(const SDRElem& o) {
+        SDRElem& operator=(const SDRElem& o) {
             const_cast<id_t&>(id_) = o.id();
             data_ = o.data();
             return *this;
         }
 
-        constexpr SDRElem(SDRElem&& o) noexcept : id_(std::move(o.id())), data_(std::move(o.data())) {}
+        SDRElem(SDRElem&& o) noexcept : id_(std::move(o.id())), data_(std::move(o.data())) {}
 
-        constexpr SDRElem& operator=(SDRElem&& o) noexcept {
+        SDRElem& operator=(SDRElem&& o) noexcept {
             const_cast<id_t&>(id_) = o.id();
             data_ = std::move(o.data());
             return *this;
         }
 
-        constexpr const id_t& id() const { return id_; }
-        constexpr data_t& data() { return data_; }
-        constexpr const data_t& data() const { return data_; }
-        constexpr void data(data_t data) { data_ = data; }
+        const id_t& id() const { return id_; }
+        data_t& data() { return data_; }
+        const data_t& data() const { return data_; }
+        void data(data_t data) { data_ = data; }
 
         template<typename id_t_inner, 
                 typename data_t_inner>
@@ -57,25 +57,25 @@ class SDRElem {
             const SDRElem<id_t_inner, data_t_inner>&);
 
         template<typename id_other, typename data_other>
-        constexpr bool operator<(const SDRElem<id_other, data_other>& o) const {
+        bool operator<(const SDRElem<id_other, data_other>& o) const {
             return id() < o.id();
         }
 
         template<typename id_other, typename data_other>
-        constexpr bool operator==(const SDRElem<id_other, data_other>& o) const {
+        bool operator==(const SDRElem<id_other, data_other>& o) const {
             // equality of SDRElem disregards the data equality
             // this make sense since the elements should be ordered by id
             return id() == o.id();
         }
 
         template<typename id_other, typename data_other>
-        constexpr bool operator>(const SDRElem<id_other, data_other>& o) const {
+        bool operator>(const SDRElem<id_other, data_other>& o) const {
             return id() > o.id();
         }
 
-        constexpr bool operator<(id_t o) const { return id() < o; }
-        constexpr bool operator==(id_t o) const { return id() == o; }
-        constexpr bool operator>(id_t o) const { return id() > o; }
+        bool operator<(id_t o) const { return id() < o; }
+        bool operator==(id_t o) const { return id() == o; }
+        bool operator>(id_t o) const { return id() > o; }
     
     private:
         const id_t id_;

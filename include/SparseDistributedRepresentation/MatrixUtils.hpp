@@ -6,6 +6,23 @@
 
 namespace sparse_distributed_representation {
 
+namespace other_major_view_objs {
+
+template<typename T>
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+struct row_information {
+    // this stores information about each row
+    typename T::value_type::id_type id;
+    // pos must always point to a valid element
+    typename T::value_type::data_type::const_iterator pos;
+    typename T::value_type::data_type::const_iterator end;
+    bool operator>(const row_information& other) const {
+        return pos->id() > other.pos->id();
+    }
+};
+
+}
+
 /**
  * this gives an iterator-like interface, which provides elements of a matrix in a view opposite to how it is stored
  * e.g. viewing the elements of a row-wise matrix in a column-wise format
@@ -13,33 +30,19 @@ namespace sparse_distributed_representation {
  *      [ 1 2 ]
  *      [ 3 4 ]  ->  1 3 2 4
  * @tparam T the matrix type that is being viewed
+ * @tparam PriorityQueueContainer_t Each row is referenced in a priority queue. This exposes the priority_queue underlying container.
+ *         It is best if these references are stored in a similar container to how the rows are stored in the matrix.
  */
-template<typename T>
+template<typename T, typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<T>>>
 class OtherMajorView {
     // for variable naming, assume this provides a column-wise view of a row-major matrix
     private:
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-        struct row_information {
-            // this stores information about each row
-            typename T::value_type::id_type id;
-            // pos must always point to a valid element
-            typename T::value_type::data_type::const_iterator pos;
-            typename T::value_type::data_type::const_iterator end;
-            bool operator>(const row_information& other) const {
-                return pos->id() > other.pos->id();
-            }
-        };
+        using row_information = other_major_view_objs::row_information<T>;
 
         static auto create_heap() {
             // use the same-ish data structure as whoever made the matrix
             // (they have more context)
-            if constexpr(isArrayAdaptor<typename T::container_type>::value) {
-                return std::priority_queue<row_information, ArrayAdaptor<row_information, T::container_type::capacity>, std::greater<row_information>>();
-            } else if constexpr(vectorLike<typename T::container_type>::value) {
-                return std::priority_queue<row_information, std::vector<row_information>, std::greater<row_information>>();
-            } else {
-                return std::priority_queue<row_information,  std::deque<row_information>,  std::greater<row_information>>();
-            }
+            return std::priority_queue<row_information,  PriorityQueueContainer_t,  std::greater<row_information>>();;
         }
 
         decltype(create_heap()) row_infos = create_heap();

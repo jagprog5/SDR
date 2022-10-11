@@ -1,7 +1,6 @@
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include "SparseDistributedRepresentation/DataTypes/ArithData.hpp"
-#include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
 #include "SparseDistributedRepresentation/IDContiguousContainer.hpp"
 #include <cstring>
 #include <chrono>
@@ -10,13 +9,6 @@
 
 using namespace sparse_distributed_representation;
 using namespace std::chrono;
-
-static constexpr size_t DEFAULT_FUZZ_AMOUNT = 250;
-using ArrDefault = ArrayAdaptor<SDRElem<>, DEFAULT_FUZZ_AMOUNT * 2>;
-
-// 20 is the default for "ctest", specified in cmakelists
-static constexpr size_t TEST_FUZZ_AMOUNT = 20;
-using ArrTest = ArrayAdaptor<SDRElem<>, TEST_FUZZ_AMOUNT * 2>;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define REQUIRE_TRUE(x) if (!(x)) return false;
@@ -226,9 +218,7 @@ SDR get_sdr(int val) {
 
 template<typename SDR>
 std::string get_template_name() {
-    if constexpr(isArrayAdaptor<typename SDR::container_type>::value) {
-        return "arr";
-    } else if constexpr(SDR::usesVectorLike) {
+    if constexpr(SDR::usesVectorLike) {
         return "vec";
     } else if constexpr(SDR::usesSetLike) {
         return "set";
@@ -386,7 +376,7 @@ int main(int argc, char** argv) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         fuzz_amount = std::atoi(argv[1]);
     } else {
-        fuzz_amount = DEFAULT_FUZZ_AMOUNT;
+        fuzz_amount = 250; // default
     }
 
     // yes, this makes a large binary from all the template specializations.
@@ -413,11 +403,6 @@ int main(int argc, char** argv) {
     series<SDR<SDRElem<>, std::forward_list<SDRElem<>>>, SDR<SDRElem<>, std::forward_list<SDRElem<>>>>(fuzz_amount);
 
     #ifdef FUZZ_FULL
-    if (fuzz_amount == DEFAULT_FUZZ_AMOUNT) {
-        series<SDR<SDRElem<>, ArrDefault>, SDR<SDRElem<>, ArrDefault>>(fuzz_amount);
-    } else if (fuzz_amount == TEST_FUZZ_AMOUNT) {
-        series<SDR<SDRElem<>, ArrTest>, SDR<SDRElem<>, ArrTest>>(fuzz_amount);
-    }
 
     std::cout << "======With data elements======" << std::endl;
 

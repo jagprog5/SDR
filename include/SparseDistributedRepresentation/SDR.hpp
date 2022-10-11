@@ -75,7 +75,7 @@ class SDR {
         SDR& operator=(SDR&& sdr) noexcept {
             this->v = std::move(sdr.v);
             if constexpr(usesFlistLike)
-                this->maybe_size.size = std::move(sdr.maybe_size.size);
+                this->maybe_size.size = sdr.maybe_size.size;
             return *this;
         }
 
@@ -485,10 +485,17 @@ class SDR {
         template<typename ret_t = typename SDRElem_t::data_type, typename arg_t, typename c_arg_t>
         ret_t dot(const SDR<arg_t, c_arg_t>& other) const;
 
-        template<MatrixFormat format = ROW_MAJOR, typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
+        template<MatrixFormat format = ROW_MAJOR,
+                 typename arg_t,
+                 typename ret_t = arg_t,
+                 typename c_arg_t,
+                 typename c_ret_t = c_arg_t,
+                 typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<SDR<SDRElem_t, container_t>>>>
         SDR<ret_t, c_ret_t> matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
-        template<typename ret_t = SDRElem_t, typename c_ret_t = container_t>
+        template<typename ret_t = SDRElem_t,
+                 typename c_ret_t = container_t,
+                 typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<SDR<SDRElem_t, container_t>>>>
         SDR<ret_t, c_ret_t> matrix_transpose() const;
 
         template<typename T = SDRElem_t>
@@ -501,7 +508,12 @@ class SDR {
          * 
          * The returned matrix has the same column / row major-ness as this matrix.
          */
-        template<MatrixFormatSameness format = SAME_MAJOR, typename arg_t, typename ret_t = arg_t, typename c_arg_t, typename c_ret_t = c_arg_t>
+        template<MatrixFormatSameness format = SAME_MAJOR,
+                 typename arg_t,
+                 typename ret_t = arg_t,
+                 typename c_arg_t,
+                 typename c_ret_t = c_arg_t,
+                 typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<SDR<arg_t, c_arg_t>>>>
         SDR<ret_t, c_ret_t> matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
         // relevance is needed for interface compatability between SDRs and SDRElem::data_type
@@ -1588,7 +1600,7 @@ ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
 }
 
 template<typename SDRElem_t, typename container_t>
-template<MatrixFormat format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
+template<MatrixFormat format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t, typename PriorityQueueContainer_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> ret;
     if constexpr(format == ROW_MAJOR) {
@@ -1617,7 +1629,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
 
         const_cast<SDR&>(*this).visitor(visitor);
     } else {
-        OtherMajorView<SDR<SDRElem_t, container_t>> view;
+        OtherMajorView<SDR<SDRElem_t, container_t>, PriorityQueueContainer_t> view;
 
         auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator) {
             view.add_major(*this_pos);
@@ -1649,10 +1661,10 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename ret_t, typename c_ret_t>
+template<typename ret_t, typename c_ret_t, typename PriorityQueueContainer_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
     SDR<ret_t, c_ret_t> ret;
-    OtherMajorView<SDR<SDRElem_t, container_t>> view;
+    OtherMajorView<SDR<SDRElem_t, container_t>, PriorityQueueContainer_t> view;
     for (const auto& elem : *this) {
         view.add_major(elem);
     }
@@ -1668,7 +1680,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
 }
 
 template<typename SDRElem_t, typename container_t>
-template<MatrixFormatSameness format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t>
+template<MatrixFormatSameness format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t, typename PriorityQueueContainer_t>
 SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> ret;
     if constexpr(format == SAME_MAJOR) {
@@ -1682,7 +1694,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg
         for (const auto& row : *this) {
             typename SDRElem_t::data_type::const_iterator this_row_retrival = row.data().cbegin();
 
-            OtherMajorView<SDR<arg_t, c_arg_t>> view;
+            OtherMajorView<SDR<arg_t, c_arg_t>, PriorityQueueContainer_t> view;
             auto both_visitor = [&](typename SDRElem_t::data_type::iterator, typename c_arg_t::iterator arg_pos) {
                 view.add_major(*arg_pos);
             };

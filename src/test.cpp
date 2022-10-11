@@ -1,12 +1,12 @@
 #define BOOST_TEST_MODULE sparse_distribued_representation_test_module
 #include <boost/test/included/unit_test.hpp>
 #include "SparseDistributedRepresentation/SDR.hpp"
-#include "SparseDistributedRepresentation/ArrayAdaptor.hpp"
 #include "SparseDistributedRepresentation/IDContiguousContainer.hpp"
 #include "SparseDistributedRepresentation/DataTypes/ArithData.hpp"
 #include "SparseDistributedRepresentation/DataTypes/UnitData.hpp"
 #include <random>
 #include <unistd.h>
+#include <alloca.h>
 using namespace sparse_distributed_representation;
 
 BOOST_AUTO_TEST_SUITE(sdr)
@@ -318,7 +318,6 @@ BOOST_AUTO_TEST_CASE(test_printing) {
   std::cout << a << '\n';
   std::cout << SDR{1, 2, 3} << " " << SDR<SDRElem<int, ArithData<>>>{1, 2, 3} << '\n';
   std::cout << SDR<SDRElem<int, ArithData<>>>{1, 2, 3} << std::endl;
-  std::cout << SDR<SDRElem<>, ArrayAdaptor<SDRElem<>, 3>>{1, 2, 3} << std::endl;
   std::cout.rdbuf(old_buffer); // restore
 }
 
@@ -630,22 +629,6 @@ BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
     BOOST_REQUIRE_EQUAL(Matrix().matrix_matrix_mul<DIFFERENT_MAJOR>(Matrix()), Matrix());
   }
   {
-    using Matrix = SDR<Row, ArrayAdaptor<Row, 2>>;
-    Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
-    Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
-    Matrix m0{row0, row1};
-
-    Row row2(0, SDR<Element>{Element(0, 19.0f), Element(1, 22.0f)});
-    Row row3(1, SDR<Element>{Element(0, 43.0f), Element(1, 50.0f)});
-    Matrix result{row2, row3};
-
-    Row row4(0, SDR<Element>{Element(0, 5.0f), Element(1, 6.0f)});
-    Row row5(1, SDR<Element>{Element(0, 7.0f), Element(1, 8.0f)});
-    Matrix m1{row4, row5};
-
-    BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
-  }
-  {
     using Element = SDRElem<unsigned int, ArithData<>>;
     using Row = SDRElem<unsigned int, SDR<Element, std::set<Element, std::less<>>>>;
     using Matrix = SDR<Row, std::set<Row, std::less<>>>;
@@ -681,110 +664,6 @@ BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
 
     BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
   }
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE(arrayadaptor)
-
-struct MoveIndicator {
-  bool moved_from;
-  int i;
-
-  // allows moving from a moved from object
-  // in which case both the caller and callee are move from
-
-  MoveIndicator() : moved_from(false), i() {}
-
-  explicit MoveIndicator(int i) : moved_from(false), i(i) {}
-
-  MoveIndicator(const MoveIndicator& o) : moved_from(o.moved_from), i(o.i) {}
-  
-  MoveIndicator& operator=(const MoveIndicator& o) {
-    moved_from = o.moved_from;
-    i = o.i;
-    return *this;
-  }
-
-  MoveIndicator(MoveIndicator&& o) noexcept : moved_from(o.moved_from) {
-    o.moved_from = true;
-    i = o.i;
-  }
-
-  MoveIndicator& operator=(MoveIndicator&& o) noexcept {
-    moved_from = o.moved_from;
-    o.moved_from = true;
-    i = o.i;
-    return *this;
-  }
-};
-
-BOOST_AUTO_TEST_CASE(default_init) {
-  ArrayAdaptor<MoveIndicator, 3> a;
-  BOOST_REQUIRE_EQUAL(a.size(), 0);
-  a.push_back(MoveIndicator(0));
-  a.push_back(MoveIndicator(1));
-  a.push_back(MoveIndicator(2));
-  BOOST_REQUIRE_EQUAL(a.size(), 3);
-  for (decltype(a)::size_type i = 0; i < a.size(); ++i) {
-    BOOST_REQUIRE_EQUAL(a[i].i, i);
-    BOOST_REQUIRE(!a[i].moved_from);
-  }
-
-  auto b = a;
-  BOOST_REQUIRE_EQUAL(b.size(), 3);
-  for (decltype(b)::size_type i = 0; i < b.size(); ++i) {
-    BOOST_REQUIRE_EQUAL(b[i].i, i);
-    BOOST_REQUIRE(!b[i].moved_from);
-  }
-
-  // we have a and b which are 1 2 3 each
-
-  // test erase
-  b.erase(b.begin() + 1);
-  BOOST_REQUIRE_EQUAL(b.size(), 2);
-  BOOST_REQUIRE_EQUAL(b[0].i, 0);
-  BOOST_REQUIRE(!b[0].moved_from);
-  BOOST_REQUIRE_EQUAL(b[1].i, 2);
-  BOOST_REQUIRE(!b[1].moved_from);
-  BOOST_REQUIRE_EQUAL(b[2].i, 2);
-  BOOST_REQUIRE(b[2].moved_from);
-
-  // test resize
-  b = a;
-  b.resize(1);
-  BOOST_REQUIRE_EQUAL(b.size(), 1);
-  BOOST_REQUIRE_EQUAL(b[0].i, 0);
-  BOOST_REQUIRE(!b[0].moved_from);
-  BOOST_REQUIRE_EQUAL(b[1].i, 1);
-  BOOST_REQUIRE(b[1].moved_from);
-  BOOST_REQUIRE_EQUAL(b[2].i, 2);
-  BOOST_REQUIRE(b[2].moved_from);
-
-  // test clear
-  b.clear();
-  for (decltype(b)::size_type i = 0; i < b.size(); ++i) {
-    BOOST_REQUIRE_EQUAL(b[i].i, i);
-    BOOST_REQUIRE(b[i].moved_from);
-  }
-
-  b = a;
-  b[2].i = 50;
-  a.resize(2);
-  // test move
-  b = std::move(a);
-  for (decltype(a)::size_type i = 0; i < a.size(); ++i) {
-    BOOST_REQUIRE_EQUAL(a[i].i, i);
-    BOOST_REQUIRE(a[i].moved_from);
-  }
-
-  BOOST_REQUIRE_EQUAL(b.size(), 2);
-  BOOST_REQUIRE_EQUAL(b[0].i, 0);
-  BOOST_REQUIRE(!b[0].moved_from);
-  BOOST_REQUIRE_EQUAL(b[1].i, 1);
-  BOOST_REQUIRE(!b[1].moved_from);
-  BOOST_REQUIRE_EQUAL(b[2].i, 50);
-  BOOST_REQUIRE(b[2].moved_from);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -12,30 +12,30 @@ template<typename arith_t = float>
 class ArithData {
     public:
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-        constexpr ArithData(EmptyData) : ArithData() {}
-        constexpr ArithData() : value_(0) {}
-        constexpr ArithData(float value) : value_(value) {}
+        ArithData(EmptyData) : ArithData() {}
+        ArithData() : value_(0) {}
+        ArithData(float value) : value_(value) {}
 
-        constexpr float value() const { return value_; }
-        constexpr void value(float value) { value_ = value; }
+        float value() const { return value_; }
+        void value(float value) { value_ = value; }
 
-        constexpr bool relevant() const {
+        bool relevant() const {
             return true;
         }
 
-        constexpr bool rm_relevant() const {       
+        bool rm_relevant() const {       
             return relevant();
         }
 
         template<typename ret_t = ArithData, typename T>
-        constexpr ret_t ande(const T& o) const {
+        ret_t ande(const T& o) const {
             ArithData r(*this);
             r.andi(o); // reusing andi
             return ret_t(r);
         }
         
         template<typename T>
-        constexpr ArithData& andi(const T& o) {
+        ArithData& andi(const T& o) {
             if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ *= o.value();
             }
@@ -43,21 +43,21 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr bool ands(const T&) const {
+        bool ands(const T&) const {
             // shortened from:
             // return ande(o).relevant();
             return relevant();
         }
 
         template<typename ret_t = ArithData, typename T>
-        constexpr ret_t ore(const T& o) const {
+        ret_t ore(const T& o) const {
             ArithData r(*this);
             r.ori(o); // reusing ori
             return ret_t(r);
         }
         
         template<typename T>
-        constexpr ArithData& ori(const T& o) {
+        ArithData& ori(const T& o) {
             if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ += o.value();
             }
@@ -65,19 +65,19 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr bool ors(const T&) const {
+        bool ors(const T&) const {
             return relevant();
         }
 
         template<typename ret_t = ArithData, typename T>
-        constexpr ret_t rme(const T& o) const {
+        ret_t rme(const T& o) const {
             ArithData r(*this);
             r.rmi(o); // reusing rmi
             return ret_t(r);
         }
         
         template<typename T>
-        constexpr ArithData& rmi(const T& o) {
+        ArithData& rmi(const T& o) {
             if constexpr(!std::is_base_of_v<EmptyData, T>) {
                 value_ -= o.value();
             }
@@ -85,23 +85,23 @@ class ArithData {
         }
 
         template<typename T>
-        constexpr bool rms(const T&) const {
+        bool rms(const T&) const {
             return rm_relevant();
         }
 
-        constexpr bool operator==(const ArithData& o) const {
+        bool operator==(const ArithData& o) const {
             return value() == o.value();
         }
 
-        constexpr bool operator!=(const ArithData& o) const {
+        bool operator!=(const ArithData& o) const {
             return value() != o.value();
         }
 
-        constexpr bool operator==(const EmptyData&) const {
+        bool operator==(const EmptyData&) const {
             return true;
         }
 
-        constexpr bool operator!=(const EmptyData&) const {
+        bool operator!=(const EmptyData&) const {
             return false;
         }
 

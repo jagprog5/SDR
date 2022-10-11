@@ -20,18 +20,18 @@ class EmptyData {
     // it disables the data functionality
 
     public:
-        constexpr EmptyData() : unused() {}
+        EmptyData() : unused() {}
 
         template<typename T>
         // NOLINTNEXTLINE
-        constexpr explicit EmptyData(T&&) : unused() {}
+        explicit EmptyData(T&&) : unused() {}
 
-        constexpr bool relevant() const {
+        bool relevant() const {
             // if any element is combined with this one, then it is in the result
             return true;
         }
 
-        constexpr bool rm_relevant() const {
+        bool rm_relevant() const {
             // if any element is removed from this one, then it is not in the result
             return false;
         }
@@ -42,45 +42,45 @@ class EmptyData {
         // (SDR containing SDRs containing SDRs... ad infinitum)
 
         template<typename ret_t = EmptyData, typename T>
-        constexpr EmptyData ande(const T&) const { return ret_t(); }
+        EmptyData ande(const T&) const { return ret_t(); }
 
         template<typename T>
-        constexpr EmptyData& andi(const T&) { return *this; }
+        EmptyData& andi(const T&) { return *this; }
 
         template<typename T>
-        constexpr bool ands(const T&) const { return relevant(); }
+        bool ands(const T&) const { return relevant(); }
 
         template<typename ret_t = EmptyData, typename T>
-        constexpr EmptyData ore(const T&) const { return ret_t(); }
+        EmptyData ore(const T&) const { return ret_t(); }
 
         template<typename T>
-        constexpr EmptyData& ori(const T&) { return *this; }
+        EmptyData& ori(const T&) { return *this; }
 
         // ors isn't actually used, keeping it anyway for consistency
         // (SDR::ors doesn't check for data relevance because it doesn't need to)
         template<typename T>
-        constexpr bool ors(const T&) const { return relevant(); }
+        bool ors(const T&) const { return relevant(); }
 
         template<typename ret_t = EmptyData, typename T>
-        constexpr EmptyData xore(const T&) const { return ret_t(); }
+        EmptyData xore(const T&) const { return ret_t(); }
 
         template<typename T>
-        constexpr EmptyData& xori(const T&) { return *this; }
+        EmptyData& xori(const T&) { return *this; }
 
         template<typename T>
-        constexpr bool xors(const T&) const { return rm_relevant(); }
+        bool xors(const T&) const { return rm_relevant(); }
 
         template<typename ret_t = EmptyData, typename T>
-        constexpr EmptyData rme(const T&) const { return EmptyData(); }
+        EmptyData rme(const T&) const { return EmptyData(); }
 
         template<typename T>
-        constexpr EmptyData& rmi(const T&) { return *this; }
+        EmptyData& rmi(const T&) { return *this; }
 
         template<typename T>
-        constexpr bool rms(const T&) const { return rm_relevant(); }
+        bool rms(const T&) const { return rm_relevant(); }
 
-        constexpr bool operator==(const EmptyData&) const { return true; }
-        constexpr bool operator!=(const EmptyData&) const { return false; }
+        bool operator==(const EmptyData&) const { return true; }
+        bool operator!=(const EmptyData&) const { return false; }
 
     private:
         // if this member wasn't here, the EmptyData size would be 1, instead of 0.

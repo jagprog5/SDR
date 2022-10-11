@@ -39,14 +39,14 @@ struct setLike : std::false_type {};
 template<typename T>
 struct setLike<T, decltype((void)T().lower_bound(typename T::value_type()), void())> : std::true_type {};
 
-template<typename SDRElem_t, std::size_t N>
-class ArrayAdaptor;
+template<typename SDRElem_t, typename ids_t, typename datas_t>
+class IDContiguousContainer;
 
 template<typename T>
-struct isArrayAdaptor : std::false_type {};
+struct isIDContiguousContainer : std::false_type {};
 
-template<typename T, size_t N>
-struct isArrayAdaptor<ArrayAdaptor<T, N>> : std::true_type {};
+template<typename T, typename ids_t, typename datas_t>
+struct isIDContiguousContainer<IDContiguousContainer<T, ids_t, datas_t>> : std::true_type {};
 
 template<typename T, typename = void>
 struct setComparatorCheck : std::false_type {};
