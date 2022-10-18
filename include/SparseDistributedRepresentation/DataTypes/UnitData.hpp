@@ -33,13 +33,15 @@ class UnitData {
             r.andi(o); // reusing andi
             return ret_t(r);
         }
-        
+
         template<typename T>
-        UnitData& andi(const T& o) {
-            // EmptyData lacks a value() function
-            if constexpr(!std::is_base_of_v<EmptyData, T>) {
-                value_ *= o.value();
-            }
+        std::enable_if_t<std::is_base_of_v<UnitData, T>, UnitData>& andi(const T& o) {
+            value_ *= o.value();
+            return *this;
+        }
+
+        template<typename T>
+        std::enable_if_t<std::is_base_of_v<EmptyData, T>, UnitData>& andi(const T&) {
             return *this;
         }
 
@@ -56,10 +58,13 @@ class UnitData {
         }
 
         template<typename T>
-        UnitData& ori(const T& o) {
-            if constexpr(!std::is_base_of_v<EmptyData, T>) {
-                value_ = value_ > o.value() ? value_ : o.value();
-            }
+        std::enable_if_t<std::is_base_of_v<UnitData, T>, UnitData>& ori(const T& o) {
+            value_ = value_ > o.value() ? value_ : o.value();
+            return *this;
+        }
+
+        template<typename T>
+        std::enable_if_t<std::is_base_of_v<EmptyData, T>, UnitData>& ori(const T&) {
             return *this;
         }
 
@@ -76,10 +81,13 @@ class UnitData {
         }
 
         template<typename T>
-        UnitData& xori(const T& o) {
-            if constexpr(!std::is_base_of_v<EmptyData, T>) {
-                value_ = std::abs(value_ - o.value());
-            }
+        std::enable_if_t<std::is_base_of_v<UnitData, T>, UnitData>& xori(const T& o) {
+            value_ = std::abs(value_ - o.value());
+            return *this;
+        }
+
+        template<typename T>
+        std::enable_if_t<std::is_base_of_v<EmptyData, T>, UnitData>& xori(const T&) {
             return *this;
         }
 
@@ -96,10 +104,13 @@ class UnitData {
         }
 
         template<typename T>
-        UnitData& rmi(const T& o) {
-            if constexpr(!std::is_base_of_v<EmptyData, T>) {
-                value_ = value_ * (1 - o.value());
-            }
+        std::enable_if_t<std::is_base_of_v<UnitData, T>, UnitData>& rmi(const T& o) {
+            value_ = value_ * (1 - o.value());
+            return *this;
+        }
+
+        template<typename T>
+        std::enable_if_t<std::is_base_of_v<EmptyData, T>, UnitData>& rmi(const T&) {
             return *this;
         }
 

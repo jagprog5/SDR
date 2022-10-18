@@ -5,15 +5,13 @@
 #include <cmath>
 #include <algorithm>
 #include <functional>
+#include <queue>
 
 #include "SparseDistributedRepresentation/Templates.hpp"
 #include "SparseDistributedRepresentation/SDRElem.hpp" 
 #include "SparseDistributedRepresentation/MatrixUtils.hpp"
 
 namespace sparse_distributed_representation {
-
-enum MatrixFormat { ROW_MAJOR, COLUMN_MAJOR };
-enum MatrixFormatSameness { SAME_MAJOR, DIFFERENT_MAJOR };
 
 /**
  * An SDR or sparse nd array.
@@ -38,43 +36,43 @@ class SDR {
         using reference = typename container_t::reference;
         using const_reference = typename container_t::const_reference;
 
-        static constexpr bool usesVectorLike = vectorLike<container_t>::value;
-        static constexpr bool usesFlistLike = flistLike<container_t>::value;
-        static constexpr bool usesSetLike = setLike<container_t>::value;
+        static constexpr bool uses_vector_like = vector_like<container_t>::value;
+        static constexpr bool uses_flist_like = flist_like<container_t>::value;
+        static constexpr bool uses_set_like = set_like<container_t>::value;
 
         static_assert(!std::is_fundamental<SDRElem_t>::value, "Instead of SDR<fundamental_type_here>, use SDR<SDRElem_t<fundamental_type_here>>");
-        static_assert(!usesSetLike || setComparatorCheck<container_t>::value, "Bad comparator for container! instead of std::less<T>, use std::less<>");
+        static_assert(!uses_set_like || set_comparator_check<container_t>::value, "Bad comparator for container! instead of std::less<T>, use std::less<>");
 
         // default ctor
         SDR() {
-            if constexpr(usesFlistLike)
+            if constexpr(uses_flist_like)
                 this->maybe_size.size = 0;
         }
 
         // copy ctor
         SDR(const SDR& sdr): v(sdr.v) {
-            if constexpr(usesFlistLike)
+            if constexpr(uses_flist_like)
                 this->maybe_size.size = sdr.maybe_size.size;
         }
 
         // copy assignment ctor
         SDR& operator=(const SDR& sdr) {
             this->v = sdr.v;
-            if constexpr(usesFlistLike)
+            if constexpr(uses_flist_like)
                 this->maybe_size.size = sdr.maybe_size.size;
             return *this;
         }
 
         // move ctor
         SDR(SDR&& sdr) noexcept : v(std::move(sdr.v)) {
-            if constexpr(usesFlistLike)
+            if constexpr(uses_flist_like)
                 this->maybe_size.size = sdr.maybe_size.size;
         }
 
         // move assignment ctor
         SDR& operator=(SDR&& sdr) noexcept {
             this->v = std::move(sdr.v);
-            if constexpr(usesFlistLike)
+            if constexpr(uses_flist_like)
                 this->maybe_size.size = sdr.maybe_size.size;
             return *this;
         }
@@ -323,7 +321,7 @@ class SDR {
         auto empty() const { return v.empty(); }
 
         auto size() const {
-            if constexpr(usesFlistLike) {
+            if constexpr(uses_flist_like) {
                 return maybe_size.size;
             } else {
                 return v.size();
@@ -448,6 +446,8 @@ class SDR {
         auto operator<<=(other&& o) { return shift(std::forward<other>(o)); }
         template<typename other>
         auto operator>>=(other&& o) { return shift(std::forward<other>(-o)); }
+
+        // create specialization for non same types
         
         template<typename arg_t, typename c_arg_t>
         auto operator==(const SDR<arg_t, c_arg_t>& other) const {
@@ -465,56 +465,82 @@ class SDR {
         }
 
         template<typename arg_t, typename c_arg_t>
-        auto operator!=(const SDR<arg_t, c_arg_t>& other) const { return !(*this == other); }
+        bool operator!=(const SDR<arg_t, c_arg_t>& other) const { return !(*this == other); }
 
-        template<typename arg_t, typename c_arg_t>
-        auto operator<(const SDR<arg_t, c_arg_t>& other) const {
-            return std::lexicographical_compare(this->v.cbegin(), this->v.cend(), other.v.cbegin(), other.v.cend());
+        // inner product
+        template<typename ret_t = typename SDRElem_t::data_type, typename arg_t, typename c_arg_t>
+        ret_t inner(const SDR<arg_t, c_arg_t>& other) const;
+
+        // outer product
+        template<
+            typename arg_t,
+            typename c_arg_t,
+            typename ret_t = SDRElem<typename SDRElem_t::id_type, SDR<arg_t, c_arg_t>>,
+            typename c_ret_t = replace_value_type<container_t, ret_t>>
+        SDR<ret_t, c_ret_t> outer(const SDR<arg_t, c_arg_t>& other) const;
+
+        // multiplies this (a row major matrix) with the arg and returns the result.
+        template<typename arg_t,
+                typename c_arg_t,
+                typename ret_t = arg_t,
+                typename c_ret_t = c_arg_t>
+        SDR<ret_t, c_ret_t> row_major_mul_vec(const SDR<arg_t, c_arg_t>& arg) const;
+
+        // multiplies this (a column major matrix) with the arg and returns the result.
+        template<typename arg_t,
+                typename c_arg_t,
+                typename ret_t = arg_t,
+                typename c_ret_t = c_arg_t,
+                typename priority_queue_t = std::priority_queue<matrix_utils::row_info<value_type>>>
+        SDR<ret_t, c_ret_t> col_major_mul_vec(const SDR<arg_t, c_arg_t>& arg) const;
+
+        // this returns a matrix of the same type, to prevent template proliferation.
+        template<typename ret_t = SDRElem_t,
+                typename c_ret_t = container_t,
+                typename priority_queue_t = std::priority_queue<matrix_utils::row_info<value_type>>>
+        SDR<ret_t, c_ret_t> transpose() const;
+
+        // transpose, and it flips the container types and id types that store the elements, row-wise <-> column wise
+        template<typename priority_queue_t = std::priority_queue<matrix_utils::row_info<value_type>>>
+        auto transpose2() {
+            using inner_data = typename SDRElem_t::data_type::value_type::data_type; // also from inner data, stay the same
+            using inner_id = typename SDRElem_t::id_type; // from outer id
+            using inner_element = SDRElem<inner_id, inner_data>;
+            using inner_container = replace_value_type<container_t, inner_element>; // source from the outer container
+            using inner = SDR<inner_element, inner_container>;
+            using outer_data = inner;
+            using outer_id = typename SDRElem_t::data_type::value_type::id_type; // from inner id
+            using outer_element = SDRElem<outer_id, outer_data>;
+            using outer_container = replace_value_type<typename SDRElem_t::data_type::container_type, outer_element>; // source from the inner container
+            return transpose<outer_element, outer_container, priority_queue_t>();
         }
 
-        template<typename arg_t, typename c_arg_t>
-        auto operator>=(const SDR<arg_t, c_arg_t>& other) const { return !(*this < other); }
-
-        template<typename arg_t, typename c_arg_t>
-        auto operator>(const SDR<arg_t, c_arg_t>& other) const { return other < *this; }
-
-        template<typename arg_t, typename c_arg_t>
-        auto operator<=(const SDR<arg_t, c_arg_t>& other) const { return !(*this > other); }
-
-        // dot product
-        template<typename ret_t = typename SDRElem_t::data_type, typename arg_t, typename c_arg_t>
-        ret_t dot(const SDR<arg_t, c_arg_t>& other) const;
-
-        template<MatrixFormat format = ROW_MAJOR,
-                 typename arg_t,
-                 typename ret_t = arg_t,
-                 typename c_arg_t,
-                 typename c_ret_t = c_arg_t,
-                 typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<SDR<SDRElem_t, container_t>>>>
-        SDR<ret_t, c_ret_t> matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const;
-
-        template<typename ret_t = SDRElem_t,
-                 typename c_ret_t = container_t,
-                 typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<SDR<SDRElem_t, container_t>>>>
-        SDR<ret_t, c_ret_t> matrix_transpose() const;
-
         template<typename T = SDRElem_t>
-        typename T::data_type::value_type::data_type matrix_trace() const;
+        typename T::data_type::value_type::data_type trace() const;
 
         /**
          * Multiply two matrices together.
          * 
-         * The arg must have the same / different format as this matrix, as specified by targ format.
-         * 
-         * The returned matrix has the same column / row major-ness as this matrix.
+         * Both this and the arg must have the same row/column major format.
          */
-        template<MatrixFormatSameness format = SAME_MAJOR,
-                 typename arg_t,
-                 typename ret_t = arg_t,
-                 typename c_arg_t,
-                 typename c_ret_t = c_arg_t,
-                 typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<SDR<arg_t, c_arg_t>>>>
-        SDR<ret_t, c_ret_t> matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const;
+        template<typename arg_t,
+                typename c_arg_t,
+                typename ret_t = arg_t,
+                typename c_ret_t = c_arg_t,
+                typename priority_queue_t = std::priority_queue<matrix_utils::row_info<arg_t>>>
+        SDR<ret_t, c_ret_t> same_mul(const SDR<arg_t, c_arg_t>& arg) const;
+
+        /**
+         * Multiply two matrices together.
+         * 
+         * Both this and the arg must have different row/column major format.
+         * The returned matrix has the same row/column format as this matrix.
+         */
+        template<typename arg_t,
+                typename c_arg_t,
+                typename ret_t = arg_t,
+                typename c_ret_t = c_arg_t>
+        SDR<ret_t, c_ret_t> diff_mul(const SDR<arg_t, c_arg_t>& arg) const;
 
         // relevance is needed for interface compatability between SDRs and SDRElem::data_type
         bool relevant() const { return !empty(); }
@@ -524,7 +550,6 @@ class SDR {
         bool is_ascending() const;
     private:
         container_t v;
-
 
         MaybeSize<container_t> maybe_size;
 
@@ -543,7 +568,7 @@ class SDR {
 
 template<typename SDRElem_t, typename container_t>
 bool SDR<SDRElem_t, container_t>::is_ascending() const {
-    if constexpr(!usesSetLike) {
+    if constexpr(!uses_set_like) {
         #ifndef NDEBUG
             if (v.empty()) return true;
             auto pos = v.cbegin();
@@ -566,14 +591,14 @@ bool SDR<SDRElem_t, container_t>::is_ascending() const {
 template<typename SDRElem_t, typename container_t>
 template<typename Iterator>
 SDR<SDRElem_t, container_t>::SDR(Iterator begin, Iterator end) {
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         this->maybe_size.size = 0;
         auto insert_it = this->v.before_begin();
         while (begin != end) {
             insert_it = this->v.insert_after(insert_it, SDRElem_t(*begin++));
             ++this->maybe_size.size;
         }
-    } else if constexpr(usesVectorLike && std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category>::value) {
+    } else if constexpr(uses_vector_like && std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<Iterator>::iterator_category>::value) {
         auto count = end - begin;
         this->v.resize(count);
         for (decltype(count) i = 0; i < count; ++i) {
@@ -581,7 +606,7 @@ SDR<SDRElem_t, container_t>::SDR(Iterator begin, Iterator end) {
         }
     } else {
         while (begin != end) {
-            if constexpr(usesVectorLike) {
+            if constexpr(uses_vector_like) {
                 v.push_back(SDRElem_t(*begin++));
             } else {
                 v.insert(v.end(), SDRElem_t(*begin++));
@@ -593,7 +618,7 @@ SDR<SDRElem_t, container_t>::SDR(Iterator begin, Iterator end) {
 template<typename SDRElem_t, typename container_t>
 template<typename T>
 SDR<SDRElem_t, container_t>::SDR(std::initializer_list<T> list) {
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         auto pos = list.begin();
         auto end = list.end();
         this->maybe_size.size = 0;
@@ -621,7 +646,7 @@ SDR<SDRElem_t, container_t>::SDR(std::initializer_list<T> list) {
                 relevant = elem.data().relevant();
             }
             if (relevant) {
-                if constexpr(usesVectorLike) {
+                if constexpr(uses_vector_like) {
                     this->v.push_back(SDRElem_t(elem));
                 } else {
                     this->v.insert(this->v.end(), SDRElem_t(elem));
@@ -636,7 +661,7 @@ SDR<SDRElem_t, container_t>::SDR(std::initializer_list<T> list) {
 template<typename SDRElem_t, typename container_t>
 SDR<SDRElem_t, container_t>::SDR(float input, float period, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length && period >= 0 && input >= 0);
-    if constexpr(usesVectorLike) v.resize(size);
+    if constexpr(uses_vector_like) v.resize(size);
 
     float progress = input / period;
     // NOLINTNEXTLINE
@@ -652,7 +677,7 @@ SDR<SDRElem_t, container_t>::SDR(float input, float period, size_type size, size
         // the number of elements that don't wrap off the end
         size_type non_wrapped_elements = size - wrapped_elements;
 
-        if constexpr(usesFlistLike) {
+        if constexpr(uses_flist_like) {
             auto insert_it = v.before_begin();
             for (size_type i = 0; i < wrapped_elements; ++i) {
                 insert_it = v.insert_after(insert_it, SDRElem_t(i));
@@ -660,7 +685,7 @@ SDR<SDRElem_t, container_t>::SDR(float input, float period, size_type size, size
             for (size_type i = 0; i < non_wrapped_elements; ++i) {
                 insert_it = v.insert_after(insert_it, SDRElem_t(start_index + i));
             }
-        } else if constexpr(usesVectorLike) {
+        } else if constexpr(uses_vector_like) {
             for (size_type i = 0; i < wrapped_elements; ++i) {
                 v[i] = SDRElem_t(i);
             }
@@ -677,12 +702,12 @@ SDR<SDRElem_t, container_t>::SDR(float input, float period, size_type size, size
         }
     } else {
         // no elements are wrapped from the end
-        if constexpr(usesFlistLike) {
+        if constexpr(uses_flist_like) {
             auto insert_it = v.before_begin();
             for (size_type i = 0; i < size; ++i) {
                 insert_it = v.insert_after(insert_it, SDRElem_t(start_index + i));
             }
-        } else if constexpr(usesVectorLike) {
+        } else if constexpr(uses_vector_like) {
             for (size_type i = 0; i < size; ++i) {
                 v[i] = SDRElem_t(start_index + i);
             }
@@ -692,7 +717,7 @@ SDR<SDRElem_t, container_t>::SDR(float input, float period, size_type size, size
             }
         }
     }
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         maybe_size.size = size;
     }
 }
@@ -701,14 +726,14 @@ template<typename SDRElem_t, typename container_t>
 SDR<SDRElem_t, container_t>::SDR(float input, size_type size, size_type underlying_array_length) {
     assert(size <= underlying_array_length);
     assert(input >= 0);
-    if constexpr(usesVectorLike) v.resize(size);
+    if constexpr(uses_vector_like) v.resize(size);
     size_type start_index = std::round((underlying_array_length - size) * input);
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         auto insert_it = v.before_begin();
         for (size_type i = 0; i < size; ++i) {
             insert_it = v.insert_after(insert_it, SDRElem_t(start_index + i));
         }
-    } else if constexpr(usesVectorLike) {
+    } else if constexpr(uses_vector_like) {
         for (size_type i = 0; i < size; ++i) {
             v[i] = SDRElem_t(start_index + i);
         }
@@ -717,7 +742,7 @@ SDR<SDRElem_t, container_t>::SDR(float input, size_type size, size_type underlyi
             v.insert(v.end(), SDRElem_t(start_index + i));
         }
     }
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         maybe_size.size = size;
     }
 }
@@ -727,7 +752,7 @@ template<typename RandomGenerator>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::sample(float amount, RandomGenerator& g) {
     assert(amount >= 0 && amount <= 1);
     auto check_val = amount * (float)g.max();
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         typename container_t::size_type remove_count = 0;
         auto pos = v.before_begin();
         while (true) {
@@ -741,7 +766,7 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::sample(float amount, R
             }
         }
         maybe_size.size -= remove_count;
-    } else if constexpr(usesVectorLike) {
+    } else if constexpr(uses_vector_like) {
         auto to_offset = v.begin();
         auto from_offset = v.cbegin();
         auto end = v.end();
@@ -768,7 +793,7 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::sample(float amount, R
 template<typename SDRElem_t, typename container_t>
 const typename SDRElem_t::data_type* SDR<SDRElem_t, container_t>::ande(typename SDRElem_t::id_type val) const {
     decltype(std::lower_bound(v.cbegin(), v.cend(), val)) pos;
-    if constexpr(usesSetLike) {
+    if constexpr(uses_set_like) {
         pos = v.lower_bound(val);
     } else {
         pos = std::lower_bound(v.cbegin(), v.cend(), val);
@@ -802,13 +827,13 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(arg_t start_inclusive, arg
     assert(start_inclusive <= stop_exclusive);
     SDR<ret_t, c_ret_t> sdr;
     typename container_t::const_iterator start_it;
-    if constexpr(usesSetLike) {
+    if constexpr(uses_set_like) {
         start_it = v.lower_bound(start_inclusive);
     } else {
         start_it = std::lower_bound(v.cbegin(), v.cend(), start_inclusive);
     }
     typename container_t::const_iterator end_it;
-    if constexpr(usesFlistLike) {
+    if constexpr(uses_flist_like) {
         end_it = start_it;
         while (true) {
             if (end_it == cend() || end_it->id() >= stop_exclusive) {
@@ -817,22 +842,22 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(arg_t start_inclusive, arg
             ++end_it;
             ++sdr.maybe_size.size;
         }
-    } else if constexpr(usesSetLike) {
+    } else if constexpr(uses_set_like) {
         end_it = v.lower_bound(stop_exclusive);
     } else {
         end_it = std::lower_bound(start_it, v.cend(), stop_exclusive);
     }
     // at this point the start and end positions have been found
     // place the range into the result
-    if constexpr(vectorLike<c_ret_t>::value) {
+    if constexpr(vector_like<c_ret_t>::value) {
         sdr.v.resize(end_it - start_it);
     }
-    if constexpr(flistLike<c_ret_t>::value) {
+    if constexpr(flist_like<c_ret_t>::value) {
         auto insert_it = sdr.v.before_begin();
         for (auto it = start_it; it != end_it; ++it) {
             insert_it = sdr.v.insert_after(insert_it, ret_t(*it));
         }
-    } else if constexpr(vectorLike<c_ret_t>::value) {
+    } else if constexpr(vector_like<c_ret_t>::value) {
         auto insert_it = sdr.v.begin();
         for (auto it = start_it; it != end_it; ++it) {
             *insert_it++ = ret_t(*it);
@@ -849,7 +874,7 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t>
 // NOLINTNEXTLINE
 typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::ands(arg_t start_inclusive, arg_t stop_exclusive) const {
-    if constexpr(usesSetLike) {
+    if constexpr(uses_set_like) {
         auto pos = this->v.lower_bound(start_inclusive);
         size_type count = 0;
         while (pos != v.cend()) {
@@ -859,7 +884,7 @@ typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::and
             ++count;
         }
         return count;
-    } else if constexpr(usesVectorLike) {
+    } else if constexpr(uses_vector_like) {
         auto pos = std::lower_bound(cbegin(), cend(), start_inclusive);
         auto end_it = std::lower_bound(pos, cend(), stop_exclusive);
         return (size_type)(end_it - pos);
@@ -888,7 +913,7 @@ void SDR<SDRElem_t, container_t>::andv(SDR<arg_t, c_arg_t>& arg, Visitor visitor
         // get an element in this
         this_elem = this_pos->id();
         // try to find the matching element in the arg
-        if constexpr(setLike<c_arg_t>::value) {
+        if constexpr(set_like<c_arg_t>::value) {
             arg_pos = arg.v.lower_bound(this_elem);
         } else {
             arg_pos = std::lower_bound(arg_pos, arg_end, this_elem);
@@ -903,7 +928,7 @@ void SDR<SDRElem_t, container_t>::andv(SDR<arg_t, c_arg_t>& arg, Visitor visitor
         }
         // the rest of this is all of the above, except with this and arg swapped
         arg_elem = arg_pos->id();
-        if constexpr(usesSetLike) {
+        if constexpr(uses_set_like) {
             this_pos = this->v.lower_bound(arg_elem);
         } else {
             this_pos = std::lower_bound(this_pos, this_end, arg_elem);
@@ -924,7 +949,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
     SDR<ret_t, c_ret_t> r;
     std::function<void(iterator, typename c_arg_t::iterator)> visitor;
     [[maybe_unused]] typename c_ret_t::iterator it;
-    if constexpr(flistLike<c_ret_t>::value) {
+    if constexpr(flist_like<c_ret_t>::value) {
         it = r.v.before_begin();
         visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             auto data = this_pos->data().template ande<typename ret_t::data_type>(arg_pos->data());
@@ -950,7 +975,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ande(const SDR<arg_t, c_arg_t>&
 template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const SDR<arg_t, c_arg_t>& arg) {
-    if constexpr(usesVectorLike) {
+    if constexpr(uses_vector_like) {
         auto pos = this->v.begin();
         auto visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
             typename SDRElem_t::data_type& data = this_pos->data().andi(arg_pos->data());
@@ -961,7 +986,7 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::andi(const SDR<arg_t, 
         };
         andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), visitor);
         this->v.resize(pos - this->v.begin());
-    } else if constexpr(usesFlistLike) {
+    } else if constexpr(uses_flist_like) {
         auto lagger = this->v.before_begin();
         auto this_visitor = [&](iterator) {
             // if the element only exists in this then it is removed
@@ -1106,7 +1131,7 @@ SDR<ret_t, c_ret_t> ore(MeIterator this_begin, MeIterator this_end, QueryIterato
     std::function<void(MeIterator)> this_visitor;
     std::function<void(QueryIterator)> arg_visitor;
     std::function<void(MeIterator, QueryIterator)> both_visitor;
-    if constexpr(flistLike<c_ret_t>::value) {
+    if constexpr(flist_like<c_ret_t>::value) {
         auto it = r.before_begin();
         this_visitor = [&](MeIterator this_pos) {
             it = r.insert_after(it, ret_t(*this_pos));
@@ -1140,7 +1165,7 @@ SDR<ret_t, c_ret_t> ore(MeIterator this_begin, MeIterator this_end, QueryIterato
         };
         orv(this_begin, this_end, arg_begin, arg_end, this_visitor, arg_visitor, both_visitor);
     }
-    if constexpr(vectorLike<c_ret_t>::value) r.shrink_to_fit();
+    if constexpr(vector_like<c_ret_t>::value) r.shrink_to_fit();
     return r; // nrvo
 }
 
@@ -1162,10 +1187,10 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::ore(SDR<arg_t, c_arg_t>&& arg) 
 template<typename SDRElem_t, typename container_t, typename QueryIterator>
 SDR<SDRElem_t, container_t>& ori(SDR<SDRElem_t, container_t>& me, QueryIterator arg_begin, QueryIterator arg_end) {
     using const_iterator = typename SDR<SDRElem_t, container_t>::const_iterator;
-    if constexpr(vectorLike<container_t>::value) {
+    if constexpr(vector_like<container_t>::value) {
         auto r = ore<SDRElem_t, container_t>(std::make_move_iterator(me.v.begin()), std::make_move_iterator(me.v.end()), arg_begin, arg_end);
         me = std::move(r);
-    } else if constexpr(flistLike<container_t>::value) {
+    } else if constexpr(flist_like<container_t>::value) {
         auto lagger = me.before_begin();
         auto this_visitor = [&](const_iterator) {
             ++lagger;
@@ -1229,11 +1254,11 @@ SDR<ret_t, c_ret_t> xore(MeIterator this_begin, MeIterator this_end, QueryIterat
     std::function<void(QueryIterator)> arg_visitor;
     std::function<void(MeIterator, QueryIterator)> both_visitor;
     // scoping weirdness requires declaring 'it' here
-    // if it was instead declared inside the flistLike branch below (in the same line it is initialized),
+    // if it was instead declared inside the flist_like branch below (in the same line it is initialized),
     // then it would be no longer valid by the time the lambdas are used in orv
     // it's strange that c++ does not catch it going out of scope...
     [[maybe_unused]] typename c_ret_t::const_iterator it;
-    if constexpr(flistLike<c_ret_t>::value) {
+    if constexpr(flist_like<c_ret_t>::value) {
         it = r.before_begin();
         this_visitor = [&](MeIterator this_pos) {
             it = r.insert_after(it, ret_t(*this_pos));
@@ -1265,7 +1290,7 @@ SDR<ret_t, c_ret_t> xore(MeIterator this_begin, MeIterator this_end, QueryIterat
         };
     }
     orv(this_begin, this_end, arg_begin, arg_end, this_visitor, arg_visitor, both_visitor);
-    if constexpr(vectorLike<c_ret_t>::value) r.shrink_to_fit();
+    if constexpr(vector_like<c_ret_t>::value) r.shrink_to_fit();
     return r; // nrvo
 }
 
@@ -1287,10 +1312,10 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::xore(SDR<arg_t, c_arg_t>&& arg)
 template<typename SDRElem_t, typename container_t, typename QueryIterator>
 SDR<SDRElem_t, container_t>& xori(SDR<SDRElem_t, container_t>& me, QueryIterator arg_begin, QueryIterator arg_end) {
     using const_iterator = typename SDR<SDRElem_t, container_t>::const_iterator;
-    if constexpr(vectorLike<container_t>::value) {
+    if constexpr(vector_like<container_t>::value) {
         auto r = xore<SDRElem_t, container_t>(std::make_move_iterator(me.v.begin()), std::make_move_iterator(me.v.end()), arg_begin, arg_end);
         me = std::move(r);
-    } else if constexpr(flistLike<container_t>::value) {
+    } else if constexpr(flist_like<container_t>::value) {
         auto lagger = me.before_begin();
         auto this_visitor = [&](const_iterator) {
             ++lagger;
@@ -1357,7 +1382,7 @@ typename SDR<SDRElem_t, container_t>::size_type SDR<SDRElem_t, container_t>::xor
 template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::rmi(const SDR<arg_t, c_arg_t>& arg) {
-    if constexpr(usesVectorLike) {
+    if constexpr(uses_vector_like) {
         // this_fill emulates an orv over this but an andv over the arg
         const_iterator this_fill = this->cbegin();
         iterator insert_pos = this->v.begin();
@@ -1379,7 +1404,7 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::rmi(const SDR<arg_t, c
             *insert_pos++ = std::move(*this_fill++);
         }
         this->v.resize(insert_pos - this->v.begin());
-    } else if constexpr(usesFlistLike) {
+    } else if constexpr(uses_flist_like) {
         // lagger is used to remove elements
         iterator lagger = this->v.before_begin();
         auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
@@ -1428,7 +1453,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::rme(const SDR<arg_t, c_arg_t>& 
     std::function<void(iterator, typename c_arg_t::iterator)> both_visitor;
     [[maybe_unused]] typename c_ret_t::const_iterator it; // iterator for appending to flist result
 
-    if constexpr(flistLike<c_ret_t>::value) {
+    if constexpr(flist_like<c_ret_t>::value) {
         it = r.v.before_begin();
 
         both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
@@ -1459,7 +1484,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::rme(const SDR<arg_t, c_arg_t>& 
     }
     const_cast<SDR&>(*this).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), both_visitor);
     while (this_fill != this->v.cend()) {
-        if constexpr(flistLike<c_ret_t>::value) {
+        if constexpr(flist_like<c_ret_t>::value) {
             ++r.maybe_size.size;
             it = r.v.insert_after(it, ret_t(*this_fill++));
         } else {
@@ -1467,7 +1492,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::rme(const SDR<arg_t, c_arg_t>& 
         }
     }
 
-    if constexpr(vectorLike<c_ret_t>::value) {
+    if constexpr(vector_like<c_ret_t>::value) {
         r.v.shrink_to_fit();
     }
     return r;
@@ -1501,8 +1526,8 @@ template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::append(SDR<arg_t, c_arg_t>&& arg) {
     // this function doesn't work for flist sdrs. no good way of providing an efficient specialization
-    assert(empty() || arg.empty() || *--v.end() < *arg.v.cbegin());
-    if constexpr(usesVectorLike) {
+    assert(empty() || arg.empty() || *--v.cend() < *arg.cbegin());
+    if constexpr(uses_vector_like) {
         auto old_size = this->v.size();
         this->v.resize(this->v.size() + arg.v.size());
         auto insert_it = this->v.begin() + old_size;
@@ -1528,7 +1553,7 @@ void SDR<SDRElem_t, container_t>::push_back(E&& i) {
         --last_elem_iter;
         assert(last_elem_iter->id() < elem.id());
     }
-    if constexpr(usesVectorLike) {
+    if constexpr(uses_vector_like) {
         v.push_back(std::move(elem));
     } else {
         v.insert(v.end(), std::move(elem));
@@ -1539,7 +1564,7 @@ template<typename SDRElem_t, typename container_t>
 template<typename T, typename E>
 typename container_t::const_iterator SDR<SDRElem_t, container_t>::insert(const_iterator position, E&& i) {
     SDRElem_t elem = SDRElem_t(std::forward<E>(i));
-    if constexpr(!usesSetLike) {
+    if constexpr(!uses_set_like) {
         assert(position == cend() || elem.id() < position->id());
         assert(position == cbegin() || elem.id() > std::prev(position)->id());
     }
@@ -1589,7 +1614,7 @@ std::ostream& operator<<(std::ostream& os, const SDR<SDRElem_t, container_t>& sd
 
 template<typename SDRElem_t, typename container_t>
 template<typename ret_t, typename arg_t, typename c_arg_t>
-ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
+ret_t SDR<SDRElem_t, container_t>::inner(const SDR<arg_t, c_arg_t>& other) const {
     ret_t ret;
     auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator arg_pos) {
         auto elem = this_pos->data().template ande<ret_t>(arg_pos->data());
@@ -1600,79 +1625,110 @@ ret_t SDR<SDRElem_t, container_t>::dot(const SDR<arg_t, c_arg_t>& other) const {
 }
 
 template<typename SDRElem_t, typename container_t>
-template<MatrixFormat format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t, typename PriorityQueueContainer_t>
-SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_vector_mul(const SDR<arg_t, c_arg_t>& arg) const {
+template< typename arg_t, typename c_arg_t, typename ret_t, typename c_ret_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::outer(const SDR<arg_t, c_arg_t>& other) const {
     SDR<ret_t, c_ret_t> ret;
-    if constexpr(format == ROW_MAJOR) {
-        std::function<void(iterator)> visitor;
-        [[maybe_unused]] typename c_ret_t::iterator it;
-
-        if constexpr(flistLike<c_ret_t>::value) {
-            it = ret.v.before_begin();
-            visitor = [&](iterator this_pos) {
-                auto data = this_pos->data().template dot<typename ret_t::data_type>(arg);
-                if (data.relevant()) {
-                    ++ret.maybe_size.size;
-                    ret_t elem(this_pos->id(), std::move(data));
-                    it = ret.v.insert_after(it, std::move(elem));
-                }
-            };
-        } else {
-            visitor = [&](iterator this_pos) {
-                auto data = this_pos->data().template dot<typename ret_t::data_type>(arg);
-                if (data.relevant()) {
-                    ret_t elem(this_pos->id(), std::move(data));
-                    ret.push_back(std::move(elem));
-                }
-            };
+    [[maybe_unused]] typename c_ret_t::iterator it;
+    if constexpr(flist_like<c_ret_t>::value) {
+        it = ret.v.before_begin();
+    }
+    for (const auto& elem : *this) {
+        typename ret_t::data_type data;
+        [[maybe_unused]] typename ret_t::data_type::container_type::iterator inner_it;
+        if constexpr(flist_like<typename ret_t::data_type::container_type>::value) {
+            inner_it = data.v.before_begin();
         }
-
-        const_cast<SDR&>(*this).visitor(visitor);
-    } else {
-        OtherMajorView<SDR<SDRElem_t, container_t>, PriorityQueueContainer_t> view;
-
-        auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator) {
-            view.add_major(*this_pos);
-        };
-
-        const_cast<SDR<SDRElem_t, container_t>&>(*this).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), both_visitor);
-
-        BucketOutputAccumulator accumulator(ret);
-        while (view) {
-            auto pos = *view;
-
-            decltype(arg.cbegin()) arg_pos;
-            if constexpr(setLike<c_arg_t>::value) {
-                arg_pos = arg.v.lower_bound(pos.major_id);
+        for (const auto& other_elem : other) {
+            auto val_data = elem.data().template ande<typename ret_t::data_type::value_type::data_type>(other_elem.data());
+            typename ret_t::data_type::value_type val(other_elem.id(), std::move(val_data));
+            if constexpr(flist_like<typename ret_t::data_type::container_type>::value) {
+                ++ret.maybe_size.size;
+                inner_it = data.v.insert_after(inner_it, std::move(val));
             } else {
-                arg_pos = std::lower_bound(arg.cbegin(), arg.cend(), pos.major_id);
+                data.push_back(std::move(val));
             }
-
-            // arg_pos is guarenteed to contain the id, because of the andv call when initializing the view
-            assert(arg_pos != arg.cend() && arg_pos->id() == pos.major_id);
-            typename ret_t::id_type id = pos.element->id();
-            auto data = pos.element->data().template ande<typename ret_t::data_type>(arg_pos->data());
-            ret_t output_elem(id, std::move(data));
-            accumulator(std::move(output_elem));
-            ++view;
+        }
+        ret_t ret_elem(elem.id(), std::move(data));
+        if constexpr(flist_like<c_ret_t>::value) {
+            ++ret.maybe_size.size;
+            it = ret.v.insert_after(it, std::move(ret_elem));
+        } else {
+            ret.push_back(std::move(ret_elem));
         }
     }
     return ret;
 }
 
 template<typename SDRElem_t, typename container_t>
-template<typename ret_t, typename c_ret_t, typename PriorityQueueContainer_t>
-SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
+template<typename arg_t, typename c_arg_t, typename ret_t, typename c_ret_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::row_major_mul_vec(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> ret;
-    OtherMajorView<SDR<SDRElem_t, container_t>, PriorityQueueContainer_t> view;
+    [[maybe_unused]] typename c_ret_t::iterator it;
+    if constexpr(flist_like<c_ret_t>::value) {
+        it = ret.v.before_begin();
+    }
+    for (const auto& elem : *this) {
+        auto data = elem.data().template inner<typename ret_t::data_type>(arg);
+        if (data.relevant()) {
+            ret_t val(elem.id(), std::move(data));
+            if constexpr(flist_like<c_ret_t>::value) {
+                ++ret.maybe_size.size;
+                it = ret.v.insert_after(it, std::move(val));
+            } else {
+                ret.push_back(std::move(val));
+            }
+        }
+    }
+    return ret;
+}
+
+template<typename SDRElem_t, typename container_t>
+template<typename arg_t, typename c_arg_t, typename ret_t, typename c_ret_t, typename priority_queue_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::col_major_mul_vec(const SDR<arg_t, c_arg_t>& arg) const {
+    SDR<ret_t, c_ret_t> ret;
+    matrix_utils::OtherMajorView<priority_queue_t> view;
+
+    auto both_visitor = [&](iterator this_pos, typename c_arg_t::iterator) {
+        view.add_major(*this_pos);
+    };
+
+    const_cast<SDR<SDRElem_t, container_t>&>(*this).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), both_visitor);
+
+    matrix_utils::BucketOutputAccumulator accumulator(ret);
+    while (view) {
+        auto pos = *view;
+
+        decltype(arg.cbegin()) arg_pos;
+        if constexpr(set_like<c_arg_t>::value) {
+            arg_pos = arg.v.lower_bound(pos.major_id);
+        } else {
+            arg_pos = std::lower_bound(arg.cbegin(), arg.cend(), pos.major_id);
+        }
+
+        // arg_pos is guarenteed to contain the id, because of the andv call when initializing the view
+        assert(arg_pos != arg.cend() && arg_pos->id() == pos.major_id);
+        typename ret_t::id_type id = pos.element->id();
+        auto data = pos.element->data().template ande<typename ret_t::data_type>(arg_pos->data());
+        ret_t output_elem(id, std::move(data));
+        accumulator(std::move(output_elem));
+        ++view;
+    }
+    return ret;
+}
+
+template<typename SDRElem_t, typename container_t>
+template<typename ret_t, typename c_ret_t, typename priority_queue_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::transpose() const {
+    SDR<ret_t, c_ret_t> ret;
+    matrix_utils::OtherMajorView<priority_queue_t> view;
     for (const auto& elem : *this) {
         view.add_major(elem);
     }
 
-    BucketOutputAppender appender(ret);
+    matrix_utils::BucketOutputAppender appender(ret);
     while (view) {
         auto pos = *view;
-        appender.send(pos.element->id(), std::move(typename ret_t::data_type::value_type(pos.major_id, pos.element->data())));
+        appender.send(pos.element->id(), typename ret_t::data_type::value_type(pos.major_id, pos.element->data()));
         ++view;
     }
 
@@ -1680,88 +1736,57 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
 }
 
 template<typename SDRElem_t, typename container_t>
-template<MatrixFormatSameness format, typename arg_t, typename ret_t, typename c_arg_t, typename c_ret_t, typename PriorityQueueContainer_t>
-SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg_t, c_arg_t>& arg) const {
+template<typename arg_t, typename c_arg_t, typename ret_t, typename c_ret_t, typename priority_queue_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::same_mul(const SDR<arg_t, c_arg_t>& arg) const {
     SDR<ret_t, c_ret_t> ret;
-    if constexpr(format == SAME_MAJOR) {
-        // for variable naming, assume that both this and the arg are row major
+    // for variable naming, assume that both this and the arg are row major
 
-        [[maybe_unused]] typename c_ret_t::const_iterator output_row_insertion;
-        if constexpr(flistLike<c_ret_t>::value) {
-            output_row_insertion = ret.before_begin();
-        } 
+    [[maybe_unused]] typename c_ret_t::const_iterator output_row_insertion;
+    if constexpr(flist_like<c_ret_t>::value) {
+        output_row_insertion = ret.before_begin();
+    } 
 
-        for (const auto& row : *this) {
-            typename SDRElem_t::data_type::const_iterator this_row_retrival = row.data().cbegin();
+    for (const auto& row : *this) {
+        typename SDRElem_t::data_type::const_iterator this_row_retrival = row.data().cbegin();
 
-            OtherMajorView<SDR<arg_t, c_arg_t>, PriorityQueueContainer_t> view;
-            auto both_visitor = [&](typename SDRElem_t::data_type::iterator, typename c_arg_t::iterator arg_pos) {
-                view.add_major(*arg_pos);
-            };
-            const_cast<typename SDRElem_t::data_type&>(row.data()).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), both_visitor);
+        matrix_utils::OtherMajorView<priority_queue_t> view;
+        auto both_visitor = [&](typename SDRElem_t::data_type::iterator, typename c_arg_t::iterator arg_pos) {
+            view.add_major(*arg_pos);
+        };
+        const_cast<typename SDRElem_t::data_type&>(row.data()).andv(const_cast<SDR<arg_t, c_arg_t>&>(arg), both_visitor);
 
-            typename ret_t::data_type output_data;
+        typename ret_t::data_type output_data;
 
-            { // scope for accumulator dtor
-                BucketOutputAccumulator accumulator(output_data);
+        { // scope for accumulator dtor
+            matrix_utils::BucketOutputAccumulator accumulator(output_data);
 
-                while (view) {
-                    auto pos = *view;
+            while (view) {
+                auto pos = *view;
 
-                    auto column_id = pos.element->id();
-                    if (this_row_retrival == row.data().cend() || this_row_retrival->id() > pos.major_id) {
-                        this_row_retrival = row.data().cbegin();
-                    }
-                    if constexpr(setLike<typename SDRElem_t::data_type::container_type>::value) {
-                        this_row_retrival = row.data().v.lower_bound(pos.major_id);
-                    } else {
-                        this_row_retrival = std::lower_bound(this_row_retrival, row.data().cend(), pos.major_id);
-                    }
-
-                    assert(this_row_retrival != row.data().cend() && this_row_retrival->id() == pos.major_id);
-                    auto data = this_row_retrival->data().template ande<typename ret_t::data_type::value_type::data_type>(pos.element->data());
-                    typename ret_t::data_type::value_type output_elem(column_id, std::move(data));
-                    accumulator(std::move(output_elem));
-                    ++view;
+                auto column_id = pos.element->id();
+                if (this_row_retrival == row.data().cend() || this_row_retrival->id() > pos.major_id) {
+                    this_row_retrival = row.data().cbegin();
                 }
-            } // scope
-
-            if (output_data.relevant()) {
-                ret_t output(row.id(), std::move(output_data));
-                if constexpr(flistLike<c_ret_t>::value) {
-                    output_row_insertion = ret.v.insert_after(output_row_insertion, std::move(output));
+                if constexpr(set_like<typename SDRElem_t::data_type::container_type>::value) {
+                    this_row_retrival = row.data().v.lower_bound(pos.major_id);
                 } else {
-                    ret.push_back(std::move(output));
+                    this_row_retrival = std::lower_bound(this_row_retrival, row.data().cend(), pos.major_id);
                 }
+
+                assert(this_row_retrival != row.data().cend() && this_row_retrival->id() == pos.major_id);
+                auto data = this_row_retrival->data().template ande<typename ret_t::data_type::value_type::data_type>(pos.element->data());
+                typename ret_t::data_type::value_type output_elem(column_id, std::move(data));
+                accumulator(std::move(output_elem));
+                ++view;
             }
-        }
-    } else {
-        [[maybe_unused]] typename c_ret_t::iterator it;
-        if constexpr(flistLike<c_ret_t>::value) {
-            it = ret.v.before_begin();
-        }
-        for (const auto& row : *this) {
-            typename ret_t::data_type row_data;
-            [[maybe_unused]] typename ret_t::data_type::const_iterator inner_it;
-            if constexpr(flistLike<typename ret_t::data_type::container_type>::value) {
-                inner_it = row_data.before_begin();
-            }
-            for (const auto& column : arg) {
-                auto data = row.data().template dot<typename ret_t::data_type::value_type::data_type>(column.data());
-                typename ret_t::data_type::value_type elem(column.id(), std::move(data));
-                if constexpr(flistLike<typename ret_t::data_type::container_type>::value) {
-                    ++row_data.maybe_size.size;
-                    inner_it = row_data.v.insert_after(inner_it, std::move(elem));
-                } else {
-                    row_data.push_back(std::move(elem));
-                }
-            }
-            ret_t output_row(row.id(), std::move(row_data));
-            if constexpr(flistLike<c_ret_t>::value) {
-                ++ret.maybe_size.size;
-                it = ret.v.insert_after(it, std::move(output_row));
+        } // scope
+
+        if (output_data.relevant()) {
+            ret_t output(row.id(), std::move(output_data));
+            if constexpr(flist_like<c_ret_t>::value) {
+                output_row_insertion = ret.v.insert_after(output_row_insertion, std::move(output));
             } else {
-                ret.push_back(std::move(output_row));
+                ret.push_back(std::move(output));
             }
         }
     }
@@ -1769,8 +1794,43 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_matrix_mul(const SDR<arg
 }
 
 template<typename SDRElem_t, typename container_t>
+template<typename arg_t, typename c_arg_t, typename ret_t, typename c_ret_t>
+SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::diff_mul(const SDR<arg_t, c_arg_t>& arg) const {
+    SDR<ret_t, c_ret_t> ret;
+    [[maybe_unused]] typename c_ret_t::iterator it;
+    if constexpr(flist_like<c_ret_t>::value) {
+        it = ret.v.before_begin();
+    }
+    for (const auto& row : *this) {
+        typename ret_t::data_type row_data;
+        [[maybe_unused]] typename ret_t::data_type::const_iterator inner_it;
+        if constexpr(flist_like<typename ret_t::data_type::container_type>::value) {
+            inner_it = row_data.before_begin();
+        }
+        for (const auto& column : arg) {
+            auto data = row.data().template inner<typename ret_t::data_type::value_type::data_type>(column.data());
+            typename ret_t::data_type::value_type elem(column.id(), std::move(data));
+            if constexpr(flist_like<typename ret_t::data_type::container_type>::value) {
+                ++row_data.maybe_size.size;
+                inner_it = row_data.v.insert_after(inner_it, std::move(elem));
+            } else {
+                row_data.push_back(std::move(elem));
+            }
+        }
+        ret_t output_row(row.id(), std::move(row_data));
+        if constexpr(flist_like<c_ret_t>::value) {
+            ++ret.maybe_size.size;
+            it = ret.v.insert_after(it, std::move(output_row));
+        } else {
+            ret.push_back(std::move(output_row));
+        }
+    }
+    return ret;
+}
+
+template<typename SDRElem_t, typename container_t>
 template<typename T>
-typename T::data_type::value_type::data_type SDR<SDRElem_t, container_t>::matrix_trace() const {
+typename T::data_type::value_type::data_type SDR<SDRElem_t, container_t>::trace() const {
     typename T::data_type::value_type::data_type ret;
     for (const auto& row : *this) {
         auto row_num = row.id();

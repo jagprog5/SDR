@@ -1,27 +1,23 @@
 #pragma once
 
-#include "SparseDistributedRepresentation/Templates.hpp"
-#include <queue>
-#include <vector>
-
 namespace sparse_distributed_representation {
 
-namespace other_major_view_objs {
+namespace matrix_utils {
 
-template<typename T>
+template<typename major_t>
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-struct row_information {
+struct row_info {
+    using major_type = major_t;
+
     // this stores information about each row
-    typename T::value_type::id_type id;
+    typename major_t::id_type id;
     // pos must always point to a valid element
-    typename T::value_type::data_type::const_iterator pos;
-    typename T::value_type::data_type::const_iterator end;
-    bool operator>(const row_information& other) const {
-        return pos->id() > other.pos->id();
+    typename major_t::data_type::const_iterator pos;
+    typename major_t::data_type::const_iterator end;
+    bool operator<(const row_info& other) const {
+        return pos->id() > other.pos->id(); // intentional greater
     }
 };
-
-}
 
 /**
  * this gives an iterator-like interface, which provides elements of a matrix in a view opposite to how it is stored
@@ -29,39 +25,31 @@ struct row_information {
  *  the elements are provided as follows
  *      [ 1 2 ]
  *      [ 3 4 ]  ->  1 3 2 4
- * @tparam T the matrix type that is being viewed
- * @tparam PriorityQueueContainer_t Each row is referenced in a priority queue. This exposes the priority_queue underlying container.
- *         It is best if these references are stored in a similar container to how the rows are stored in the matrix.
  */
-template<typename T, typename PriorityQueueContainer_t = std::vector<other_major_view_objs::row_information<T>>>
+template<typename priority_queue_container_t>
 class OtherMajorView {
-    // for variable naming, assume this provides a column-wise view of a row-major matrix
     private:
-        using row_information = other_major_view_objs::row_information<T>;
+        using row_info_type = typename priority_queue_container_t::value_type;
+        using major_type = typename row_info_type::major_type;
 
-        static auto create_heap() {
-            // use the same-ish data structure as whoever made the matrix
-            // (they have more context)
-            return std::priority_queue<row_information,  PriorityQueueContainer_t,  std::greater<row_information>>();;
-        }
+        // store the infos in the same containers as the major rows are stored in the matrix
+        priority_queue_container_t row_infos;
 
-        decltype(create_heap()) row_infos = create_heap();
-    
     public:
         // dereferencing OtherMajorView yields a Position
         struct Position {
-            typename T::value_type::id_type major_id;
+            typename major_type::id_type major_id;
             // element includes both the minor id and the data itself
-            typename T::value_type::data_type::const_pointer element;
+            typename major_type::data_type::const_pointer element;
         };
 
         /**
          * Add each row/column of the matrix to the view BEFORE doing anything else
          */
-        void add_major(const typename T::value_type& row) {
+        void add_major(const major_type& row) {
             // should never happen since an SDR that is empty is irrelevant, and should have been ommitted
             assert(!row.data().empty());
-            row_infos.push(row_information{row.id(), row.data().cbegin(), row.data().cend()});
+            row_infos.push(row_info_type{row.id(), row.data().cbegin(), row.data().cend()});
         }
 
         operator bool() const {
@@ -69,12 +57,12 @@ class OtherMajorView {
         }
 
         Position operator*() const {
-            const row_information& elem = row_infos.top();
+            const row_info_type& elem = row_infos.top();
             return Position{elem.id, &*elem.pos};
         }
 
         void operator++() {
-            row_information elem = row_infos.top();
+            row_info_type elem = row_infos.top();
             row_infos.pop();
             ++elem.pos;
             if (elem.pos != elem.end) {
@@ -91,7 +79,7 @@ struct Empty {
 
 template<typename T>
 auto get_output_it(const T& t) {
-    if constexpr(flistLike<typename T::container_type>::value) {
+    if constexpr(flist_like<typename T::container_type>::value) {
         return t.cbefore_begin();
     } else {
         // making sure that the iterators here don't take up any space if they are not needed
@@ -116,7 +104,7 @@ class BucketOutputAccumulator {
 
         void flush() {
             if (bucket.data().relevant()) {
-                if constexpr(flistLike<typename T::container_type>::value) {
+                if constexpr(flist_like<typename T::container_type>::value) {
                     output_it = output.insert_after(output_it, std::move(bucket));
                 } else {
                     output.push_back(std::move(bucket));
@@ -165,7 +153,7 @@ class BucketOutputAppender {
 
         void flush() {
             if (bucket.data().relevant()) {
-                if constexpr(flistLike<typename T::container_type>::value) {
+                if constexpr(flist_like<typename T::container_type>::value) {
                     output_it = output.insert_after(output_it, std::move(bucket));
                 } else {
                     output.push_back(std::move(bucket));
@@ -189,7 +177,7 @@ class BucketOutputAppender {
                 bucket = typename T::value_type(id);
                 bucket_it = get_output_it(bucket.data());
             }
-            if constexpr(flistLike<typename T::value_type::data_type::container_type>::value) {
+            if constexpr(flist_like<typename T::value_type::data_type::container_type>::value) {
                 bucket_it = bucket.data().insert_after(bucket_it, std::move(data));
             } else {
                 bucket.data().push_back(std::move(data));
@@ -200,5 +188,7 @@ class BucketOutputAppender {
             flush();
         }
 };
+
+} // namespace
 
 } // namespace

@@ -184,19 +184,19 @@ template<typename SDR>
 SDR get_sdr(int val) {
     SDR ret;
     long start;
-    if constexpr(SDR::usesFlistLike) {
+    if constexpr(SDR::uses_flist_like) {
         start = sizeof(decltype(val)) * 8 - 1;
     } else {
         start = 0;
     }
     long stop; // exclusive
-    if constexpr(SDR::usesFlistLike) {
+    if constexpr(SDR::uses_flist_like) {
         stop = -1;
     } else {
         stop = sizeof(decltype(val)) * 8;
     }
     long change;
-    if constexpr(SDR::usesFlistLike) {
+    if constexpr(SDR::uses_flist_like) {
         change = -1;
     } else {
         change = 1;
@@ -206,7 +206,7 @@ SDR get_sdr(int val) {
             typename SDR::value_type::data_type data((float)twister() / (float)twister.max());
             // if (!data.relevant()) continue;
             typename SDR::value_type elem(i, data);
-            if constexpr(SDR::usesFlistLike) {
+            if constexpr(SDR::uses_flist_like) {
                 ret.push_front(elem);
             } else {
                 ret.push_back(elem);
@@ -218,11 +218,11 @@ SDR get_sdr(int val) {
 
 template<typename SDR>
 std::string get_template_name() {
-    if constexpr(SDR::usesVectorLike) {
+    if constexpr(SDR::uses_vector_like) {
         return "vec";
-    } else if constexpr(SDR::usesSetLike) {
+    } else if constexpr(SDR::uses_set_like) {
         return "set";
-    } else if constexpr(SDR::usesFlistLike) {
+    } else if constexpr(SDR::uses_flist_like) {
         return "lst";
     } else {
         return "???";

@@ -162,15 +162,6 @@ BOOST_AUTO_TEST_CASE(sample) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(test_comparison) {
-  BOOST_REQUIRE_EQUAL((SDR{1, 2, 3}), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_LE((SDR{1, 2, 3}), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_GE((SDR{1, 2, 3}), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_NE((SDR{0, 2, 3}), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_LT((SDR{0, 2, 3}), (SDR{1, 2, 3}));
-  BOOST_REQUIRE_GT((SDR{4}), (SDR{0, 1, 2}));
-}
-
 BOOST_AUTO_TEST_CASE(test_shift) {
   BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} << 1), (SDR{2, 3, 4}));
 }
@@ -450,12 +441,24 @@ BOOST_AUTO_TEST_CASE(testIDContiguousMove) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(test_dot) {
+BOOST_AUTO_TEST_CASE(test_inner) {
   using Elem = SDRElem<int, ArithData<>>;
   SDR<Elem> a{Elem(0, 0), Elem(1, 1), Elem(2, 2)};
   SDR<Elem> b{Elem(0, 0), Elem(1, 2), Elem(2, 4)};
-  ArithData<> data = a.dot(b);
+  ArithData<> data = a.inner(b);
   BOOST_REQUIRE_EQUAL(data.value(), 10);
+}
+
+BOOST_AUTO_TEST_CASE(test_outer) {
+  using Elem = SDRElem<int, ArithData<>>;
+  SDR<Elem> a{Elem(0, 0), Elem(1, 1)};
+  SDR<Elem> b{Elem(0, 2), Elem(1, 3)};
+  auto data = a.outer(b);
+  auto r = SDR<SDRElem<int, SDR<Elem>>>{
+    SDRElem<int, SDR<Elem>>(0, SDR<Elem>{Elem(0, 0), Elem(1, 0)}),
+    SDRElem<int, SDR<Elem>>(1, SDR<Elem>{Elem(0, 2), Elem(1, 3)})
+  };
+  BOOST_REQUIRE_EQUAL(data, r);
 }
 
 using Element = SDRElem<unsigned int, ArithData<>>;
@@ -463,7 +466,7 @@ using Row = SDRElem<unsigned int, SDR<Element>>;
 using Column = Row;
 using Matrix = SDR<Row>;
 
-BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
+BOOST_AUTO_TEST_CASE(row_matrix_vector_multiply) {
   //  1 2   10   32
   //  3 4 * 11 = 74
   {
@@ -472,17 +475,17 @@ BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
     Matrix m{row0, row1};
     {
       auto input = SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)};
-      auto result = m.matrix_vector_mul(input); 
+      auto result = m.row_major_mul_vec(input); 
       BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
     }
     {
       auto input = SDR<Element, std::set<Element, std::less<>>>{Element(0, 10.0f), Element(1, 11.0f)};
-      auto result = m.matrix_vector_mul(input); 
+      auto result = m.row_major_mul_vec(input); 
       BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
     }
     {
       auto input = SDR<Element, std::forward_list<Element>>{Element(0, 10.0f), Element(1, 11.0f)};
-      auto result = m.matrix_vector_mul(input); 
+      auto result = m.row_major_mul_vec(input); 
       BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
     }
   }
@@ -492,30 +495,30 @@ BOOST_AUTO_TEST_CASE(matrix_vector_multiply) {
     Matrix m{column0, column1};
     {
       auto input = SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)};
-      auto result = m.matrix_vector_mul<COLUMN_MAJOR>(input); 
+      auto result = m.col_major_mul_vec(input); 
       BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
     }
     {
       auto input = SDR<Element, std::set<Element, std::less<>>>{Element(0, 10.0f), Element(1, 11.0f)};
-      auto result = m.matrix_vector_mul<COLUMN_MAJOR>(input); 
+      auto result = m.col_major_mul_vec(input); 
       BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
     }
     {
       auto input = SDR<Element, std::forward_list<Element>>{Element(0, 10.0f), Element(1, 11.0f)};
-      auto result = m.matrix_vector_mul<COLUMN_MAJOR>(input); 
+      auto result = m.col_major_mul_vec(input); 
       BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 32.0f), Element(1, 74.0f)}));  
     }
   }
   // some other weird cases
   {
-    BOOST_REQUIRE_EQUAL(SDR<Element>(), (Matrix().matrix_vector_mul(SDR<Element>())));
+    BOOST_REQUIRE_EQUAL(SDR<Element>(), (Matrix().row_major_mul_vec(SDR<Element>())));
   }
   {
     auto input = SDR<Element>{Element(0, 10.0f), Element(1, 11.0f)};
     Column column0(0, SDR<Element>{Element(1, 3.0f)});
     Column column1(1, SDR<Element>{Element(0, 2.0f)});
     SDR<Column, std::set<Column, std::less<>>> m{column0, column1};
-    auto result = m.matrix_vector_mul<COLUMN_MAJOR>(input); 
+    auto result = m.col_major_mul_vec(input); 
     BOOST_REQUIRE_EQUAL(result, (SDR<Element>{Element(0, 22.0f), Element(1, 30.0f)}));  
   }
 }
@@ -530,7 +533,7 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
     Row row2(0, SDR<Element>{Element(0, 1.0f), Element(1, 3.0f)});
     Row row3(1, SDR<Element>{Element(0, 2.0f), Element(1, 4.0f)});
     Matrix result{row2, row3};
-    BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
+    BOOST_REQUIRE_EQUAL(m.transpose(), result);
   }
   {
     Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
@@ -539,7 +542,7 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
     Row row2(0, SDR<Element>{Element(0, 1.0f), Element(1, 3.0f)});
     Row row3(1, SDR<Element>{Element(0, 2.0f), Element(1, 4.0f)});
     SDR<Row, std::set<Row, std::less<>>> result{row2, row3};
-    BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
+    BOOST_REQUIRE_EQUAL(m.transpose(), result);
   }
   {
     Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
@@ -548,11 +551,11 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
     Row row2(0, SDR<Element>{Element(0, 1.0f), Element(1, 3.0f)});
     Row row3(1, SDR<Element>{Element(0, 2.0f), Element(1, 4.0f)});
     SDR<Row, std::forward_list<Row>> result{row2, row3};
-    BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
+    BOOST_REQUIRE_EQUAL(m.transpose(), result);
   }
   {
     Matrix m;
-    BOOST_REQUIRE_EQUAL(m.matrix_transpose(), Matrix());
+    BOOST_REQUIRE_EQUAL(m.transpose(), Matrix());
   }
   {
     using Row = SDRElem<unsigned int, SDR<Element, std::forward_list<Element>>>;
@@ -562,7 +565,7 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
     Row row2(0, SDR<Element, std::forward_list<Element>>{Element(0, 1.0f), Element(1, 3.0f)});
     Row row3(1, SDR<Element, std::forward_list<Element>>{Element(0, 2.0f), Element(1, 4.0f)});
     SDR<Row> result{row2, row3};
-    BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
+    BOOST_REQUIRE_EQUAL(m.transpose(), result);
   }
   {
     using Row = SDRElem<unsigned int, SDR<Element, std::set<Element, std::less<>>>>;
@@ -572,16 +575,28 @@ BOOST_AUTO_TEST_CASE(matrix_transpose) {
     Row row2(0, SDR<Element, std::set<Element, std::less<>>>{Element(0, 1.0f), Element(1, 3.0f)});
     Row row3(1, SDR<Element, std::set<Element, std::less<>>>{Element(0, 2.0f), Element(1, 4.0f)});
     SDR<Row> result{row2, row3};
-    BOOST_REQUIRE_EQUAL(m.matrix_transpose(), result);
+    BOOST_REQUIRE_EQUAL(m.transpose(), result);
   }
+}
+
+BOOST_AUTO_TEST_CASE(transpose2) {
+  using A_inner_elem = SDRElem<double>;
+  using A_inner = SDR<A_inner_elem>;
+  using A_outer_elem = SDRElem<float, A_inner>;
+  using A_outer = SDR<A_outer_elem, std::forward_list<A_outer_elem>>;
+  using B_inner_elem = SDRElem<float>;
+  using B_inner = SDR<B_inner_elem, std::forward_list<B_inner_elem>>;
+  using B_outer_elem = SDRElem<double, B_inner>;
+  using B_outer = SDR<B_outer_elem>;
+  static_assert(std::is_same_v<A_outer, decltype(B_outer().transpose2())>);
 }
 
 BOOST_AUTO_TEST_CASE(matrix_trace) {
   Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
   Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{row0, row1};
-  BOOST_REQUIRE_EQUAL(m.matrix_trace(), 5);
-  BOOST_REQUIRE_EQUAL(Matrix().matrix_trace(), 0);
+  BOOST_REQUIRE_EQUAL(m.trace(), 5);
+  BOOST_REQUIRE_EQUAL(Matrix().trace(), 0);
 }
 
 BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
@@ -600,33 +615,33 @@ BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
       Row row5(1, SDR<Element>{Element(0, 7.0f), Element(1, 8.0f)});
       {
         Matrix m1{row4, row5};
-        BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
+        BOOST_REQUIRE_EQUAL(m0.same_mul(m1), result);
       }
       {
         SDR<Row, std::set<Row, std::less<>>> m1{row4, row5};
-        BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
+        BOOST_REQUIRE_EQUAL(m0.same_mul(m1), result);
       }
       {
         SDR<Row, std::forward_list<Row>> m1{row4, row5};
-        BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
+        BOOST_REQUIRE_EQUAL(m0.same_mul(m1), result);
       }
     }
     {
       Column col0(0, SDR<Element>{Element(0, 5.0f), Element(1, 7.0f)});
       Column col1(1, SDR<Element>{Element(0, 6.0f), Element(1, 8.0f)});
       Matrix m1{col0, col1};
-      BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<DIFFERENT_MAJOR>(m1), result);
+      BOOST_REQUIRE_EQUAL(m0.diff_mul(m1), result);
     }
     {
       using Column = SDRElem<unsigned int, SDR<Element, std::forward_list<Element>>>;
       Column col0(0, SDR<Element, std::forward_list<Element>>{Element(0, 5.0f), Element(1, 7.0f)});
       Column col1(1, SDR<Element, std::forward_list<Element>>{Element(0, 6.0f), Element(1, 8.0f)});
       SDR<Column, std::forward_list<Column>> m1{col0, col1};
-      BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<DIFFERENT_MAJOR>(m1), result);
+      BOOST_REQUIRE_EQUAL(m0.diff_mul(m1), result);
     }
   }
   {
-    BOOST_REQUIRE_EQUAL(Matrix().matrix_matrix_mul<DIFFERENT_MAJOR>(Matrix()), Matrix());
+    BOOST_REQUIRE_EQUAL(Matrix().diff_mul(Matrix()), Matrix());
   }
   {
     using Element = SDRElem<unsigned int, ArithData<>>;
@@ -644,7 +659,7 @@ BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
     Row row5(1, SDR<Element, std::set<Element, std::less<>>>{Element(0, 7.0f), Element(1, 8.0f)});
     Matrix m1{row4, row5};
 
-    BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
+    BOOST_REQUIRE_EQUAL(m0.same_mul(m1), result);
   }
   {
     using Element = SDRElem<unsigned int, ArithData<>>;
@@ -662,7 +677,7 @@ BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {
     Row row5(1, SDR<Element, std::forward_list<Element>>{Element(0, 7.0f), Element(1, 8.0f)});
     Matrix m1{row4, row5};
 
-    BOOST_REQUIRE_EQUAL(m0.matrix_matrix_mul<SAME_MAJOR>(m1), result);
+    BOOST_REQUIRE_EQUAL(m0.same_mul(m1), result);
   }
 }
 

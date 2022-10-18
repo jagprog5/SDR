@@ -131,7 +131,7 @@ SDR<SDRElem<ret_id_t, ArithData<ret_arith_t>>, c_ret_t> divide(const SDR<SDRElem
     std::function<void(typename container_t::iterator, typename c_arg_t::iterator)> visitor_both;
     [[maybe_unused]] typename c_ret_t::const_iterator it;
 
-    if constexpr(flistLike<c_ret_t>::value) {
+    if constexpr(flist_like<c_ret_t>::value) {
         it = r.before_begin();
         visitor_this = [&](typename container_t::iterator this_pos) {
             // pass through
