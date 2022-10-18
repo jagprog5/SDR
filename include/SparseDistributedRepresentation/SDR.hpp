@@ -1672,7 +1672,7 @@ SDR<ret_t, c_ret_t> SDR<SDRElem_t, container_t>::matrix_transpose() const {
     BucketOutputAppender appender(ret);
     while (view) {
         auto pos = *view;
-        appender.send(pos.element->id(), std::move(typename ret_t::data_type::value_type(pos.major_id, pos.element->data())));
+        appender.send(pos.element->id(), typename ret_t::data_type::value_type(pos.major_id, pos.element->data()));
         ++view;
     }
 
