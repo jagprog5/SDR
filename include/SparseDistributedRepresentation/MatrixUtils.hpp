@@ -25,6 +25,7 @@ struct row_info {
  *  the elements are provided as follows
  *      [ 1 2 ]
  *      [ 3 4 ]  ->  1 3 2 4
+ * @tparam priority_queue_container_t a priority_queue containing row_info objects
  */
 template<typename priority_queue_container_t>
 class OtherMajorView {
@@ -36,6 +37,10 @@ class OtherMajorView {
         priority_queue_container_t row_infos;
 
     public:
+        OtherMajorView() {}
+
+        OtherMajorView(priority_queue_container_t&& q) : row_infos(q) {}
+
         // dereferencing OtherMajorView yields a Position
         struct Position {
             typename major_type::id_type major_id;
@@ -47,7 +52,7 @@ class OtherMajorView {
          * Add each row/column of the matrix to the view BEFORE doing anything else
          */
         void add_major(const major_type& row) {
-            // should never happen since an SDR that is empty is irrelevant, and should have been ommitted
+            // should never happen since an SDR that is empty is irrelevant, and should have been omitted
             assert(!row.data().empty());
             row_infos.push(row_info_type{row.id(), row.data().cbegin(), row.data().cend()});
         }
@@ -146,10 +151,6 @@ class BucketOutputAppender {
     private:
         T& output;
         typename T::value_type bucket;
-
-        struct Empty {
-            char unused[0];
-        };
 
         void flush() {
             if (bucket.data().relevant()) {

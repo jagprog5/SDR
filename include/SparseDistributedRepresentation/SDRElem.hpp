@@ -1,9 +1,6 @@
 #pragma once
 
 #include <type_traits>
-#include <forward_list>
-#include <vector>
-#include <set>
 #include <iostream>
 
 #include "SparseDistributedRepresentation/DataTypes/EmptyData.hpp"

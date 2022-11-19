@@ -10,20 +10,20 @@ class EmptyData;
 // this is the data_type for an SDRElem which stores an element from 0 to 1.
 class UnitData {
     public:
-        UnitData(EmptyData) : UnitData() {}
-        UnitData() : value_(1) {}
-        UnitData(float value) : value_(value) {
+        explicit UnitData(EmptyData) : UnitData() {}
+        constexpr UnitData() : value_(1) {}
+        constexpr UnitData(float value) : value_(value) {
             assert(value_ >= 0 && value_ <= 1);
         }
 
         float value() const { return value_; }
         void value(float value) { value_ = value; }
 
-        bool relevant() const {
-            return value() >= 0.1;
+        constexpr bool relevant() const {
+            return value_ >= 0.1;
         }
 
-        bool rm_relevant() const {
+        constexpr bool rm_relevant() const {
             return relevant();
         }
 

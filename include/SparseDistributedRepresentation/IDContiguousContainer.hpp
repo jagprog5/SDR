@@ -269,6 +269,9 @@ class IDContiguousContainer {
         const_iterator cbegin() const { return const_iterator(ids.cbegin(), datas.cbegin()); }
         const_iterator cend() const { return const_iterator(ids.cend(), datas.cend()); }
 
+        reference operator[](size_type pos) { return begin()[pos]; }
+        const_reference operator[](size_type pos) const { return cbegin()[pos]; }
+
         void push_back(SDRElem_t&& elem) {
             ids.push_back(std::move(elem.id()));
             datas.push_back(std::move(elem.data()));

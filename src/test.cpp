@@ -7,6 +7,8 @@
 #include <random>
 #include <unistd.h>
 #include <alloca.h>
+#include <forward_list>
+#include <set>
 using namespace sparse_distributed_representation;
 
 BOOST_AUTO_TEST_SUITE(sdr)
@@ -166,15 +168,6 @@ BOOST_AUTO_TEST_CASE(test_shift) {
   BOOST_REQUIRE_EQUAL((SDR{1, 2, 3} << 1), (SDR{2, 3, 4}));
 }
 
-BOOST_AUTO_TEST_CASE(test_visitor) {
-  SDR<SDRElem<int, ArithData<>>> a{SDRElem<int, ArithData<>>(1, ArithData<>(1))};
-  auto increment_visitor = [&](typename decltype(a)::container_type::iterator iter){
-    iter->data().value(iter->data().value() + 1);
-  };
-  a.visitor(increment_visitor);
-  BOOST_REQUIRE_EQUAL((a & 1)->value(), 2);
-}
-
 BOOST_AUTO_TEST_CASE(test_readme_visitor) {
   SDR a{1, 2, 3};
   SDR b{2, 3, 4};
@@ -205,29 +198,6 @@ BOOST_AUTO_TEST_CASE(test_readme_walled_garden) {
   BOOST_REQUIRE_EQUAL((a.begin() + 0)->id(), 1);
   BOOST_REQUIRE_EQUAL((a.begin() + 1)->id(), 17);
   BOOST_REQUIRE_EQUAL((a.begin() + 2)->id(), 3);
-}
-
-BOOST_AUTO_TEST_CASE(test_arith_div) {
-  using elem = SDRElem<int, ArithData<>>;
-  {
-    SDR<elem> a{elem(0, 10), elem(1, 7)};
-    SDR<SDRElem<long, ArithData<>>> b{SDRElem<long, ArithData<>>(0, 2)};
-    BOOST_REQUIRE_EQUAL(a / b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
-  }
-
-  {
-    SDR<elem, std::forward_list<elem>> a{elem(0, 10), elem(1, 7)};
-    SDR<SDRElem<long, ArithData<>>> b{SDRElem<long, ArithData<>>(0, 2)};
-    auto r = a / b;
-    BOOST_REQUIRE_EQUAL(r.size(), 2);
-    BOOST_REQUIRE_EQUAL(r, (SDR<elem>{elem(0, 5), elem(1, 7)}));
-  }
-
-  {
-    SDR<elem> a{elem(0, 10), elem(1, 7)};
-    SDR<SDRElem<long, ArithData<>>> b{SDRElem<long, ArithData<>>(0, 2)};
-    BOOST_REQUIRE_EQUAL(a /= b, (SDR<elem>{elem(0, 5), elem(1, 7)}));
-  }
 }
 
 BOOST_AUTO_TEST_CASE(test_ret_type) {
@@ -591,12 +561,15 @@ BOOST_AUTO_TEST_CASE(transpose2) {
   static_assert(std::is_same_v<A_outer, decltype(B_outer().transpose2())>);
 }
 
-BOOST_AUTO_TEST_CASE(matrix_trace) {
+BOOST_AUTO_TEST_CASE(matrix_trace_and_sum) {
   Row row0(0, SDR<Element>{Element(0, 1.0f), Element(1, 2.0f)});
   Row row1(1, SDR<Element>{Element(0, 3.0f), Element(1, 4.0f)});
   Matrix m{row0, row1};
   BOOST_REQUIRE_EQUAL(m.trace(), 5);
   BOOST_REQUIRE_EQUAL(Matrix().trace(), 0);
+  auto sum = m.sum();
+  BOOST_REQUIRE_EQUAL(sum, 10);
+  static_assert(std::is_same_v<decltype(sum), ArithData<>>);
 }
 
 BOOST_AUTO_TEST_CASE(matrix_matrix_multiply) {

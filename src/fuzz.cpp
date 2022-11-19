@@ -6,6 +6,8 @@
 #include <chrono>
 #include <unistd.h>
 #include <random>
+#include <forward_list>
+#include <set>
 
 using namespace sparse_distributed_representation;
 using namespace std::chrono;

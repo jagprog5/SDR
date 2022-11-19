@@ -24,14 +24,14 @@ class EmptyData {
 
         template<typename T>
         // NOLINTNEXTLINE
-        explicit EmptyData(T&&) : unused() {}
+        constexpr explicit EmptyData(T&&) : unused() {}
 
-        bool relevant() const {
+        constexpr bool relevant() const {
             // if any element is combined with this one, then it is in the result
             return true;
         }
 
-        bool rm_relevant() const {
+        constexpr bool rm_relevant() const {
             // if any element is removed from this one, then it is not in the result
             return false;
         }
@@ -42,7 +42,7 @@ class EmptyData {
         // (SDR containing SDRs containing SDRs... ad infinitum)
 
         template<typename ret_t = EmptyData, typename T>
-        EmptyData ande(const T&) const { return ret_t(); }
+        ret_t ande(const T&) const { return ret_t(); }
 
         template<typename T>
         EmptyData& andi(const T&) { return *this; }
@@ -51,7 +51,7 @@ class EmptyData {
         bool ands(const T&) const { return relevant(); }
 
         template<typename ret_t = EmptyData, typename T>
-        EmptyData ore(const T&) const { return ret_t(); }
+        ret_t ore(const T&) const { return ret_t(); }
 
         template<typename T>
         EmptyData& ori(const T&) { return *this; }
@@ -62,7 +62,7 @@ class EmptyData {
         bool ors(const T&) const { return relevant(); }
 
         template<typename ret_t = EmptyData, typename T>
-        EmptyData xore(const T&) const { return ret_t(); }
+        ret_t xore(const T&) const { return ret_t(); }
 
         template<typename T>
         EmptyData& xori(const T&) { return *this; }
@@ -71,7 +71,7 @@ class EmptyData {
         bool xors(const T&) const { return rm_relevant(); }
 
         template<typename ret_t = EmptyData, typename T>
-        EmptyData rme(const T&) const { return EmptyData(); }
+        ret_t rme(const T&) const { return EmptyData(); }
 
         template<typename T>
         EmptyData& rmi(const T&) { return *this; }

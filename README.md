@@ -255,7 +255,7 @@ where the id segment and data segment can themselves be vectors or arrays. This 
 
 ## Escaping the Walled Garden
 
-If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cast`ed to its underlying container (in most cases).
+If the SDR api is lacking in some niche way, then an SDR can be `reinterpret_cast`ed to its underlying container*.
 
 ```cpp
 SDR a{1, 2, 3};
@@ -269,6 +269,8 @@ const_cast<int&>((*brute_force_ptr)[1].id()) = 17;
 // it will give strange values but not UB
 std::cout << a << std::endl;
 ```
+
+<sup><sub>* if the container is a forward_list, there's an additional member which stores the size, which must be kept in sync. </sup></sub>
 
 ## TODO
 
