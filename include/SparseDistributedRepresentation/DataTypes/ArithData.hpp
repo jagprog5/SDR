@@ -14,10 +14,10 @@ class ArithData {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
         explicit ArithData(EmptyData) : ArithData() {}
         constexpr ArithData() : value_(0) {}
-        constexpr ArithData(float value) : value_(value) {}
+        constexpr ArithData(arith_t value) : value_(value) {}
 
-        float value() const { return value_; }
-        void value(float value) { value_ = value; }
+        arith_t value() const { return value_; }
+        void value(arith_t value) { value_ = value; }
 
         constexpr bool relevant() const {
             return true;
@@ -104,8 +104,14 @@ class ArithData {
         }
 
     private:
-        float value_;
+        arith_t value_;
 };
+
+template<typename T, typename = void>
+struct has_xor : std::false_type {};
+
+template<typename T>
+struct has_xor<T, decltype((void)T().xore(T()), void())> : std::true_type {};
 
 template<typename arith_t>
 inline std::ostream& operator<<(std::ostream& os, const ArithData<arith_t>& o) {

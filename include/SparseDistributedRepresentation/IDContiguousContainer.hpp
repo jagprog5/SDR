@@ -242,7 +242,7 @@ class ConstIterator {
 // this gives better cache access especially for ops like ors, which don't access the data elements
 // the id is provided immediately, and only if the data is required then it will dereference to access it
 //
-// Only the neccessary functions have been implemented (for use in SDR).
+// Only the necessary functions have been implemented (for use in SDR).
 template<typename SDRElem_t, typename ids_t = std::vector<typename SDRElem_t::id_type>, typename datas_t = std::vector<typename SDRElem_t::data_type>>
 class IDContiguousContainer {
     private:

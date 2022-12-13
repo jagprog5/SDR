@@ -15,7 +15,6 @@ struct MaybeSize {
 template<typename container_t>
 struct MaybeSize<container_t, decltype((void)container_t().size(), void())> {};
 
-
 template<typename T, typename = void>
 struct flist_like : std::true_type {};
 

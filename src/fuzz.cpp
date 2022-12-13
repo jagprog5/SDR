@@ -310,33 +310,35 @@ void series(int fuzz_amount) {
     };
     time_op<SDRA, SDRB>(" ors", ors, fuzz_amount);
 
-    auto xore = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
-        auto start = high_resolution_clock::now();
-        SDRA xor_result = a.xore(b);
-        auto stop = high_resolution_clock::now();
-        total_time += stop - start;
-        return disable_validation || validate_xorop(a, b, xor_result);
-    };
-    time_op<SDRA, SDRB>("xore", xore, fuzz_amount);
+    if constexpr(has_xor<typename SDRA::value_type::data_type>::value) {
+        auto xore = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
+            auto start = high_resolution_clock::now();
+            SDRA xor_result = a.xore(b);
+            auto stop = high_resolution_clock::now();
+            total_time += stop - start;
+            return disable_validation || validate_xorop(a, b, xor_result);
+        };
+        time_op<SDRA, SDRB>("xore", xore, fuzz_amount);
 
-    auto xori = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
-        SDRA a_cp(a);
-        auto start = high_resolution_clock::now();
-        a_cp.xori(b);
-        auto stop = high_resolution_clock::now();
-        total_time += stop - start;
-        return disable_validation || validate_xorop(a, b, a_cp);
-    };
-    time_op<SDRA, SDRB>("xori", xori, fuzz_amount);
+        auto xori = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
+            SDRA a_cp(a);
+            auto start = high_resolution_clock::now();
+            a_cp.xori(b);
+            auto stop = high_resolution_clock::now();
+            total_time += stop - start;
+            return disable_validation || validate_xorop(a, b, a_cp);
+        };
+        time_op<SDRA, SDRB>("xori", xori, fuzz_amount);
 
-    auto xors = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
-        auto start = high_resolution_clock::now();
-        auto s = a.xors(b);
-        auto stop = high_resolution_clock::now();
-        total_time += stop - start;
-        return disable_validation || s == a.xore(b).size();
-    };
-    time_op<SDRA, SDRB>("xors", xors, fuzz_amount);
+        auto xors = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
+            auto start = high_resolution_clock::now();
+            auto s = a.xors(b);
+            auto stop = high_resolution_clock::now();
+            total_time += stop - start;
+            return disable_validation || s == a.xore(b).size();
+        };
+        time_op<SDRA, SDRB>("xors", xors, fuzz_amount);
+    }
 
     auto rme = [](const SDRA& a, const SDRB& b, duration<long, std::nano>& total_time) {
         auto start = high_resolution_clock::now();
@@ -436,11 +438,21 @@ int main(int argc, char** argv) {
 
     std::cout << "======ID contiguous Comparison======" << std::endl;
 
+    struct SomeBigData { // 257 byte long struct, make it really inconvenient
+        SomeBigData(int){}
+        bool operator==(const SomeBigData&) const { return true; }
+        SomeBigData& operator*=(const SomeBigData&) { return *this; }
+        SomeBigData& operator+=(const SomeBigData&) { return *this; }
+        SomeBigData& operator-=(const SomeBigData&) { return *this; }
+        long long a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,ab,ac,ad,ae,af;
+        char ag;
+    };
+
     std::cout << "idc" << std::endl;
-    series<SDR<SDRElem<int, UnitData>, IDContiguousContainer<SDRElem<int, UnitData>>>, SDR<SDRElem<int, UnitData>, IDContiguousContainer<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, ArithData<SomeBigData>>, IDContiguousContainer<SDRElem<int, ArithData<SomeBigData>>>>, SDR<SDRElem<int, ArithData<SomeBigData>>, IDContiguousContainer<SDRElem<int, ArithData<SomeBigData>>>>>(fuzz_amount);
 
     std::cout << "vec" << std::endl;
-    series<SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>, SDR<SDRElem<int, UnitData>, std::vector<SDRElem<int, UnitData>>>>(fuzz_amount);
+    series<SDR<SDRElem<int, ArithData<SomeBigData>>, std::vector<SDRElem<int, ArithData<SomeBigData>>>>, SDR<SDRElem<int, ArithData<SomeBigData>>, std::vector<SDRElem<int, ArithData<SomeBigData>>>>>(fuzz_amount);
 
     #endif
 
