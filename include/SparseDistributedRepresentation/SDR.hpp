@@ -348,7 +348,11 @@ class SDR {
             }
         }
 
-        void clear() noexcept { v.clear(); }
+        void clear() noexcept {
+            if constexpr(uses_flist_like)
+                this->maybe_size.size = 0;
+            v.clear();
+        }
 
         template<typename T = container_t>
         void shrink_to_fit() { v.shrink_to_fit(); }
@@ -413,16 +417,6 @@ class SDR {
             return v.erase_after(pos);
         }
 
-        // calls erase_after on the forward_list underlying container
-        template<typename T = container_t>
-        const_iterator erase_after(const_iterator first, const_iterator last) {
-            while (first != last) {
-                this->maybe_size.size -= 1;
-                v.erase_after(first++);
-            }
-            return last;
-        }
-
         // calls lower_bound on the set underlying container
         template<typename T = container_t>
         const_iterator lower_bound(const value_type& val) const { return v.lower_bound(val); }
@@ -473,8 +467,6 @@ class SDR {
         template<typename other>
         auto operator>>=(other&& o) { return shift(std::forward<other>(-o)); }
 
-        // create specialization for non same types
-        
         template<typename arg_t, typename c_arg_t>
         auto operator==(const SDR<arg_t, c_arg_t>& other) const {
             auto this_pos = this->cbegin();
