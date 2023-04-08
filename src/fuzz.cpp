@@ -438,14 +438,13 @@ int main(int argc, char** argv) {
 
     std::cout << "======ID contiguous Comparison======" << std::endl;
 
-    struct SomeBigData { // 257 byte long struct, make it really inconvenient
+    struct SomeBigData {
         SomeBigData(int){}
         bool operator==(const SomeBigData&) const { return true; }
         SomeBigData& operator*=(const SomeBigData&) { return *this; }
         SomeBigData& operator+=(const SomeBigData&) { return *this; }
         SomeBigData& operator-=(const SomeBigData&) { return *this; }
-        long long a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,ab,ac,ad,ae,af;
-        char ag;
+        char data[257]; // some large data
     };
 
     std::cout << "idc" << std::endl;

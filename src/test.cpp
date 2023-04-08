@@ -173,8 +173,8 @@ BOOST_AUTO_TEST_CASE(test_readme_visitor) {
   SDR b{2, 3, 4};
 
   int result = 0;
-  auto increment_visitor = [&result](typename decltype(a)::container_type::iterator,
-                                     typename decltype(b)::container_type::iterator) {
+  auto increment_visitor = [&result](typename decltype(a)::iterator,
+                                     typename decltype(b)::iterator) {
     ++result;
   };
 
@@ -268,6 +268,14 @@ BOOST_AUTO_TEST_CASE(test_aliasing) {
     SDR<SDRElem<>, std::forward_list<SDRElem<>>> d{1, 2, 3};
     BOOST_REQUIRE_EQUAL(d.andi(d), (SDR<SDRElem<>, std::forward_list<SDRElem<>>>{1, 2, 3}));
   }
+}
+
+BOOST_AUTO_TEST_CASE(test_set_merge_specialization) {
+  using T = SDR<SDRElem<>, std::set<SDRElem<>, std::less<>>>;
+  T a{1, 2, 3};
+  T b{3, 4, 5};
+  a.ori(std::move(b));
+  BOOST_REQUIRE_EQUAL(a, (T{1, 2, 3, 4, 5}));
 }
 
 BOOST_AUTO_TEST_CASE(test_printing) {

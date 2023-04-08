@@ -89,6 +89,8 @@ class EmptyData {
         char unused[0];
 };
 
+static_assert(sizeof(EmptyData) == 0);
+
 #pragma GCC diagnostic pop
 
 inline std::ostream& operator<<(std::ostream& os, const EmptyData&) {

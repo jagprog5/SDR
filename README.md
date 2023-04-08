@@ -217,8 +217,8 @@ SDR a{1, 2, 3};
 SDR b{2, 3, 4};
 
 int result = 0;
-auto increment_visitor = [&result](typename decltype(a)::container_type::iterator,
-                                   typename decltype(b)::container_type::iterator) {
+auto increment_visitor = [&result](typename decltype(a)::iterator,
+                                   typename decltype(b)::iterator) {
     ++result;
 };
 
@@ -245,10 +245,11 @@ Given that each `SDRElem` has an id and data, the layout for a vector or array b
 id0 data0 id1 data1 id2 data2
 ```
 
-The container adaptor `IDContiguousContainer` instead orders the memory like this:
+The container adaptor `IDContiguousContainer` instead orders the memory in two contiguous segments like this:
 
 ```
-id0 id1 id2 data0 data1 data2
+id0 id1 id2
+data0 data1 data2
 ```
 
 where the id segment and data segment can themselves be vectors or arrays. This gives better cache access on ops which require the id right away, but may or may not look at the data until later.
