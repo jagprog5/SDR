@@ -217,8 +217,8 @@ SDR a{1, 2, 3};
 SDR b{2, 3, 4};
 
 int result = 0;
-auto increment_visitor = [&result](typename decltype(a)::container_type::iterator,
-                                   typename decltype(b)::container_type::iterator) {
+auto increment_visitor = [&result](typename decltype(a)::iterator,
+                                   typename decltype(b)::iterator) {
     ++result;
 };
 

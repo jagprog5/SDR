@@ -1283,6 +1283,11 @@ SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::ori(const SDR<arg_t, c
 template<typename SDRElem_t, typename container_t>
 template<typename arg_t, typename c_arg_t>
 SDR<SDRElem_t, container_t>& SDR<SDRElem_t, container_t>::ori(SDR<arg_t, c_arg_t>&& arg) {
+    if constexpr(uses_set_like && set_like<c_arg_t>::value && std::is_same_v<SDRElem_t, arg_t> && sizeof(typename SDRElem_t::data_type) == 0) {
+        // a specialization which can use c++17 stl set::merge
+        v.merge(std::move(arg.v));
+        return *this;
+    }
     return sparse_distributed_representation::ori(*this, std::make_move_iterator(arg.v.begin()), std::make_move_iterator(arg.v.end()));
 }
 
