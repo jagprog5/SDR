@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE sparse_distribued_representation_test_module
 #include <boost/test/included/unit_test.hpp>
+#include <boost/test/output_test_stream.hpp>
 #include "SparseDistributedRepresentation/SDR.hpp"
 #include "SparseDistributedRepresentation/IDContiguousContainer.hpp"
 #include "SparseDistributedRepresentation/DataTypes/ArithData.hpp"
@@ -279,15 +280,27 @@ BOOST_AUTO_TEST_CASE(test_set_merge_specialization) {
 }
 
 BOOST_AUTO_TEST_CASE(test_printing) {
-  auto old_buffer = std::cout.rdbuf(nullptr); // suppress
-  std::cout << ArithData<>(0.5555) << '\n';
-  UnitData a(0.5555);
-  std::cout << a << " ";
-  a.value(1.1);
-  std::cout << a << '\n';
-  std::cout << SDR{1, 2, 3} << " " << SDR<SDRElem<int, ArithData<>>>{1, 2, 3} << '\n';
-  std::cout << SDR<SDRElem<int, ArithData<>>>{1, 2, 3} << std::endl;
-  std::cout.rdbuf(old_buffer); // restore
+  boost::test_tools::output_test_stream output;
+  output << ArithData<>(0.5555);
+  BOOST_REQUIRE(output.is_equal("0.5555"));
+  output << UnitData();
+  BOOST_REQUIRE(output.is_equal("1.0"));
+  output << UnitData(0.5555);
+  BOOST_REQUIRE(output.is_equal(".55"));
+
+  struct Breaker : UnitData {
+    float value() const { return 1.1f; }
+  };
+  output << (UnitData().andi(Breaker()));
+  BOOST_REQUIRE(output.is_equal("!!!"));
+
+  output << SDR{1, 2, 3};
+  BOOST_REQUIRE(output.is_equal("[1,2,3]"));
+
+  output << SDR<SDRElem<int, ArithData<>>>{SDRElem<int, ArithData<>>{1, 5},
+    SDRElem<int, ArithData<>>{2, 6},
+    SDRElem<int, ArithData<>>{3, 7}};
+  BOOST_REQUIRE(output.is_equal("[1(5),2(6),3(7)]"));
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
