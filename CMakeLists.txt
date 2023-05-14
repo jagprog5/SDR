@@ -4,7 +4,6 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 project(sparse_distributed_representation)
 
-option(STATIC_ANALYSIS "Run static code analysis" OFF)
 option(BUILD_TESTING "Build tests and fuzzing" OFF)
 OPTION(FUZZ_FULL "More fuzzing" OFF)
 option(CODE_COVERAGE "Create coverage stats. Needs lcov and (for clang) llvm-cov. Invoke with \"make cov-show\"" OFF)
@@ -15,34 +14,6 @@ option(PGO "Build the fuzzer in two passes, the latter with profile guided optim
 add_library(${PROJECT_NAME}_lib INTERFACE)
 
 target_include_directories(${PROJECT_NAME}_lib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-if (STATIC_ANALYSIS)
-  find_program(CLANGTIDY clang-tidy)
-  if(CLANGTIDY)
-    set(CMAKE_CXX_CLANG_TIDY 
-    clang-tidy;
-    "-checks=boost-*,\
-      bugprone-*,\
-      clang-analyzer-*,\
-      cppcoreguidelines-*,\
-      misc-*,\
-      performance-*,\
-      portability-*,\
-      -*-magic-numbers,\
-      -cppcoreguidelines-special-member-functions,\
-      -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
-      -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
-      -cppcoreguidelines-avoid-c-arrays,\
-      -cppcoreguidelines-pro-type-const-cast,\
-      -cppcoreguidelines-avoid-goto,\
-      -cppcoreguidelines-init-variables,\
-      -misc-non-private-member-variables-in-classes"
-    --header-filter=${CMAKE_CURRENT_SOURCE_DIR}/include
-    )
-  else()
-    message(SEND_ERROR "clang-tidy NOT FOUND")
-  endif()
-endif()
 
 if(BUILD_TESTING)
   # fuzzer for the complicated functions
@@ -56,12 +27,8 @@ if(BUILD_TESTING)
     )
   endif()
   
-  if (CODE_COVERAGE AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # prevent a crash with clang ¯\_(ツ)_/¯
-    set(Boost_USE_STATIC_LIBS ON)
-  endif()
-  
   # unit tests
+  set(Boost_USE_STATIC_LIBS ON)   
   set(BOOST_MIN_VERSION "1.63.0")
   find_package(Boost REQUIRED COMPONENTS unit_test_framework)
   add_executable(test_sdr src/test.cpp)
